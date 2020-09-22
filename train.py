@@ -165,7 +165,8 @@ def main():
   print("Loding model and augmentations and placing on gpu...")
 
   if args.cuda:
-    augmentations = augmentations.cuda()
+    if augmentations is not None:
+        augmentations = augmentations.cuda()
     model = model.cuda()
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
