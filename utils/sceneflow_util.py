@@ -6,6 +6,8 @@ import torch.nn.functional as tf
 
 from .inverse_warp import pose_vec2mat
 
+from sys import exit
+
 
 def post_processing(l_disp, r_disp):
     
@@ -113,25 +115,15 @@ def pts2pixel_ms(intrinsic, pts, output_sf, disp_size):
 
 
 def pts2pixel_pose_ms(intrinsic, pts, pose, disp_size):
-  b, _, h, w = pts.size() 
+    b, _, h, w = pts.size() 
 
-  pose_mat = pose_vec2mat(pose)
-  R = pose_mat[:, :, :-1]
-  t = pose_mat[:, :, -1:]
+    pose_mat = pose_vec2mat(pose)
+    pts_tform = torch.matmul(pose_mat, torch.cat([pts.reshape((b, 3, -1)), torch.ones((b, 1, h*w)).cuda()], dim=1))
+    pts_tform = pts_tform.reshape((b, 3, h, w))
 
-  pts_tform = torch.bmm(R, pts.view((b, 3, -1)))
-  pts_tform = pts_tform + t
+    norm_coord = pts2pixel(pts_tform, intrinsic)
 
-  proj_pts = torch.bmm(intrinsic, pts_tform)
-  pixels_mat = proj_pts.div(proj_pts[:, 2:3, :] + 1e-8)[:, 0:2, :]
-
-  coord = pixels_mat.view(b, 2, h, w)
-
-  norm_coord_w = coord[:, 0:1, :, :] / (disp_size[1] - 1) * 2 - 1
-  norm_coord_h = coord[:, 1:2, :, :] / (disp_size[0] - 1) * 2 - 1
-  norm_coord = torch.cat((norm_coord_w, norm_coord_h), dim=1)
-
-  return pts_tform, norm_coord
+    return pts_tform, norm_coord
 
 
 def reconstructImg(coord, img):

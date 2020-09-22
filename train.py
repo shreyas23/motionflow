@@ -181,7 +181,7 @@ def main():
   if args.lr_sched_type == 'plateau':
     print("Using plateau lr schedule")
     lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, factor=0.9, verbose=True, mode='min', patience=10)
+        optimizer, factor=0.7, verbose=True, mode='min', patience=10)
   elif args.lr_sched_type == 'step':
     print("Using step lr schedule")
     lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
@@ -283,15 +283,13 @@ def step(args, data_dict, model, loss, augmentations, optimizer):
   output_dict = model(data_dict)
   loss_dict = loss(output_dict, data_dict)
 
-  training_loss = loss_dict['total_loss'].detach()
-  assert (not torch.isnan(training_loss)), f"training_loss is NaN: {loss_dict}"
+#   training_loss = loss_dict['total_loss'].detach()
+#   assert (not torch.isnan(training_loss)), f"training_loss is NaN: {loss_dict}"
 
   return loss_dict, output_dict
 
 
 def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_scheduler):
-
-  model = model.train()
 
   keys = ['total_loss', 'dp']
   if args.model_name in ['monoflow', 'scenenet']:
@@ -350,49 +348,61 @@ def eval(args, model, loss, dataloader, augmentations):
 
 def visualize_output(args, input_dict, output_dict, epoch, writer):
 
-  assert (writer is not None), "tensorboard writer not provided"
+    assert (writer is not None), "tensorboard writer not provided"
 
-  img_l1_aug = input_dict['input_l1_aug'].detach()
-  img_l2_aug = input_dict['input_l2_aug'].detach()
-  img_r2_aug = input_dict['input_r2_aug'].detach()
-  disp_l2 = output_dict['disp_l2'][0].detach()
-  k_l2_aug = input_dict['input_k_l2_aug'].detach()
-  img_r2_warp = _generate_image_left(img_r2_aug, disp_l2)
-  aug_size = input_dict['aug_size']
+    img_l1_aug = input_dict['input_l1_aug'].detach()
+    img_l2_aug = input_dict['input_l2_aug'].detach()
+    img_r2_aug = input_dict['input_r2_aug'].detach()
+    disp_l2 = output_dict['disp_l2'][0].detach()
+    k_l2_aug = input_dict['input_k_l2_aug'].detach()
+    img_r2_warp = _generate_image_left(img_r2_aug, disp_l2)
+    aug_size = input_dict['aug_size']
 
-  # input
-  writer.add_images('input_l1', img_l1_aug, epoch)
-  writer.add_images('input_l2', img_l2_aug, epoch)
-  writer.add_images('input_r1', img_r2_aug, epoch)
+    # input
+    writer.add_images('input_l1', img_l1_aug, epoch)
+    writer.add_images('input_l2', img_l2_aug, epoch)
+    writer.add_images('input_r2', img_r2_aug, epoch)
 
-  # disparity
-  writer.add_images('img_r1_warp', img_r2_warp, epoch)
+    # disparity
+    writer.add_images('img_r1_warp', img_r2_warp, epoch)
 
-  if args.model_name in ['scenenet']:
-    sf_b = output_dict['flow_b'][0].detach()
-    pose = output_dict['pose'].detach()
+    if args.model_name in ['scenenet']:
+        sf_b = output_dict['flow_b'][0].detach()
+        pose = output_dict['pose'].detach()
 
-    # scene flow
-    _, _, h_dp, w_dp = sf_b.size()
-    disp_l2 = disp_l2 * w_dp
+        # scene flow
+        _, _, h_dp, w_dp = sf_b.size()
+        disp_l2 = disp_l2 * w_dp
 
-    ## scale
-    local_scale = torch.zeros_like(aug_size)
-    local_scale[:, 0] = h_dp
-    local_scale[:, 1] = w_dp
+        ## scale
+        local_scale = torch.zeros_like(aug_size)
+        local_scale[:, 0] = h_dp
+        local_scale[:, 1] = w_dp
 
-    pts2, k2_scale = pixel2pts_ms(
-        k_l2_aug, disp_l2, local_scale / aug_size)
-    _, _, coord2 = pts2pixel_ms(k2_scale, pts2, sf_b, [h_dp, w_dp])
-    img_l1_warp = reconstructImg(coord2, img_l1_aug)
-    writer.add_images('img_l1_warp', img_l1_warp, epoch)
+        pts2, k2_scale = pixel2pts_ms(
+            k_l2_aug, disp_l2, local_scale / aug_size)
+        _, _, coord2 = pts2pixel_ms(k2_scale, pts2, sf_b, [h_dp, w_dp])
+        img_l1_warp = reconstructImg(coord2, img_l1_aug)
+        writer.add_images('img_l1_warp', img_l1_warp, epoch)
 
-    # camera pose
-    depth = disp2depth_kitti(disp_l2, k2_scale[:, 0, 0])
-    img_l1_warp_cam = inverse_warp(img_l1_aug, depth.squeeze(
-        dim=1), pose.squeeze(dim=1), k2_scale, torch.inverse(k2_scale))
+        # camera pose
+        depth = disp2depth_kitti(disp_l2, k_l2_aug[:, 0, 0])
+        img_l1_warp_cam = inverse_warp(img_l1_aug, depth.squeeze(
+            dim=1), pose.squeeze(dim=1), k_l2_aug, torch.inverse(k2_scale))
 
-    writer.add_images('img_l1_warp_cam', img_l1_warp_cam, epoch)
+        writer.add_images('img_l1_warp_cam', img_l1_warp_cam, epoch)
+
+    if args.model_name in ['posedepth', 'scenenet']:
+        pose = output_dict['pose'].detach()
+        _, _, h_dp, w_dp = disp_l2.size()
+        disp_l2 = disp_l2 * w_dp
+
+        # camera pose
+        depth = disp2depth_kitti(disp_l2, k_l2_aug[:, 0, 0])
+        img_l1_warp_cam = inverse_warp(img_l1_aug, depth.squeeze(
+            dim=1), pose.squeeze(dim=1), k_l2_aug, torch.inverse(k_l2_aug))
+
+        writer.add_images('img_l1_warp_cam', img_l1_warp_cam, epoch)
 
 
 if __name__ == '__main__':
