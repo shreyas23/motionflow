@@ -198,15 +198,10 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
         local_scale[:, 0] = h_dp
         local_scale[:, 1] = w_dp         
 
-        # print("intrinsics:", intrinsics.requires_grad)
         _, intrinsics_scaled, depth = pixel2pts_ms_depth(intrinsics, disp, local_scale / aug_size)
-        # print("scaled intrinsics:", intrinsics_scaled.requires_grad)
         ref_warped = inverse_warp(ref_imgs, depth.squeeze(dim=1), pose.squeeze(dim=1), intrinsics_scaled, torch.inverse(intrinsics_scaled))
-        # print("ref_warped grad", ref_warped.requires_grad)
         img_diff = (_elementwise_l1(tgt_imgs, ref_warped) * (1.0 - self._ssim_w) + _SSIM(tgt_imgs, ref_warped) * self._ssim_w).mean(dim=1, keepdim=True)
         loss = img_diff[disp_occ.detach()].mean()
-        # print("Checking grad at final loss:", loss.requires_grad)
-        # loss.register_hook(lambda grad: print("pose loss", grad))
 
         return loss
 

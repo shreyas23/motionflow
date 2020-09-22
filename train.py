@@ -36,53 +36,84 @@ parser = argparse.ArgumentParser(description="Self Supervised Joint Learning of 
 
 # runtime params
 parser.add_argument('--data_root', help='path to dataset', required=True)
-parser.add_argument('--epochs', type=int, required=True, help='number of epochs to run')
-parser.add_argument('--start_epoch', type=int, default=0, help='resume from checkpoint (using experiment name)')
+parser.add_argument('--epochs', type=int, required=True,
+                    help='number of epochs to run')
+parser.add_argument('--start_epoch', type=int, default=0,
+                    help='resume from checkpoint (using experiment name)')
 parser.add_argument('--cuda', type=bool, default=True, help='use gpu?')
-parser.add_argument('--no_logging', type=bool, default=False, help="are you logging this experiment?")
-parser.add_argument('--log_dir', type=str, default="/external/cnet/checkpoints", help="are you logging this experiment?")
-parser.add_argument('--exp_name', type=str, default='test', help='name of experiment, chkpts stored in checkpoints/experiment')
-parser.add_argument('--validate', type=bool, default=False, help='set to true if validating model')
-parser.add_argument('--ckpt', type=str, default="", help="path to model checkpoint if using one")
-parser.add_argument('--use_pretrained', type=bool, default=False, help="use pretrained model from authors")
+parser.add_argument('--no_logging', type=bool, default=False,
+                    help="are you logging this experiment?")
+parser.add_argument('--log_dir', type=str, default="/external/cnet/checkpoints",
+                    help="are you logging this experiment?")
+parser.add_argument('--exp_name', type=str, default='test',
+                    help='name of experiment, chkpts stored in checkpoints/experiment')
+parser.add_argument('--validate', type=bool, default=False,
+                    help='set to true if validating model')
+parser.add_argument('--ckpt', type=str, default="",
+                    help="path to model checkpoint if using one")
+parser.add_argument('--use_pretrained', type=bool,
+                    default=False, help="use pretrained model from authors")
 
 # module params
-parser.add_argument('--model_name', type=str, default="scenenet", help="name of model")
-parser.add_argument('--encoder_name', type=str, default="pwc", help="which encoder to use for Scene Net")
+parser.add_argument('--model_name', type=str,
+                    default="scenenet", help="name of model")
+parser.add_argument('--encoder_name', type=str, default="pwc",
+                    help="which encoder to use for Scene Net")
 
 # dataset params
 parser.add_argument('--dataset_name', default='KITTI', help='KITTI or Carla')
 parser.add_argument('--batch_size', type=int, default=1, help='batch size')
-parser.add_argument('--num_views', type=int, default=2, help="number of views present in training data")
-parser.add_argument('--num_examples', type=int, default=-1, help="number of examples to train on per epoch")
-parser.add_argument('--num_workers', type=int, default=8, help="number of workers for the dataloader")
-parser.add_argument('--shuffle_dataset', type=bool, default=False, help='shuffle the dataset?')
-parser.add_argument('--resize_only', type=bool, default=True, help='only do resize augmentation on input data')
+parser.add_argument('--num_views', type=int, default=2,
+                    help="number of views present in training data")
+parser.add_argument('--num_examples', type=int, default=-1,
+                    help="number of examples to train on per epoch")
+parser.add_argument('--num_workers', type=int, default=8,
+                    help="number of workers for the dataloader")
+parser.add_argument('--shuffle_dataset', type=bool,
+                    default=False, help='shuffle the dataset?')
+parser.add_argument('--resize_only', type=bool, default=True,
+                    help='only do resize augmentation on input data')
 
 
 # learning params
-parser.add_argument('--lr', type=float, default=2e-4, help='initial learning rate')
-parser.add_argument('--lr_sched_type', type=str, default="none", help="path to model checkpoint if using one")
-parser.add_argument('--momentum', type=float, default=0.9, help='momentum for sgd or alpha param for adam')
-parser.add_argument('--beta', type=float, default=0.999, help='beta param for adam')
-parser.add_argument('--weight_decay', type=float, default=0.0, help='weight decay')
-parser.add_argument('--dropout', type=bool, default=False, help='dropout for regularization', choices=[True, False])
-parser.add_argument('--grad_clip', type=float, default=0, help='gradient clipping threshold')
+parser.add_argument('--lr', type=float, default=2e-4,
+                    help='initial learning rate')
+parser.add_argument('--lr_sched_type', type=str, default="none",
+                    help="path to model checkpoint if using one")
+parser.add_argument('--momentum', type=float, default=0.9,
+                    help='momentum for sgd or alpha param for adam')
+parser.add_argument('--beta', type=float, default=0.999,
+                    help='beta param for adam')
+parser.add_argument('--weight_decay', type=float,
+                    default=0.0, help='weight decay')
+parser.add_argument('--dropout', type=bool, default=False,
+                    help='dropout for regularization', choices=[True, False])
+parser.add_argument('--grad_clip', type=float, default=0,
+                    help='gradient clipping threshold')
 
 # model params
-parser.add_argument('--train_consistency', type=bool, default=False, help="whether to use consistency losses in training procedure")
-parser.add_argument('--use_bn', type=bool, default=False, help="whether to use batch-norm in training procedure")
-parser.add_argument('--mask_thresh', type=float, default=.6, help='mask threshold for moving objects (higher threshold skews towards static)')
+parser.add_argument('--train_consistency', type=bool, default=False,
+                    help="whether to use consistency losses in training procedure")
+parser.add_argument('--use_bn', type=bool, default=False,
+                    help="whether to use batch-norm in training procedure")
+parser.add_argument('--mask_thresh', type=float, default=.6,
+                    help='mask threshold for moving objects (higher threshold skews towards static)')
 
-# etc. 
-parser.add_argument('--multi_gpu', type=bool, default=False, help='use multiple gpus')
-parser.add_argument('--debugging', type=bool, default=False, help='are you debugging?')
-parser.add_argument('--finetuning', type=bool, default=False, help='finetuning on supervised data')
-parser.add_argument('--evaluation', type=bool, default=False, help='evaluating on data')
-parser.add_argument('--torch_seed', default=123768, help='random seed for reproducibility')
-parser.add_argument('--cuda_seed', default=543987, help='random seed for reproducibility')
+# etc.
+parser.add_argument('--multi_gpu', type=bool,
+                    default=False, help='use multiple gpus')
+parser.add_argument('--debugging', type=bool,
+                    default=False, help='are you debugging?')
+parser.add_argument('--finetuning', type=bool, default=False,
+                    help='finetuning on supervised data')
+parser.add_argument('--evaluation', type=bool,
+                    default=False, help='evaluating on data')
+parser.add_argument('--torch_seed', default=123768,
+                    help='random seed for reproducibility')
+parser.add_argument('--cuda_seed', default=543987,
+                    help='random seed for reproducibility')
 
-args  = parser.parse_args()
+args = parser.parse_args()
 
 
 def main():
@@ -109,12 +140,16 @@ def main():
       raise NotImplementedError
 
     # define dataset
-    train_dataset = KITTI_Raw_KittiSplit_Train(args, DATA_ROOT, num_examples=args.num_examples, flip_augmentations=False, preprocessing_crop=False)
-    train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=args.shuffle_dataset, num_workers=args.num_workers, pin_memory=True)
-    val_dataset = KITTI_Raw_KittiSplit_Valid(args, DATA_ROOT, num_examples=args.num_examples)
+    train_dataset = KITTI_Raw_KittiSplit_Train(
+        args, DATA_ROOT, num_examples=args.num_examples, flip_augmentations=False, preprocessing_crop=False)
+    train_dataloader = DataLoader(train_dataset, args.batch_size,
+                                  shuffle=args.shuffle_dataset, num_workers=args.num_workers, pin_memory=True)
+    val_dataset = KITTI_Raw_KittiSplit_Valid(
+        args, DATA_ROOT, num_examples=args.num_examples)
     val_dataset = None
     if val_dataset is not None:
-      val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=8, pin_memory=True) if val_dataset else None
+      val_dataloader = DataLoader(
+          val_dataset, 1, shuffle=False, num_workers=8, pin_memory=True) if val_dataset else None
 
     # define augmentations
     if args.resize_only:
@@ -139,23 +174,27 @@ def main():
   print(f"The model has {num_params} learnable parameters")
 
   # load optimizer and lr scheduler
-  optimizer = Adam(model.parameters(), lr=args.lr, betas=[args.momentum, args.beta], weight_decay=args.weight_decay)
+  optimizer = Adam(model.parameters(), lr=args.lr, betas=[
+                   args.momentum, args.beta], weight_decay=args.weight_decay)
 
   if args.lr_sched_type == 'plateau':
     print("Using plateau lr schedule")
-    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.9, verbose=True, mode='min', patience=10)
+    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, factor=0.9, verbose=True, mode='min', patience=10)
   elif args.lr_sched_type == 'step':
     print("Using step lr schedule")
-    lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[20, 50, 100, 150])
+    lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
+        optimizer, milestones=[20, 50, 100, 150])
   elif args.lr_sched_type == 'none':
-    lr_scheduler=None
+    lr_scheduler = None
 
   # set up logging
   if not args.no_logging:
     log_dir = os.path.join(args.log_dir, args.exp_name)
     if not os.path.isdir(log_dir):
       os.mkdir(log_dir)
-    log_dir = os.path.join(log_dir, datetime.datetime.now().strftime("%H%M%S-%Y%m%d"))
+    log_dir = os.path.join(
+        log_dir, datetime.datetime.now().strftime("%H%M%S-%Y%m%d"))
     writer = SummaryWriter(log_dir)
 
   if args.ckpt != "" and args.use_pretrained:
@@ -172,7 +211,8 @@ def main():
     print(f"Loading model from {ckpt_fp}...")
 
     ckpt = torch.load(ckpt_fp)
-    assert (ckpt['epoch'] == load_epoch), "epoch from state dict does not match with args"
+    assert (ckpt['epoch'] ==
+            load_epoch), "epoch from state dict does not match with args"
     model.load_state_dict(ckpt)
 
   model = model.train()
@@ -180,7 +220,8 @@ def main():
   # run training loop
   for epoch in range(args.start_epoch, args.epochs + 1):
     print(f"Training epoch: {epoch}...")
-    train_loss_avg_dict, output_dict, input_dict = train_one_epoch(args, model, loss, train_dataloader, optimizer, augmentations, lr_scheduler)
+    train_loss_avg_dict, output_dict, input_dict = train_one_epoch(
+        args, model, loss, train_dataloader, optimizer, augmentations, lr_scheduler)
     print(f"\t Epoch {epoch} train loss avg:")
     pprint(train_loss_avg_dict)
 
@@ -229,7 +270,7 @@ def step(args, data_dict, model, loss, augmentations, optimizer):
   if augmentations is not None:
     with torch.no_grad():
       data_dict = augmentations(data_dict)
-  
+
   for k, t in data_dict.items():
     if k in input_keys:
       data_dict[k] = t.requires_grad_(True)
@@ -249,7 +290,7 @@ def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_
 
   model = model.train()
 
-  keys =  ['total_loss', 'dp']
+  keys = ['total_loss', 'dp']
   if args.model_name in ['monoflow', 'scenenet']:
     keys.extend(['s_2', 's_3', 'sf', 's_3s'])
   if args.model_name in ['posedepth', 'scenenet']:
@@ -259,7 +300,8 @@ def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_
 
   # for data in tqdm(dataloader):
   for data in dataloader:
-    loss_dict, output_dict = step(args, data, model, loss, augmentations, optimizer)
+    loss_dict, output_dict = step(
+        args, data, model, loss, augmentations, optimizer)
 
     # calculate gradients and then do Adam step
     optimizer.zero_grad()
@@ -307,29 +349,47 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
 
   assert (writer is not None), "tensorboard writer not provided"
 
-  img_l1 = input_dict['input_l1_aug'].detach()
-  img_l2 = input_dict['input_l2_aug'].detach()
-  img_r2 = input_dict['input_r2_aug'].detach()
+  img_l1_aug = input_dict['input_l1_aug'].detach()
+  img_l2_aug = input_dict['input_l2_aug'].detach()
+  img_r2_aug = input_dict['input_r2_aug'].detach()
   disp_l2 = output_dict['disp_l2'][0].detach()
-  k_l2 = input_dict['input_k_l2_aug'].detach()
-  pose = output_dict['pose'].detach()
-
-  img_r2_warp = _generate_image_left(img_r2, disp_l2)
-
-  # camera pose
-  depth = disp2depth_kitti(disp_l2, k_l2[:, 0, 0])
-  img_l1_warp_cam = inverse_warp(img_l1, depth.squeeze(dim=1), pose.squeeze(dim=1), k_l2, torch.inverse(k_l2))
+  k_l2_aug = input_dict['input_k_l2_aug'].detach()
+  img_r2_warp = _generate_image_left(img_r2_aug, disp_l2)
+  aug_size = input_dict['aug_size']
 
   # input
-  writer.add_images('input_l1', img_l1.squeeze(), epoch)
-  writer.add_images('input_l2', img_l2.squeeze(), epoch)
-  writer.add_images('input_r1', img_r2.squeeze(), epoch)
+  writer.add_images('input_l1', img_l1_aug, epoch)
+  writer.add_images('input_l2', img_l2_aug, epoch)
+  writer.add_images('input_r1', img_r2_aug, epoch)
 
   # disparity
-  writer.add_images('img_r1_warp', img_r2_warp.squeeze(), epoch)
+  writer.add_images('img_r1_warp', img_r2_warp, epoch)
 
-  # pose
-  writer.add_images('img_l1_warp_cam', img_l1_warp_cam.squeeze(), epoch)
+  if args.model_name in ['scenenet']:
+    sf_b = output_dict['flow_b'][0].detach()
+    pose = output_dict['pose'].detach()
+
+    # scene flow
+    _, _, h_dp, w_dp = sf_b.size()
+    disp_l2 = disp_l2 * w_dp
+
+    ## scale
+    local_scale = torch.zeros_like(aug_size)
+    local_scale[:, 0] = h_dp
+    local_scale[:, 1] = w_dp
+
+    pts2, k2_scale = pixel2pts_ms(
+        k_l2_aug, disp_l2, local_scale / aug_size)
+    _, _, coord2 = pts2pixel_ms(k2_scale, pts2, sf_b, [h_dp, w_dp])
+    img_l1_warp = reconstructImg(coord2, img_l1_aug)
+    writer.add_images('img_l1_warp', img_l1_warp, epoch)
+
+    # camera pose
+    depth = disp2depth_kitti(disp_l2, k2_scale[:, 0, 0])
+    img_l1_warp_cam = inverse_warp(img_l1_aug, depth.squeeze(
+        dim=1), pose.squeeze(dim=1), k2_scale, torch.inverse(k2_scale))
+
+    writer.add_images('img_l1_warp_cam', img_l1_warp_cam, epoch)
 
 
 if __name__ == '__main__':
