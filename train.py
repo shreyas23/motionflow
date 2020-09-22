@@ -191,6 +191,8 @@ def main():
 
   # set up logging
   if not args.no_logging:
+    if not os.path.isdir(args.log_dir):
+      os.mkdir(args.log_dir)
     log_dir = os.path.join(args.log_dir, args.exp_name)
     if not os.path.isdir(log_dir):
       os.mkdir(log_dir)
