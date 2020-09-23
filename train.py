@@ -141,7 +141,7 @@ def main():
 
     # define dataset
     train_dataset = KITTI_Raw_KittiSplit_Train(
-        args, DATA_ROOT, num_examples=args.num_examples, flip_augmentations=False, preprocessing_crop=False)
+        args, DATA_ROOT, num_examples=args.num_examples, flip_augmentations=False, preprocessing_crop=True)
     train_dataloader = DataLoader(train_dataset, args.batch_size,
                                   shuffle=args.shuffle_dataset, num_workers=args.num_workers, pin_memory=True)
     val_dataset = KITTI_Raw_KittiSplit_Valid(
