@@ -146,10 +146,8 @@ def main():
                                   shuffle=args.shuffle_dataset, num_workers=args.num_workers, pin_memory=True)
     val_dataset = KITTI_Raw_KittiSplit_Valid(
         args, DATA_ROOT, num_examples=args.num_examples)
-    val_dataset = None
-    if val_dataset is not None:
-      val_dataloader = DataLoader(
-          val_dataset, 1, shuffle=False, num_workers=8, pin_memory=True) if val_dataset else None
+
+    val_dataloader = DataLoader(val_dataset, 4, shuffle=False, num_workers=args.num_workers, pin_memory=True) if val_dataset else None
 
     # define augmentations
     if args.resize_only:
@@ -185,7 +183,7 @@ def main():
   elif args.lr_sched_type == 'step':
     print("Using step lr schedule")
     lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
-        optimizer, milestones=[20, 50, 100, 150])
+        optimizer, milestones=[20, 30, 40, 50])
   elif args.lr_sched_type == 'none':
     lr_scheduler = None
 

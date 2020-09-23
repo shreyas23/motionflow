@@ -11,16 +11,16 @@ class PoseNet(nn.Module):
         self.nb_ref_imgs = nb_ref_imgs
 
         conv_planes = [16, 32, 64, 128, 256, 256, 256]
-        self.conv0 = conv(3*(1+self.nb_ref_imgs), 3*(1+self.nb_ref_imgs), kernel_size=3)
-        self.conv1 = conv(3*(1+self.nb_ref_imgs), conv_planes[0], kernel_size=7)
-        self.conv2 = conv(conv_planes[0], conv_planes[1], kernel_size=5)
-        self.conv3 = conv(conv_planes[1], conv_planes[2])
-        self.conv4 = conv(conv_planes[2], conv_planes[3])
-        self.conv5 = conv(conv_planes[3], conv_planes[4])
-        self.conv6 = conv(conv_planes[4], conv_planes[5])
-        self.conv7 = conv(conv_planes[5], conv_planes[6])
+        self.conv0 = conv(3*(1+self.nb_ref_imgs), 3*(1+self.nb_ref_imgs), kernel_size=3, stride=2, use_bn=True)
+        self.conv1 = conv(3*(1+self.nb_ref_imgs), conv_planes[0], kernel_size=7, stride=2, use_bn=True)
+        self.conv2 = conv(conv_planes[0], conv_planes[1], kernel_size=5, stride=2, use_bn=True)
+        self.conv3 = conv(conv_planes[1], conv_planes[2], stride=2, use_bn=True)
+        self.conv4 = conv(conv_planes[2], conv_planes[3], stride=2, use_bn=True)
+        self.conv5 = conv(conv_planes[3], conv_planes[4], stride=2, use_bn=True)
+        self.conv6 = conv(conv_planes[4], conv_planes[5], stride=2, use_bn=True)
+        self.conv7 = conv(conv_planes[5], conv_planes[6], stride=2, use_bn=True)
 
-        self.pose_pred = nn.Conv2d(conv_planes[6], 6*self.nb_ref_imgs, kernel_size=1, padding=0)
+        self.pose_pred = nn.Conv2d(conv_planes[6], 6*self.nb_ref_imgs, kernel_size=1, padding=0, stride=1)
 
     def init_weights(self):
         for m in self.modules():
