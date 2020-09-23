@@ -220,6 +220,50 @@ def pose2flow(depth, pose, intrinsics, intrinsics_inv, rotation_mode='euler', pa
 
     return torch.stack((X,Y), dim=1)
 
+
+def pose2sceneflow(depth, pose, intrinsics, intrinsics_inv, rotation_mode='euler', padding_mode=None):
+    """
+    Converts pose parameters to rigid optical flow
+    """
+    check_sizes(depth, 'depth', 'BHW')
+    check_sizes(pose, 'pose', 'B6')
+    check_sizes(intrinsics, 'intrinsics', 'B33')
+    check_sizes(intrinsics_inv, 'intrinsics', 'B33')
+    assert(intrinsics_inv.size() == intrinsics.size())
+
+    bs, h, w = depth.size()
+
+    grid_x = Variable(torch.arange(0, w).view(1, 1, w).expand(1,h,w), requires_grad=False).type_as(depth).expand_as(depth)  # [bs, H, W]
+    grid_y = Variable(torch.arange(0, h).view(1, h, 1).expand(1,h,w), requires_grad=False).type_as(depth).expand_as(depth)  # [bs, H, W]
+
+    # projection matrix from target to points
+    cam_coords = pixel2cam(depth, intrinsics_inv)  # [B,3,H,W]
+
+    # tform matrix
+    pose_mat = pose_vec2mat(pose, rotation_mode)  # [B,3,4]
+    R = pose_mat[:, :, :-1]
+    t = pose_mat[:, :, -1:]
+
+    # Get projection matrix for tgt camera frame to source camera frame
+    b, _, h, w = cam_coords.size()
+    cam_coords_flat = cam_coords.reshape(b, 3, -1)  # [B, 3, H*W]
+    if R is not None:
+        pcoords = R.bmm(cam_coords_flat)
+    else:
+        pcoords = cam_coords_flat
+
+    if t is not None:
+        pcoords = pcoords + t  # [B, 3, H*W]
+    X = pcoords[:, 0]
+    Y = pcoords[:, 1]
+    Z = pcoords[:, 2].clamp(min=1e-3)
+    cam_coords_tform = torch.stack((X, Y, Z), dim=1).view(b, 3, h, w)  # [B,3,H,W]
+
+    flow = cam_coords_tform - cam_coords
+
+    return flow
+
+
 def flow2oob(flow):
     check_sizes(flow, 'flow', 'B2HW')
 

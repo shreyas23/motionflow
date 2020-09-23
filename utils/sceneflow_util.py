@@ -106,7 +106,6 @@ def pts2pixel_ms(intrinsic, pts, output_sf, disp_size):
     sf_s = tf.interpolate(output_sf, disp_size, mode="bilinear", align_corners=True)
     pts_tform = pts + sf_s
     coord = pts2pixel(pts_tform, intrinsic)
-
     norm_coord_w = coord[:, 0:1, :, :] / (disp_size[1] - 1) * 2 - 1
     norm_coord_h = coord[:, 1:2, :, :] / (disp_size[0] - 1) * 2 - 1
     norm_coord = torch.cat((norm_coord_w, norm_coord_h), dim=1)
@@ -120,8 +119,10 @@ def pts2pixel_pose_ms(intrinsic, pts, pose, disp_size):
     pose_mat = pose_vec2mat(pose)
     pts_tform = torch.matmul(pose_mat, torch.cat([pts.reshape((b, 3, -1)), torch.ones((b, 1, h*w)).cuda()], dim=1))
     pts_tform = pts_tform.reshape((b, 3, h, w))
-
-    norm_coord = pts2pixel(pts_tform, intrinsic)
+    coord = pts2pixel(pts_tform, intrinsic)
+    norm_coord_w = coord[:, 0:1, :, :] / (disp_size[1] - 1) * 2 - 1
+    norm_coord_h = coord[:, 1:2, :, :] / (disp_size[0] - 1) * 2 - 1
+    norm_coord = torch.cat((norm_coord_w, norm_coord_h), dim=1)
 
     return pts_tform, norm_coord
 

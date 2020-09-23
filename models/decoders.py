@@ -40,8 +40,7 @@ class PoseNet(nn.Module):
         out_conv7 = self.conv7(out_conv6)
 
         pose = self.pose_pred(out_conv7)
-        pose = pose.mean(3).mean(2)
-        pose = pose.view(pose.size(0), self.nb_ref_imgs, 6) * 0.01
+        pose = pose.mean(3).mean(2) * 0.01
 
         return pose
 

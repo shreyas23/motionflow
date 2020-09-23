@@ -25,7 +25,7 @@ from models.PoseDepthNet import PoseDispNet
 
 from utils.inverse_warp import flow_warp, pose2flow, inverse_warp, pose_vec2mat
 from utils.sceneflow_util import projectSceneFlow2Flow, disp2depth_kitti, reconstructImg
-from utils.sceneflow_util import pixel2pts_ms, pts2pixel_ms, pts2pixel_pose_ms
+from utils.sceneflow_util import pixel2pts_ms, pts2pixel_ms, pts2pixel_pose_ms, pixel2pts_ms_depth
 
 from losses import Loss_SceneFlow_SelfSup, Loss_SceneFlow_SelfSup_Pose, _generate_image_left, _adaptive_disocc_detection
 from losses import Loss_PoseDepth
@@ -379,20 +379,22 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
         local_scale[:, 0] = h_dp
         local_scale[:, 1] = w_dp
 
-        pts2, k2_scale = pixel2pts_ms(
+        pts2, k2_scale, depth = pixel2pts_ms_depth(
             k_l2_aug, disp_l2, local_scale / aug_size)
+
         _, _, coord2 = pts2pixel_ms(k2_scale, pts2, sf_b, [h_dp, w_dp])
         img_l1_warp = reconstructImg(coord2, img_l1_aug)
         writer.add_images('img_l1_warp', img_l1_warp, epoch)
 
         # camera pose
-        depth = disp2depth_kitti(disp_l2, k_l2_aug[:, 0, 0])
         img_l1_warp_cam = inverse_warp(img_l1_aug, depth.squeeze(
-            dim=1), pose.squeeze(dim=1), k_l2_aug, torch.inverse(k2_scale))
+            dim=1), pose, k_l2_aug, torch.inverse(k_l2_aug))
+        # _, coord2 = pts2pixel_pose_ms(k2_scale, pts2, pose, [h_dp, w_dp])
+        # img_l1_warp_cam = reconstructImg(coord2, img_l1_aug)
 
         writer.add_images('img_l1_warp_cam', img_l1_warp_cam, epoch)
 
-    if args.model_name in ['posedepth', 'scenenet']:
+    if args.model_name in ['posedepth']:
         pose = output_dict['pose'].detach()
         _, _, h_dp, w_dp = disp_l2.size()
         disp_l2 = disp_l2 * w_dp
