@@ -302,7 +302,6 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
         aug_size = target_dict['aug_size']
 
         pose = output_dict['pose']
-        print(pose)
 
         disp_r1_dict = output_dict['output_dict_r']['disp_l1']
         disp_r2_dict = output_dict['output_dict_r']['disp_l2']
@@ -494,8 +493,6 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             loss_disp_l1, disp_occ_l1 = self.depth_loss_left_img(disp_l1, disp_r1, img_l1_aug, img_r1_aug, ii)
             loss_disp_l2, disp_occ_l2 = self.depth_loss_left_img(disp_l2, disp_r2, img_l2_aug, img_r2_aug, ii)
             loss_dp_sum = loss_dp_sum + (loss_disp_l1 + loss_disp_l2) * self._weights[ii]
-
-            print(img_l1_aug.shape, img_l2_aug.shape)
 
             ## Sceneflow Loss           
             loss_sceneflow, loss_im, loss_pts, loss_3d_s = self.sceneflow_loss(sf_f, sf_b, 
