@@ -188,10 +188,39 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
 
         return loss_img + self._disp_smooth_w * loss_smooth, left_occ
     
-    def exp_reg_loss(self, mask):
-        return tf.binary_cross_entropy(mask, torch.ones_like(mask)) * self._exp_w
 
-    def pose_loss(self, pose, disp, disp_occ, intrinsics, ref_img, tgt_img, aug_size):
+    def mask_loss(self, mask, pose_diff, sf_diff, cam_occ, flow_occ):
+        
+        loss = tf.binary_cross_entropy(mask, torch.ones_like(mask)) * self._exp_w
+
+        # make sure all motion params are absent or all given
+        if pose is None:
+            assert (pose_diff == sf_diff == cam_occ == flow_occ)
+        else:
+            loss = loss + 
+
+        return loss
+    
+
+    def consistency_loss(self, pose, disp, sf, intrinsics, mask, aug_size):
+
+        _, _, h_dp, w_dp = sf.size()
+        disp = disp * w_dp
+
+        ## scale
+        local_scale = torch.zeros_like(aug_size)
+        local_scale[:, 0] = h_dp
+        local_scale[:, 1] = w_dp         
+
+        _, intrinsics_scaled, depth = pixel2pts_ms_depth(intrinsics, disp, local_scale / aug_size)
+        pose_sf = pose2sceneflow(depth.squeeze(dim=1), pose, intrinsics_scaled, torch.inverse(intrinsics_scaled))
+        flow_diff = _elementwise_epe(pose_sf, sf).mean(dim=1, keepdim=True)
+
+        loss = flow_diff[mask].mean()
+
+        return loss
+
+    def pose_loss(self, pose, disp, disp_occ, intrinsics, ref_img, tgt_img, aug_size, mask=None):
 
         _, _, h_dp, w_dp = disp.size()
         disp = disp * w_dp
@@ -202,11 +231,13 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
         local_scale[:, 1] = w_dp         
 
         pts, intrinsics_scaled, depth = pixel2pts_ms_depth(intrinsics, disp, local_scale / aug_size)
-
         _, coord = pts2pixel_pose_ms(intrinsics_scaled, pts, pose, [h_dp, w_dp])
         ref_warped = reconstructImg(coord, ref_img)
+        valid_pixels = (ref_warped.sum(dim=1, keepdim=True) !=0).detach()
+        valid_pixels = valid_pixels * disp_occ.detach()
 
-        valid_pixels = (ref_warped.sum(dim=1, keepdim=True) != 0).detach() & disp_occ.detach()
+        if mask is not None:
+            valid_pixels = valid_pixels * mask
 
         img_diff = (_elementwise_l1(tgt_img, ref_warped) * (1.0 - self._ssim_w) + _SSIM(tgt_img, ref_warped) * self._ssim_w).mean(dim=1, keepdim=True)
         loss_img = img_diff[valid_pixels].mean()
@@ -217,6 +248,7 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
         flow = pose2sceneflow(depth.squeeze(dim=1), pose, intrinsics_scaled, torch.inverse(intrinsics_scaled))
         loss_smooth = ( _smoothness_motion_2nd(flow, tgt_img, beta=10.0) / (pts_norm + 1e-8)).mean()
         loss = loss_img + loss_smooth * self._pose_smooth_w
+
 
         return loss
 
@@ -302,6 +334,9 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
         aug_size = target_dict['aug_size']
 
         pose = output_dict['pose']
+        mask = None
+        if 'mask' in output_dict:
+            mask = output_dict['mask']
 
         disp_r1_dict = output_dict['output_dict_r']['disp_l1']
         disp_r2_dict = output_dict['output_dict_r']['disp_l2']
@@ -337,7 +372,7 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
             loss_sf_sm = loss_sf_sm + loss_3d_s
             
             if ii == 0:
-                loss_pose = self.pose_loss(pose, disp_l2, disp_occ_l2, k_l2_aug, img_l1_aug, img_l2_aug, aug_size)
+                loss_pose = self.pose_loss(pose, disp_l2, disp_occ_l2, k_l2_aug, img_l1_aug, img_l2_aug, aug_size, mask)
                 loss_pose_sum = loss_pose_sum + loss_pose * self._weights[ii]
 
         # finding weight
