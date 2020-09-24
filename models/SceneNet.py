@@ -12,7 +12,7 @@ from .modules_sceneflow import initialize_msra, upsample_outputs_as
 from .modules_sceneflow import upconv
 from .modules_sceneflow import FeatureExtractor, MonoSceneFlowDecoder, ContextNetwork
 
-from .decoders import PoseNet
+from .decoders import PoseNet, PoseExpNet
 
 from utils.interpolation import interpolate2d_as
 from utils.sceneflow_util import flow_horizontal_flip, intrinsic_scale, get_pixelgrid, post_processing
@@ -52,7 +52,10 @@ class SceneNet(nn.Module):
             layer_sf = MonoSceneFlowDecoder(num_ch_in)            
             self.flow_estimators.append(layer_sf)            
 
-        self.pose_decoder = PoseNet()
+        if args.use_mask:
+            self.pose_decoder = PoseExpNet(1, output_exp=args.use_mask)
+        else:
+            self.pose_decoder = PoseNet(1)
         self.corr_params = {"pad_size": self.search_range, "kernel_size": 1, "max_disp": self.search_range, "stride1": 1, "stride2": 1, "corr_multiply": 1}        
         self.context_networks = ContextNetwork(32 + 3 + 1)
         self.sigmoid = torch.nn.Sigmoid()
@@ -142,9 +145,14 @@ class SceneNet(nn.Module):
         ## Left
         output_dict, x1_out, x2_out = self.run_pwc(input_dict, input_dict['input_l1_aug'], input_dict['input_l2_aug'], input_dict['input_k_l1_aug'], input_dict['input_k_l2_aug'])
 
-        # x = torch.cat([input_dict['input_l2_aug'], input_dict['input_l1_aug']], dim=1)
         x = torch.cat([x2_out, x1_out], dim=1)
-        output_dict["pose"] = self.pose_decoder(x)
+        if self._args.use_mask:
+            masks, pose = self.pose_decoder(x)
+            output_dict["pose"] = pose
+            output_dict["masks"] = masks
+        else:
+            pose = self.pose_decoder(x)
+            output_dict["pose"] = pose
         
         ## Right
         ## ss: train val 

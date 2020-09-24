@@ -17,6 +17,12 @@ def conv(in_chs, out_chs, kernel_size=3, stride=1, dilation=1, bias=True, use_re
   
   return nn.Sequential(*layers)
 
+def upconv(in_planes, out_planes, kernel_size=3, stride=1, padding=1):
+    return nn.Sequential(
+        nn.ConvTranspose2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding),
+        nn.ReLU(inplace=True)
+    )
+
 
 def apply_rigidity_mask(static, dynamic, rigidity_mask, mask_thresh=0.5, use_thresh=True):
   _, ch, _, _ = static.shape

@@ -98,6 +98,9 @@ parser.add_argument('--use_bn', type=bool, default=False,
                     help="whether to use batch-norm in training procedure")
 parser.add_argument('--mask_thresh', type=float, default=.6,
                     help='mask threshold for moving objects (higher threshold skews towards static)')
+parser.add_argument('--use_mask', type=bool, default=False,
+                    help="whether to use batch-norm in training procedure")
+
 
 # etc.
 parser.add_argument('--multi_gpu', type=bool,
@@ -146,6 +149,7 @@ def main():
                                   shuffle=args.shuffle_dataset, num_workers=args.num_workers, pin_memory=True)
     val_dataset = KITTI_Raw_KittiSplit_Valid(
         args, DATA_ROOT, num_examples=args.num_examples)
+    val_dataset=None
 
     val_dataloader = DataLoader(val_dataset, 4, shuffle=False, num_workers=args.num_workers, pin_memory=True) if val_dataset else None
 
@@ -294,6 +298,8 @@ def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_
     keys.extend(['s_2', 's_3', 'sf', 's_3s'])
   if args.model_name in ['posedepth', 'scenenet']:
     keys.append('pose')
+    if args.use_mask:
+        keys.append('mask')
 
   loss_dict_avg = {k: 0 for k in keys}
 
