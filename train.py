@@ -186,8 +186,9 @@ def main():
         optimizer, factor=0.7, verbose=True, mode='min', patience=10)
   elif args.lr_sched_type == 'step':
     print("Using step lr schedule")
+    milestones = [30, 40]
     lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
-        optimizer, milestones=[20, 30, 40, 50])
+        optimizer, milestones=milestones, gamma=0.1)
   elif args.lr_sched_type == 'none':
     lr_scheduler = None
 
@@ -227,8 +228,8 @@ def main():
     print(f"Training epoch: {epoch}...")
     train_loss_avg_dict, output_dict, input_dict = train_one_epoch(
         args, model, loss, train_dataloader, optimizer, augmentations, lr_scheduler)
-    print(f"\t Epoch {epoch} train loss avg:")
-    pprint(train_loss_avg_dict)
+    # print(f"\t Epoch {epoch} train loss avg:")
+    # pprint(train_loss_avg_dict)
 
     if val_dataset is not None:
       print(f"Validation epoch: {epoch}...")
@@ -399,7 +400,6 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
 
         if args.use_mask:
             writer.add_images('pose mask', mask, epoch)
-
 
     if args.model_name in ['posedepth']:
         pose = output_dict['pose'].detach()

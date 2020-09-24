@@ -53,7 +53,7 @@ class SceneNet(nn.Module):
             self.flow_estimators.append(layer_sf)            
 
         if args.use_mask:
-            self.pose_decoder = PoseExpNet(1, output_exp=args.use_mask)
+            self.pose_decoder = PoseExpNet(1, output_exp=args.use_mask, in_ch=3)
         else:
             self.pose_decoder = PoseNet(1)
         self.corr_params = {"pad_size": self.search_range, "kernel_size": 1, "max_disp": self.search_range, "stride1": 1, "stride2": 1, "corr_multiply": 1}        
@@ -144,15 +144,22 @@ class SceneNet(nn.Module):
 
         ## Left
         output_dict, x1_out, x2_out = self.run_pwc(input_dict, input_dict['input_l1_aug'], input_dict['input_l2_aug'], input_dict['input_k_l1_aug'], input_dict['input_k_l2_aug'])
-
-        x = torch.cat([x2_out, x1_out], dim=1)
+        # x1_out = interpolate2d_as(x1_out, input_dict['input_l1_aug'])
+        # x2_out = interpolate2d_as(x2_out, input_dict['input_l2_aug'])
+        x21 = torch.cat([x2_out, x1_out], dim=1)
+        x12 = torch.cat([x1_out, x2_out], dim=1)
         if self._args.use_mask:
-            masks, pose = self.pose_decoder(x)
-            output_dict["pose"] = pose
-            output_dict["masks"] = masks
+            masks_b, pose_b = self.pose_decoder(x21)
+            masks_f, pose_f = self.pose_decoder(x12)
+            output_dict["pose_b"] = pose_b
+            output_dict["masks_b"] = masks_b
+            output_dict["pose_f"] = pose_f
+            output_dict["masks_f"] = masks_f
         else:
-            pose = self.pose_decoder(x)
-            output_dict["pose"] = pose
+            pose_b = self.pose_decoder(x21)
+            pose_f = self.pose_decoder(x12)
+            output_dict["pose_b"] = pose_b
+            output_dict["pose_f"] = pose_f
         
         ## Right
         ## ss: train val 

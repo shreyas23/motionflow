@@ -46,13 +46,13 @@ class PoseNet(nn.Module):
 
 class PoseExpNet(nn.Module):
 
-    def __init__(self, nb_ref_imgs=1, output_exp=False):
+    def __init__(self, nb_ref_imgs=1, output_exp=False, in_ch=3):
         super(PoseExpNet, self).__init__()
         self.nb_ref_imgs = nb_ref_imgs
         self.output_exp = output_exp
 
         conv_planes = [16, 32, 64, 128, 256, 256, 256]
-        self.conv1 = conv(3*(1+self.nb_ref_imgs), conv_planes[0], kernel_size=7, stride=2)
+        self.conv1 = conv(in_ch*(1+self.nb_ref_imgs), conv_planes[0], kernel_size=7, stride=2)
         self.conv2 = conv(conv_planes[0], conv_planes[1], kernel_size=5, stride=2)
         self.conv3 = conv(conv_planes[1], conv_planes[2], stride=2)
         self.conv4 = conv(conv_planes[2], conv_planes[3], stride=2)

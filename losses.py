@@ -16,6 +16,7 @@ from utils.sceneflow_util import pixel2pts_ms_depth
 
 import matplotlib.pyplot as plt
 
+eps = 1e-8
 
 ###############################################
 ## Basic Module 
@@ -165,13 +166,19 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
         super(Loss_SceneFlow_SelfSup_Pose, self).__init__()
         self._args = args
         self._weights = [4.0, 2.0, 1.0, 1.0, 1.0]
+
         self._ssim_w = 0.85
+
+        # disp weights
         self._disp_smooth_w = 0.1
+
+        #sf weights
         self._sf_3d_pts = 0.2
         self._sf_3d_sm = 200
+
+        # pose weights
         self._pose_smooth_w = 200
-        self._exp_w = 0.2
-        self._pose_pts_w = 0.2
+        self._mask_reg_w = 0.2
 
     def depth_loss_left_img(self, disp_l, disp_r, img_l_aug, img_r_aug, ii):
 
@@ -190,7 +197,7 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
     
 
     def mask_reg_loss(self, mask):
-        loss = tf.binary_cross_entropy(mask, torch.ones_like(mask)) * self._exp_w
+        loss = tf.binary_cross_entropy(mask + eps, torch.ones_like(mask)) * self._exp_w
         return loss
     
 
@@ -228,12 +235,9 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
         valid_pixels = (ref_warped.sum(dim=1, keepdim=True) !=0).detach()
         valid_pixels = valid_pixels & disp_occ.detach()
 
-        # if mask is not None:
-        #     valid_pixels = valid_pixels * mask.bool()
-
         img_diff = (_elementwise_l1(tgt_img, ref_warped) * (1.0 - self._ssim_w) + _SSIM(tgt_img, ref_warped) * self._ssim_w).mean(dim=1, keepdim=True)
         if mask is not None:
-            loss_img = (img_diff[valid_pixels] * mask[valid_pixels]).mean()
+            loss_img = (img_diff * mask)[valid_pixels].mean()
         else:
             loss_img = img_diff[valid_pixels].mean()
             
@@ -245,7 +249,12 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
         loss_smooth = ( _smoothness_motion_2nd(flow, tgt_img, beta=10.0) / (pts_norm + 1e-8)).mean()
         loss = loss_img + loss_smooth * self._pose_smooth_w
 
-        return loss
+        loss_mask_reg = None
+        if mask is not None:
+            loss_mask_reg = self.mask_reg_loss(mask)
+            loss = loss + loss_mask_reg
+
+        return loss, loss_img, loss_smooth, loss_mask_reg
 
     def sceneflow_loss(self, sf_f, sf_b, disp_l1, disp_l2, disp_occ_l1, disp_occ_l2, k_l1_aug, k_l2_aug, img_l1_aug, img_l2_aug, aug_size, ii):
 
@@ -368,32 +377,45 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
             loss_sf_3d = loss_sf_3d + loss_pts
             loss_sf_sm = loss_sf_sm + loss_3d_s
             
-            loss_pose = self.pose_loss(pose, disp_l2, disp_occ_l2, k_l2_aug, img_l1_aug, img_l2_aug, aug_size, masks[ii])
-            loss_pose_sum = loss_pose_sum + loss_pose * self._weights[ii]
+            loss_pose_f, loss_pose_im_f, loss_pose_smooth_f, loss_mask_reg_f = self.pose_loss(pose, 
+                                                                                      disp_l2, disp_occ_l2, 
+                                                                                      k_l2_aug, 
+                                                                                      img_l1_aug, img_l2_aug, 
+                                                                                      aug_size, masks[ii])
 
-            if masks[ii] is not None:
-                loss_mask_sum = loss_mask_sum + self.mask_reg_loss(masks[ii])
+            loss_pose_b, loss_pose_im_b, loss_pose_smooth_b, loss_mask_reg_b = self.pose_loss(pose, 
+                                                                                      disp_l2, disp_occ_l2, 
+                                                                                      k_l2_aug, 
+                                                                                      img_l1_aug, img_l2_aug, 
+                                                                                      aug_size, masks[ii])
+
+            loss_pose_sum = loss_pose_sum + (loss_pose_f + loss_pose_b) * self._weights[ii]
+
+            # if masks[ii] is not None:
+            #     loss_mask_reg = self.mask_reg_loss(masks[ii]) * self._weights[ii]
+            #     loss_pose_sum = loss_pose_sum + loss_mask_reg
+            #     loss_mask_sum = loss_mask_sum + loss_mask_reg.detach()
 
         # finding weight
         f_loss = loss_sf_sum.detach()
         d_loss = loss_dp_sum.detach()
         p_loss = loss_pose_sum.detach()
 
-        total_loss = 0
+        # if self._args.use_mask:
+        #     m_loss = loss_mask_sum.detach()
+        #     max_val = torch.max(torch.max(f_loss, d_loss), torch.max(p_loss, m_loss))
+        #     m_weight = max_val / m_loss
+        #     total_loss = total_loss + loss_mask_sum * m_weight
+        # else:
+        #     max_val = torch.max(torch.max(f_loss, d_loss), p_loss)
 
-        if self._args.use_mask:
-            m_loss = loss_mask_sum.detach()
-            max_val = torch.max(torch.max(f_loss, d_loss), torch.max(p_loss, m_loss))
-            m_weight = max_val / m_loss
-            total_loss = total_loss + loss_mask_sum * m_weight
-        else:
-            max_val = torch.max(torch.max(f_loss, d_loss), p_loss)
+        max_val = torch.max(torch.max(f_loss, d_loss), p_loss)
 
         f_weight = max_val / f_loss
         d_weight = max_val / d_loss
         p_weight = max_val / p_loss
 
-        total_loss = total_loss + loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * p_weight 
+        total_loss = loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * p_weight 
 
         loss_dict = {}
         loss_dict["dp"] = loss_dp_sum
@@ -403,8 +425,12 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
         loss_dict["s_3"] = loss_sf_3d
         loss_dict["s_3s"] = loss_sf_sm
         loss_dict["total_loss"] = total_loss
-        if self._args.use_mask:
+        if self._args.use_mask and loss_mask_reg is not None:
             loss_dict["mask"] = loss_mask_sum
+
+        print('------------------DEBUG START---------------------')
+        print(loss_dict)
+        print('------------------DEBUG END  ---------------------')
 
         self.detaching_grad_of_outputs(output_dict['output_dict_r'])
 
