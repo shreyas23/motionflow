@@ -238,7 +238,7 @@ def main():
     if not args.no_logging:
       for k, v in train_loss_avg_dict.items():
         writer.add_scalar(f'loss/train/{k}', train_loss_avg_dict[k], epoch)
-      if epoch % 10 == 0:
+      if epoch % 1 == 0:
         visualize_output(args, input_dict, output_dict, epoch, writer)
 
     # assert (not torch.isnan(train_loss_avg_dict['total_loss'])), "avg training loss is nan"
@@ -373,6 +373,8 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     if args.model_name in ['scenenet']:
         sf_b = output_dict['flow_b'][0].detach()
         pose = output_dict['pose'].detach()
+        if args.use_mask:
+            mask = output_dict['masks'][0].detach()
 
         # scene flow
         _, _, h_dp, w_dp = sf_b.size()
@@ -391,12 +393,13 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
         writer.add_images('img_l1_warp', img_l1_warp, epoch)
 
         # camera pose
-        img_l1_warp_cam = inverse_warp(img_l1_aug, depth.squeeze(
-            dim=1), pose, k_l2_aug, torch.inverse(k_l2_aug))
-        # _, coord2 = pts2pixel_pose_ms(k2_scale, pts2, pose, [h_dp, w_dp])
-        # img_l1_warp_cam = reconstructImg(coord2, img_l1_aug)
-
+        _, coord2 = pts2pixel_pose_ms(k2_scale, pts2, pose, [h_dp, w_dp])
+        img_l1_warp_cam = reconstructImg(coord2, img_l1_aug)
         writer.add_images('img_l1_warp_cam', img_l1_warp_cam, epoch)
+
+        if args.use_mask:
+            writer.add_images('pose mask', mask, epoch)
+
 
     if args.model_name in ['posedepth']:
         pose = output_dict['pose'].detach()

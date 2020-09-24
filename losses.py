@@ -378,12 +378,14 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
         f_loss = loss_sf_sum.detach()
         d_loss = loss_dp_sum.detach()
         p_loss = loss_pose_sum.detach()
-        m_loss = loss_mask_sum.detach()
+
+        total_loss = 0
 
         if self._args.use_mask:
+            m_loss = loss_mask_sum.detach()
             max_val = torch.max(torch.max(f_loss, d_loss), torch.max(p_loss, m_loss))
             m_weight = max_val / m_loss
-            total_loss = loss_mask_sum * m_weight
+            total_loss = total_loss + loss_mask_sum * m_weight
         else:
             max_val = torch.max(torch.max(f_loss, d_loss), p_loss)
 
@@ -391,17 +393,18 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
         d_weight = max_val / d_loss
         p_weight = max_val / p_loss
 
-        total_loss = loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * p_weight 
+        total_loss = total_loss + loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * p_weight 
 
         loss_dict = {}
         loss_dict["dp"] = loss_dp_sum
         loss_dict["sf"] = loss_sf_sum
         loss_dict["pose"] = loss_pose_sum
-        loss_dict["mask"] = loss_mask_sum
         loss_dict["s_2"] = loss_sf_2d
         loss_dict["s_3"] = loss_sf_3d
         loss_dict["s_3s"] = loss_sf_sm
         loss_dict["total_loss"] = total_loss
+        if self._args.use_mask:
+            loss_dict["mask"] = loss_mask_sum
 
         self.detaching_grad_of_outputs(output_dict['output_dict_r'])
 
