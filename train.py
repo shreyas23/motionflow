@@ -373,9 +373,9 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
 
     if args.model_name in ['scenenet']:
         sf_b = output_dict['flow_b'][0].detach()
-        pose = output_dict['pose'].detach()
+        pose = output_dict['pose_b'].detach()
         if args.use_mask:
-            mask = output_dict['masks'][0].detach()
+            mask = output_dict['masks_b'][0].detach()
 
         # scene flow
         _, _, h_dp, w_dp = sf_b.size()
@@ -402,7 +402,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
             writer.add_images('pose mask', mask, epoch)
 
     if args.model_name in ['posedepth']:
-        pose = output_dict['pose'].detach()
+        pose = output_dict['pose_b'].detach()
         _, _, h_dp, w_dp = disp_l2.size()
         disp_l2 = disp_l2 * w_dp
 
