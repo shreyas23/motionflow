@@ -70,8 +70,8 @@ parser.add_argument('--num_examples', type=int, default=-1,
 parser.add_argument('--num_workers', type=int, default=8,
                     help="number of workers for the dataloader")
 parser.add_argument('--shuffle_dataset', type=bool,
-                    default=False, help='shuffle the dataset?')
-parser.add_argument('--resize_only', type=bool, default=True,
+                    default=True, help='shuffle the dataset?')
+parser.add_argument('--resize_only', type=bool, default=False,
                     help='only do resize augmentation on input data')
 
 
@@ -144,7 +144,7 @@ def main():
 
     # define dataset
     train_dataset = KITTI_Raw_KittiSplit_Train(
-        args, DATA_ROOT, num_examples=args.num_examples, flip_augmentations=False, preprocessing_crop=True)
+        args, DATA_ROOT, num_examples=args.num_examples, flip_augmentations=True, preprocessing_crop=True)
     train_dataloader = DataLoader(train_dataset, args.batch_size,
                                   shuffle=args.shuffle_dataset, num_workers=args.num_workers, pin_memory=True)
     val_dataset = KITTI_Raw_KittiSplit_Valid(
