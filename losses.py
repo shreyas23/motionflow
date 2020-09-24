@@ -434,10 +434,6 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
         if self._args.use_mask and loss_mask_sum is not None:
             loss_dict["mask"] = loss_mask_sum
 
-        print('------------------DEBUG START---------------------')
-        print(loss_dict)
-        print('------------------DEBUG END  ---------------------')
-
         self.detaching_grad_of_outputs(output_dict['output_dict_r'])
 
         return loss_dict

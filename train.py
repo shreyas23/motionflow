@@ -228,8 +228,8 @@ def main():
     print(f"Training epoch: {epoch}...")
     train_loss_avg_dict, output_dict, input_dict = train_one_epoch(
         args, model, loss, train_dataloader, optimizer, augmentations, lr_scheduler)
-    # print(f"\t Epoch {epoch} train loss avg:")
-    # pprint(train_loss_avg_dict)
+    print(f"\t Epoch {epoch} train loss avg:")
+    pprint(train_loss_avg_dict)
 
     if val_dataset is not None:
       print(f"Validation epoch: {epoch}...")
@@ -374,6 +374,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     if args.model_name in ['scenenet']:
         sf_b = output_dict['flow_b'][0].detach()
         pose = output_dict['pose_b'].detach()
+        print(f"Transformation matrices for epoch: {epoch}, {pose}")
         if args.use_mask:
             mask = output_dict['masks_b'][0].detach()
 
