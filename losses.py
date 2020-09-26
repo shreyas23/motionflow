@@ -207,7 +207,7 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
         return loss_img + self._disp_smooth_w * loss_smooth, left_occ
     
 
-    def mask_loss(self, mask):
+    def mask_loss(self, mask, intrinsics):
         reg_loss = tf.binary_cross_entropy(mask + eps, torch.ones_like(mask)) * self._mask_reg_w
 
         # mask consensus loss
