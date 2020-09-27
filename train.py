@@ -360,7 +360,6 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     img_r2_aug = input_dict['input_r2_aug'].detach()
     disp_l2 = output_dict['disp_l2'][0].detach()
     k_l2_aug = input_dict['input_k_l2_aug'].detach()
-    img_r2_warp = _generate_image_left(img_r2_aug, disp_l2)
     aug_size = input_dict['aug_size']
 
     # input
@@ -369,7 +368,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     writer.add_images('input_r2', img_r2_aug, epoch)
 
     # disparity
-    writer.add_images('img_r1_warp', img_r2_warp, epoch)
+    writer.add_images('disp_l2', disp_l2, epoch)
 
     if args.model_name in ['scenenet']:
         sf_b = output_dict['flow_b'][0].detach()

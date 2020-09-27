@@ -144,10 +144,10 @@ class SceneNet(nn.Module):
 
         ## Left
         output_dict, x1_out, x2_out = self.run_pwc(input_dict, input_dict['input_l1_aug'], input_dict['input_l2_aug'], input_dict['input_k_l1_aug'], input_dict['input_k_l2_aug'])
-        # x1_out = interpolate2d_as(x1_out, input_dict['input_l1_aug'])
-        # x2_out = interpolate2d_as(x2_out, input_dict['input_l2_aug'])
+
         x21 = torch.cat([x2_out, x1_out], dim=1)
         x12 = torch.cat([x1_out, x2_out], dim=1)
+
         if self._args.use_mask:
             masks_b, pose_b = self.pose_decoder(x21)
             masks_f, pose_f = self.pose_decoder(x12)
