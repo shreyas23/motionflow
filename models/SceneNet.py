@@ -49,8 +49,8 @@ class SceneNet(nn.Module):
                 num_ch_in = self.dim_corr + ch + ch + 32 + 3 + 1
                 self.upconv_layers.append(upconv(32, 32, 3, 2))
 
-            layer_sf = MonoSceneFlowDecoder(num_ch_in)            
-            self.flow_estimators.append(layer_sf)            
+            layer_sf = MonoSceneFlowDecoder(num_ch_in)
+            self.flow_estimators.append(layer_sf)
 
         if args.use_mask:
             # self.pose_decoder = PoseExpNet(nb_ref_imgs=1, output_exp=args.use_mask, in_ch=3)
@@ -65,6 +65,8 @@ class SceneNet(nn.Module):
 
         initialize_msra(self.modules())
         self.pose_decoder.init_weights()
+        self.mask_decoder.init_weights()
+        self.mask_decoder.init_mask_weights()
 
     def run_pwc(self, input_dict, x1_raw, x2_raw, k1, k2):
             

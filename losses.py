@@ -199,16 +199,16 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
 
         ## LR Consistency loss
         proj_disp_r = _generate_image_left(disp_r, disp_l)
-        lr_disp_diff = _elementwise_l1(disp_l, proj_disp_r)[left_occ].mean(dim=1, keepdim=True)
+        lr_disp_diff = _elementwise_l1(disp_l, proj_disp_r)
         loss_lr = lr_disp_diff[left_occ].mean()
-        loss_lr[~left_occ].detach_()
+        lr_disp_diff[~left_occ].detach_()
 
         ## Disparities smoothness
         loss_smooth = _smoothness_motion_2nd(disp_l, img_l_aug, beta=10.0).mean() / (2 ** ii)
 
         loss = loss_img + self._disp_smooth_w * loss_smooth + self._disp_lr_w * loss_lr
 
-        return loss, left_occ
+        return loss, loss_lr, left_occ
     
 
     def mask_loss(self, mask, sf, sf_err, pose, disp, pose_err, intrinsics, aug_size):
@@ -221,7 +221,7 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
         local_scale[:, 0] = h_dp
         local_scale[:, 1] = w_dp         
         _, intrinsics_scaled, depth = pixel2pts_ms_depth(intrinsics, disp, local_scale / aug_size)
-        pose_sf = pose2sceneflow(depth, pose, intrinsics_scaled, torch.inverse(intrinsics_scaled))
+        pose_sf = pose2sceneflow(depth.squeeze(1), pose, intrinsics_scaled, torch.inverse(intrinsics_scaled))
 
         # mask consensus loss
         target_mask = (pose_err < sf_err).bool()
@@ -346,6 +346,12 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
         loss_sf_2d = 0
         loss_sf_3d = 0
         loss_sf_sm = 0
+        loss_pose_im_sum = 0
+        loss_pose_sm_sum = 0
+        loss_mask_reg_sum = 0
+        loss_mask_consensus_sum = 0
+        loss_static_cons_sum = 0
+        loss_lr_cons_sum = 0
         
         k_l1_aug = target_dict['input_k_l1_aug']
         k_l2_aug = target_dict['input_k_l2_aug']
@@ -379,9 +385,10 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
             img_r2_aug = interpolate2d_as(target_dict["input_r2_aug"], sf_b)
 
             ## Disp Loss
-            loss_disp_l1, disp_occ_l1 = self.depth_loss_left_img(disp_l1, disp_r1, img_l1_aug, img_r1_aug, ii)
-            loss_disp_l2, disp_occ_l2 = self.depth_loss_left_img(disp_l2, disp_r2, img_l2_aug, img_r2_aug, ii)
+            loss_disp_l1, loss_lr_cons1, disp_occ_l1 = self.depth_loss_left_img(disp_l1, disp_r1, img_l1_aug, img_r1_aug, ii)
+            loss_disp_l2, loss_lr_cons2, disp_occ_l2 = self.depth_loss_left_img(disp_l2, disp_r2, img_l2_aug, img_r2_aug, ii)
             loss_dp_sum = loss_dp_sum + (loss_disp_l1 + loss_disp_l2) * self._weights[ii]
+            loss_lr_cons_sum += loss_lr_cons1 + loss_lr_cons2
 
             ## Sceneflow Loss
             loss_sceneflow, loss_im, loss_pts, loss_3d_s, sf_diffs = self.sceneflow_loss(sf_f, sf_b, 
@@ -421,31 +428,46 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
             loss_mask_consensus_sum += loss_mask_consensus_f + loss_mask_consensus_b
 
             # pose-sf-mask consistency loss
-            loss_static_cons_sum += (loss_static_cons_b  + loss_static_cons_f)
+            loss_static_cons_sum += (loss_static_cons_b  + loss_static_cons_f) * self._weights[ii]
 
         # finding weight
         f_loss = loss_sf_sum.detach()
         d_loss = loss_dp_sum.detach()
         p_loss = loss_pose_sum.detach()
+        c_loss = loss_static_cons_sum.detach()
+        m_loss = loss_mask_sum.detach()
 
         max_val = torch.max(torch.max(f_loss, d_loss), p_loss)
+        max_val = torch.max(max_val, torch.max(c_loss, m_loss))
 
         f_weight = max_val / f_loss
         d_weight = max_val / d_loss
         p_weight = max_val / p_loss
+        c_weight = max_val / c_loss
+        m_weight = max_val / m_loss
 
-        total_loss = loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * p_weight 
+        total_loss = loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * p_weight +  loss_mask_sum * m_weight + loss_static_cons_sum * c_weight
 
         loss_dict = {}
         loss_dict["dp"] = loss_dp_sum
         loss_dict["sf"] = loss_sf_sum
-        loss_dict["pose"] = loss_pose_sum
+
         loss_dict["s_2"] = loss_sf_2d
         loss_dict["s_3"] = loss_sf_3d
         loss_dict["s_3s"] = loss_sf_sm
+        
+        loss_dict["pose"] = loss_pose_sum
+        loss_dict["pose im"] = loss_pose_im_sum
+        loss_dict["pose_smooth"] = loss_pose_sm_sum
+
+        loss_dict["mask"] = loss_mask_sum
+        loss_dict["mask reg"] = loss_mask_reg_sum
+        loss_dict["mask consensus"] = loss_mask_consensus_sum
+
+        loss_dict["static_cons"] = loss_static_cons_sum
+        loss_dict["lr cons"] = loss_lr_cons_sum
+
         loss_dict["total_loss"] = total_loss
-        if self._args.use_mask and loss_mask_sum is not None:
-            loss_dict["mask"] = loss_mask_sum
 
         self.detaching_grad_of_outputs(output_dict['output_dict_r'])
 

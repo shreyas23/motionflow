@@ -127,12 +127,12 @@ class MotionNet(nn.Module):
         self.nb_ref_imgs = nb_ref_imgs
 
         conv_planes = [16, 32, 64, 128, 256, 256, 256, 256]
-        self.conv1 = conv(3*(1+self.nb_ref_imgs), conv_planes[0], kernel_size=7)
-        self.conv2 = conv(conv_planes[0], conv_planes[1], kernel_size=5)
-        self.conv3 = conv(conv_planes[1], conv_planes[2])
-        self.conv4 = conv(conv_planes[2], conv_planes[3])
-        self.conv5 = conv(conv_planes[3], conv_planes[4])
-        self.conv6 = conv(conv_planes[4], conv_planes[5])
+        self.conv1 = conv(3*(1+self.nb_ref_imgs), conv_planes[0], kernel_size=7, stride=2)
+        self.conv2 = conv(conv_planes[0], conv_planes[1], kernel_size=5, stride=2)
+        self.conv3 = conv(conv_planes[1], conv_planes[2], stride=2)
+        self.conv4 = conv(conv_planes[2], conv_planes[3], stride=2)
+        self.conv5 = conv(conv_planes[3], conv_planes[4], stride=2)
+        self.conv6 = conv(conv_planes[4], conv_planes[5], stride=2)
 
         upconv_planes = [256, 256, 128, 64, 32, 16]
         self.deconv6 = upconv(conv_planes[5], upconv_planes[0], kernel_size=4, stride=2)
@@ -152,26 +152,25 @@ class MotionNet(nn.Module):
     def init_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
-                nn.init.xavier_uniform(m.weight.data)
+                nn.init.xavier_uniform_(m.weight.data)
                 if m.bias is not None:
                     m.bias.data.zero_()
 
     def init_mask_weights(self):
         for m in self.modules():
             if isinstance(m, nn.ConvTranspose2d):
-                nn.init.xavier_uniform(m.weight.data)
+                nn.init.xavier_uniform_(m.weight.data)
                 if m.bias is not None:
                     m.bias.data.zero_()
 
         for module in [self.pred_mask1, self.pred_mask2, self.pred_mask3, self.pred_mask4, self.pred_mask5, self.pred_mask6]:
             for m in module.modules():
                 if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
-                    nn.init.xavier_uniform(m.weight.data)
+                    nn.init.xavier_uniform_(m.weight.data)
                     if m.bias is not None:
                         m.bias.data.zero_()
 
-
-    def forward(self, target_image, ref_imgs):
+    def forward(self, x):
         out_conv1 = self.conv1(x)
         out_conv2 = self.conv2(out_conv1)
         out_conv3 = self.conv3(out_conv2)
@@ -186,7 +185,7 @@ class MotionNet(nn.Module):
         out_upconv2 = self.deconv2(torch.cat((out_upconv3, out_conv2), 1))
         out_upconv1 = self.deconv1(torch.cat((out_upconv2, out_conv1), 1))
 
-        exp_mask6 = torch.sigmoid(self.pred_mask6(out_upconv6))
+        # exp_mask6 = torch.sigmoid(self.pred_mask6(out_upconv6))
         exp_mask5 = torch.sigmoid(self.pred_mask5(out_upconv5))
         exp_mask4 = torch.sigmoid(self.pred_mask4(out_upconv4))
         exp_mask3 = torch.sigmoid(self.pred_mask3(out_upconv3))
@@ -194,7 +193,7 @@ class MotionNet(nn.Module):
         exp_mask1 = torch.sigmoid(self.pred_mask1(out_upconv1))
 
         if self.training:
-            return exp_mask1, exp_mask2, exp_mask3, exp_mask4, exp_mask5, exp_mask6
+            return exp_mask1, exp_mask2, exp_mask3, exp_mask4, exp_mask5
         else:
             return exp_mask1
 
