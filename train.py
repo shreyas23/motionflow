@@ -45,6 +45,7 @@ parser.add_argument('--no_logging', type=bool, default=False,
                     help="are you logging this experiment?")
 parser.add_argument('--log_dir', type=str, default="/external/cnet/checkpoints",
                     help="are you logging this experiment?")
+parser.add_argument('--log_freq', type=int, default=1, help='how often to log statistics')
 parser.add_argument('--exp_name', type=str, default='test',
                     help='name of experiment, chkpts stored in checkpoints/experiment')
 parser.add_argument('--validate', type=bool, default=False,
@@ -74,7 +75,6 @@ parser.add_argument('--shuffle_dataset', type=bool,
 parser.add_argument('--resize_only', type=bool, default=False,
                     help='only do resize augmentation on input data')
 
-
 # learning params
 parser.add_argument('--lr', type=float, default=2e-4,
                     help='initial learning rate')
@@ -100,7 +100,6 @@ parser.add_argument('--mask_thresh', type=float, default=.6,
                     help='mask threshold for moving objects (higher threshold skews towards static)')
 parser.add_argument('--use_mask', type=bool, default=False,
                     help="whether to use batch-norm in training procedure")
-
 
 # etc.
 parser.add_argument('--multi_gpu', type=bool,
@@ -239,7 +238,7 @@ def main():
     if not args.no_logging:
       for k, v in train_loss_avg_dict.items():
         writer.add_scalar(f'loss/train/{k}', train_loss_avg_dict[k], epoch)
-      if epoch % 1 == 0:
+      if epoch % args.log_freq == 0:
         visualize_output(args, input_dict, output_dict, epoch, writer)
 
     # assert (not torch.isnan(train_loss_avg_dict['total_loss'])), "avg training loss is nan"
