@@ -12,7 +12,7 @@ from .modules_sceneflow import initialize_msra, upsample_outputs_as
 from .modules_sceneflow import upconv
 from .modules_sceneflow import FeatureExtractor, MonoSceneFlowDecoder, ContextNetwork
 
-from .decoders import PoseNet, PoseExpNet
+from .decoders import PoseNet, PoseExpNet, MotionNet
 
 from utils.interpolation import interpolate2d_as
 from utils.sceneflow_util import flow_horizontal_flip, intrinsic_scale, get_pixelgrid, post_processing
@@ -53,9 +53,12 @@ class SceneNet(nn.Module):
             self.flow_estimators.append(layer_sf)            
 
         if args.use_mask:
-            self.pose_decoder = PoseExpNet(1, output_exp=args.use_mask, in_ch=3)
+            # self.pose_decoder = PoseExpNet(nb_ref_imgs=1, output_exp=args.use_mask, in_ch=3)
+            self.pose_decoder = PoseNet(nb_ref_imgs=1, in_ch=3, use_bn=False)
+            self.mask_decoder = MotionNet(nb_ref_imgs=1)
         else:
             self.pose_decoder = PoseNet(1)
+
         self.corr_params = {"pad_size": self.search_range, "kernel_size": 1, "max_disp": self.search_range, "stride1": 1, "stride2": 1, "corr_multiply": 1}        
         self.context_networks = ContextNetwork(32 + 3 + 1)
         self.sigmoid = torch.nn.Sigmoid()
@@ -148,19 +151,11 @@ class SceneNet(nn.Module):
         x21 = torch.cat([x2_out, x1_out], dim=1)
         x12 = torch.cat([x1_out, x2_out], dim=1)
 
-        if self._args.use_mask:
-            masks_b, pose_b = self.pose_decoder(x21)
-            masks_f, pose_f = self.pose_decoder(x12)
-            output_dict["pose_b"] = pose_b
-            output_dict["masks_b"] = masks_b
-            output_dict["pose_f"] = pose_f
-            output_dict["masks_f"] = masks_f
-        else:
-            pose_b = self.pose_decoder(x21)
-            pose_f = self.pose_decoder(x12)
-            output_dict["pose_b"] = pose_b
-            output_dict["pose_f"] = pose_f
-        
+        output_dict["pose_b"] = self.pose_decoder(x21)
+        output_dict["pose_f"] = self.pose_decoder(x12)
+        output_dict["masks_b"] = self.mask_decoder(x21)
+        output_dict["masks_f"] = self.mask_decoder(x12)
+
         ## Right
         ## ss: train val 
         ## ft: train 

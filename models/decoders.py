@@ -6,19 +6,19 @@ from .common import conv, upconv
 
 class PoseNet(nn.Module):
 
-    def __init__(self, nb_ref_imgs=1):
+    def __init__(self, nb_ref_imgs=1, in_ch=3, use_bn=False):
         super(PoseNet, self).__init__()
         self.nb_ref_imgs = nb_ref_imgs
 
         conv_planes = [16, 32, 64, 128, 256, 256, 256]
-        self.conv0 = conv(3*(1+self.nb_ref_imgs), 3*(1+self.nb_ref_imgs), kernel_size=3, stride=2, use_bn=True)
-        self.conv1 = conv(3*(1+self.nb_ref_imgs), conv_planes[0], kernel_size=7, stride=2, use_bn=True)
-        self.conv2 = conv(conv_planes[0], conv_planes[1], kernel_size=5, stride=2, use_bn=True)
-        self.conv3 = conv(conv_planes[1], conv_planes[2], stride=2, use_bn=True)
-        self.conv4 = conv(conv_planes[2], conv_planes[3], stride=2, use_bn=True)
-        self.conv5 = conv(conv_planes[3], conv_planes[4], stride=2, use_bn=True)
-        self.conv6 = conv(conv_planes[4], conv_planes[5], stride=2, use_bn=True)
-        self.conv7 = conv(conv_planes[5], conv_planes[6], stride=2, use_bn=True)
+        self.conv0 = conv(in_ch*(1+self.nb_ref_imgs), in_ch*(1+self.nb_ref_imgs), kernel_size=3, stride=2, use_bn=use_bn)
+        self.conv1 = conv(in_ch*(1+self.nb_ref_imgs), conv_planes[0], kernel_size=7, stride=2, use_bn=use_bn)
+        self.conv2 = conv(conv_planes[0], conv_planes[1], kernel_size=5, stride=2, use_bn=use_bn)
+        self.conv3 = conv(conv_planes[1], conv_planes[2], stride=2, use_bn=use_bn)
+        self.conv4 = conv(conv_planes[2], conv_planes[3], stride=2, use_bn=use_bn)
+        self.conv5 = conv(conv_planes[3], conv_planes[4], stride=2, use_bn=use_bn)
+        self.conv6 = conv(conv_planes[4], conv_planes[5], stride=2, use_bn=use_bn)
+        self.conv7 = conv(conv_planes[5], conv_planes[6], stride=2, use_bn=use_bn)
 
         self.pose_pred = nn.Conv2d(conv_planes[6], 6*self.nb_ref_imgs, kernel_size=1, padding=0, stride=1)
 
@@ -122,7 +122,7 @@ class PoseExpNet(nn.Module):
 
 
 class MotionNet(nn.Module):
-    def __init__(self, nb_ref_imgs=1):
+    def __init__(self, nb_ref_imgs=1, use_bn=False):
         super(MotionNet, self).__init__()
         self.nb_ref_imgs = nb_ref_imgs
 
@@ -142,12 +142,12 @@ class MotionNet(nn.Module):
         self.deconv2 = upconv(upconv_planes[3]+conv_planes[1], upconv_planes[4], kernel_size=4, stride=2)
         self.deconv1 = upconv(upconv_planes[4]+conv_planes[0], upconv_planes[5], kernel_size=4, stride=2)
 
-        self.pred_mask6 = nn.Conv2d(upconv_planes[0], self.nb_ref_imgs, kernel_size=3, padding=1)
-        self.pred_mask5 = nn.Conv2d(upconv_planes[1], self.nb_ref_imgs, kernel_size=3, padding=1)
-        self.pred_mask4 = nn.Conv2d(upconv_planes[2], self.nb_ref_imgs, kernel_size=3, padding=1)
-        self.pred_mask3 = nn.Conv2d(upconv_planes[3], self.nb_ref_imgs, kernel_size=3, padding=1)
-        self.pred_mask2 = nn.Conv2d(upconv_planes[4], self.nb_ref_imgs, kernel_size=3, padding=1)
-        self.pred_mask1 = nn.Conv2d(upconv_planes[5], self.nb_ref_imgs, kernel_size=3, padding=1)
+        self.pred_mask6 = conv(upconv_planes[0], self.nb_ref_imgs, use_relu=False)
+        self.pred_mask5 = conv(upconv_planes[1], self.nb_ref_imgs, use_relu=False)
+        self.pred_mask4 = conv(upconv_planes[2], self.nb_ref_imgs, use_relu=False)
+        self.pred_mask3 = conv(upconv_planes[3], self.nb_ref_imgs, use_relu=False)
+        self.pred_mask2 = conv(upconv_planes[4], self.nb_ref_imgs, use_relu=False)
+        self.pred_mask1 = conv(upconv_planes[5], self.nb_ref_imgs, use_relu=False)
 
     def init_weights(self):
         for m in self.modules():
