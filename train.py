@@ -293,20 +293,15 @@ def step(args, data_dict, model, loss, augmentations, optimizer):
 
 def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_scheduler):
 
-  keys = ['total_loss', 'dp']
-  if args.model_name in ['monoflow', 'scenenet']:
-    keys.extend(['s_2', 's_3', 'sf', 's_3s'])
-  if args.model_name in ['posedepth', 'scenenet']:
-    keys.append('pose')
-    if args.use_mask:
-        keys.append('mask')
-
-  loss_dict_avg = {k: 0 for k in keys}
+  loss_dict_avg = None
 
   # for data in tqdm(dataloader):
   for data in dataloader:
     loss_dict, output_dict = step(
         args, data, model, loss, augmentations, optimizer)
+    
+    if loss_dict_avg is None:
+        loss_dict_avg = {k:0 for k in loss_dict.keys()}
 
     # calculate gradients and then do Adam step
     optimizer.zero_grad()
@@ -316,11 +311,11 @@ def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_
       torch.nn.utils.clip_grad_value_(model.parameters(), args.grad_clip)
     optimizer.step()
 
-    for key in keys:
+    for key in loss_dict.keys():
       loss_dict_avg[key] += loss_dict[key].detach()
 
   n = len(dataloader)
-  for key in keys:
+  for key in loss_dict_avg.keys():
     loss_dict_avg[key] /= n
 
   return loss_dict_avg, output_dict, data
