@@ -185,7 +185,7 @@ def main():
     print("Using step lr schedule")
     milestones = [30, 40]
     lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
-        optimizer, milestones=milestones, gamma=0.5)
+        optimizer, milestones=milestones, gamma=0.3)
   elif args.lr_sched_type == 'none':
     lr_scheduler = None
 
@@ -370,6 +370,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
 
         # disparity
         disp_l2 = output_dict['disp_l2'][0].detach()
+        writer.add_images('img_r2_disp_warp', _generate_image_left(img_r2_aug, disp_l2), epoch)
         _, _, h_dp, w_dp = sf_b.size()
         disp_l2 = disp_l2 * w_dp
         writer.add_images('disp_l2', disp_l2, epoch)
