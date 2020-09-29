@@ -142,7 +142,7 @@ class MotionNet(nn.Module):
         self.deconv2 = upconv(upconv_planes[3]+conv_planes[1], upconv_planes[4], kernel_size=4, stride=2)
         self.deconv1 = upconv(upconv_planes[4]+conv_planes[0], upconv_planes[5], kernel_size=4, stride=2)
 
-        self.pred_mask6 = conv(upconv_planes[0], self.nb_ref_imgs, use_relu=False)
+        # self.pred_mask6 = conv(upconv_planes[0], self.nb_ref_imgs, use_relu=False)
         self.pred_mask5 = conv(upconv_planes[1], self.nb_ref_imgs, use_relu=False)
         self.pred_mask4 = conv(upconv_planes[2], self.nb_ref_imgs, use_relu=False)
         self.pred_mask3 = conv(upconv_planes[3], self.nb_ref_imgs, use_relu=False)
@@ -163,7 +163,8 @@ class MotionNet(nn.Module):
                 if m.bias is not None:
                     m.bias.data.zero_()
 
-        for module in [self.pred_mask1, self.pred_mask2, self.pred_mask3, self.pred_mask4, self.pred_mask5, self.pred_mask6]:
+        # for module in [self.pred_mask1, self.pred_mask2, self.pred_mask3, self.pred_mask4, self.pred_mask5, self.pred_mask6]:
+        for module in [self.pred_mask1, self.pred_mask2, self.pred_mask3, self.pred_mask4, self.pred_mask5]:
             for m in module.modules():
                 if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
                     nn.init.xavier_uniform_(m.weight.data)

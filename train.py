@@ -96,10 +96,8 @@ parser.add_argument('--train_consistency', type=bool, default=False,
                     help="whether to use consistency losses in training procedure")
 parser.add_argument('--use_bn', type=bool, default=False,
                     help="whether to use batch-norm in training procedure")
-parser.add_argument('--mask_thresh', type=float, default=.6,
-                    help='mask threshold for moving objects (higher threshold skews towards static)')
 parser.add_argument('--use_mask', type=bool, default=False,
-                    help="whether to use batch-norm in training procedure")
+                    help="whether to use consensus mask in training procedure")
 
 # etc.
 parser.add_argument('--multi_gpu', type=bool,
@@ -143,7 +141,7 @@ def main():
 
     # define dataset
     train_dataset = KITTI_Raw_KittiSplit_Train(
-        args, DATA_ROOT, num_examples=args.num_examples, flip_augmentations=True, preprocessing_crop=True)
+        args, DATA_ROOT, num_examples=args.num_examples, flip_augmentations=False, preprocessing_crop=True)
     train_dataloader = DataLoader(train_dataset, args.batch_size,
                                   shuffle=args.shuffle_dataset, num_workers=args.num_workers, pin_memory=True)
     val_dataset = KITTI_Raw_KittiSplit_Valid(
@@ -352,7 +350,6 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     img_l1_aug = input_dict['input_l1_aug'].detach()
     img_l2_aug = input_dict['input_l2_aug'].detach()
     img_r2_aug = input_dict['input_r2_aug'].detach()
-    disp_l2 = output_dict['disp_l2'][0].detach()
     k_l2_aug = input_dict['input_k_l2_aug'].detach()
     aug_size = input_dict['aug_size']
 
@@ -361,21 +358,23 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     writer.add_images('input_l2', img_l2_aug, epoch)
     writer.add_images('input_r2', img_r2_aug, epoch)
 
-    # disparity
-    writer.add_images('disp_l2', disp_l2, epoch)
-
     if args.model_name in ['scenenet']:
         sf_b = output_dict['flow_b'][0].detach()
         pose = output_dict['pose_b'].detach()
         print(f"Transformation matrices for epoch: {epoch}, {pose}")
         if args.use_mask:
             mask = output_dict['masks_b'][0].detach()
+            census_mask = output_dict['census_masks_b'][0].detach()
+            writer.add_images('mask', mask, epoch)
+            writer.add_images('census mask', census_mask, epoch)
 
-        # scene flow
+        # disparity
+        disp_l2 = output_dict['disp_l2'][0].detach()
         _, _, h_dp, w_dp = sf_b.size()
         disp_l2 = disp_l2 * w_dp
+        writer.add_images('disp_l2', disp_l2, epoch)
 
-        ## scale
+        # scene flow
         local_scale = torch.zeros_like(aug_size)
         local_scale[:, 0] = h_dp
         local_scale[:, 1] = w_dp
@@ -391,9 +390,6 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
         _, coord2 = pts2pixel_pose_ms(k2_scale, pts2, pose, [h_dp, w_dp])
         img_l1_warp_cam = reconstructImg(coord2, img_l1_aug)
         writer.add_images('img_l1_warp_cam', img_l1_warp_cam, epoch)
-
-        if args.use_mask:
-            writer.add_images('pose mask', mask, epoch)
 
     if args.model_name in ['posedepth']:
         pose = output_dict['pose_b'].detach()
