@@ -80,6 +80,8 @@ parser.add_argument('--lr', type=float, default=2e-4,
                     help='initial learning rate')
 parser.add_argument('--lr_sched_type', type=str, default="none",
                     help="path to model checkpoint if using one")
+parser.add_argument('--lr_gamma', type=float, default=0.1,
+                    help='initial learning rate')
 parser.add_argument('--momentum', type=float, default=0.9,
                     help='momentum for sgd or alpha param for adam')
 parser.add_argument('--beta', type=float, default=0.999,
@@ -180,12 +182,12 @@ def main():
   if args.lr_sched_type == 'plateau':
     print("Using plateau lr schedule")
     lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, factor=0.7, verbose=True, mode='min', patience=10)
+        optimizer, factor=args.lr_gamma, verbose=True, mode='min', patience=10)
   elif args.lr_sched_type == 'step':
     print("Using step lr schedule")
     milestones = [30, 40]
     lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
-        optimizer, milestones=milestones, gamma=0.3)
+        optimizer, milestones=milestones, gamma=args.lr_gamma)
   elif args.lr_sched_type == 'none':
     lr_scheduler = None
 

@@ -155,7 +155,7 @@ cx = width / 2
 cy = height / 2
 
 intrinsics = np.array([[f, 0, cx], [0, f, cy], [0, 0, 1]])
-cam2cam = np.hstack([np.eye(3), (np.array([1.5, 0, 0]) + (camera_origins['6R'][0]/1000) - (camera_origins['6L'][0]/1000)).reshape(-1, 1)])
+cam2cam = np.hstack([np.eye(3), (np.array([1.5, 0, 0]) + (camera_origins['6R'][0][0]/1000) - (camera_origins['6L'][0][0]/1000)).reshape(-1, 1)])
 
 def process_images_batch(image_tag_pairs, stereo=True, rgb=True):
     if rgb == 0:
