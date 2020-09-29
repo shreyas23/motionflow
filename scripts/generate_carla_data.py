@@ -130,8 +130,10 @@ camera_origins = {
     # '4L': ([37.5, -179.07, 0.0], 270), 
     # '5R': ([143.73, -135.07, 0.0], 315), 
     # '5L': ([90.69, -188.11, 0.0], 315), 
-    '6R': ([134.69, -81.88, 0.0], 0), 
-    '6L': ([134.69, -156.88, 0.0], 0), 
+    '6R': ([134.69, 195.88, 0.0], 0),
+    '6L': ([134.69, -345.88, 0.0], 0),
+    # '6R': ([134.69, -81.88, 0.0], 0), 
+    # '6L': ([134.69, -156.88, 0.0], 0), 
     # '7R': ([90.69, -50.66, 0.0], 45), 
     # '7L': ([143.73, -103.69, 0.0], 45)
     }
@@ -153,7 +155,7 @@ cx = width / 2
 cy = height / 2
 
 intrinsics = np.array([[f, 0, cx], [0, f, cy], [0, 0, 1]])
-cam2cam = np.hstack([np.eye(3), (np.array([1.5, 0, 0]) + (camera_origins['6R']/1000) - (camera_origins['6L']/1000)).reshape(-1, 1)])
+cam2cam = np.hstack([np.eye(3), (np.array([1.5, 0, 0]) + (camera_origins['6R'][0]/1000) - (camera_origins['6L'][0]/1000)).reshape(-1, 1)])
 
 def process_images_batch(image_tag_pairs, stereo=True, rgb=True):
     if rgb == 0:
