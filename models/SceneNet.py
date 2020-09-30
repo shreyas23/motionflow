@@ -53,9 +53,9 @@ class SceneNet(nn.Module):
             self.flow_estimators.append(layer_sf)
 
         if args.use_mask:
-            # self.pose_decoder = PoseExpNet(nb_ref_imgs=1, output_exp=args.use_mask, in_ch=3)
-            self.pose_decoder = PoseNet(nb_ref_imgs=1, in_ch=3, use_bn=False)
-            self.mask_decoder = MotionNet(nb_ref_imgs=1)
+            self.pose_decoder = PoseExpNet(nb_ref_imgs=1, output_exp=args.use_mask, in_ch=3)
+            # self.pose_decoder = PoseNet(nb_ref_imgs=1, in_ch=3, use_bn=False)
+            # self.mask_decoder = MotionNet(nb_ref_imgs=1)
         else:
             self.pose_decoder = PoseNet(1)
 
@@ -65,8 +65,8 @@ class SceneNet(nn.Module):
 
         initialize_msra(self.modules())
         self.pose_decoder.init_weights()
-        self.mask_decoder.init_weights()
-        self.mask_decoder.init_mask_weights()
+        # self.mask_decoder.init_weights()
+        # self.mask_decoder.init_mask_weights()
 
     def run_pwc(self, input_dict, x1_raw, x2_raw, k1, k2):
             
@@ -153,10 +153,15 @@ class SceneNet(nn.Module):
         x21 = torch.cat([x2_out, x1_out], dim=1)
         x12 = torch.cat([x1_out, x2_out], dim=1)
 
-        output_dict["pose_b"] = self.pose_decoder(x21)
-        output_dict["pose_f"] = self.pose_decoder(x12)
-        output_dict["masks_b"] = self.mask_decoder(x21)
-        output_dict["masks_f"] = self.mask_decoder(x12)
+        masks_b, pose_b = self.pose_decoder(x21)
+        masks_f, pose_f = self.pose_decoder(x12)
+        # masks_b = self.mask_decoder(x21)
+        # masks_f = self.mask_decoder(x12)
+
+        output_dict["pose_b"] = pose_b
+        output_dict["masks_b"] = masks_b
+        output_dict["pose_f"] = pose_f
+        output_dict["masks_f"] = masks_f
 
         ## Right
         ## ss: train val 

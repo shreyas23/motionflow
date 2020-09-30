@@ -47,7 +47,7 @@ class PoseNet(nn.Module):
 
 class PoseExpNet(nn.Module):
 
-    def __init__(self, nb_ref_imgs=1, output_exp=False, in_ch=3):
+    def __init__(self, nb_ref_imgs=1, output_exp=True, in_ch=3):
         super(PoseExpNet, self).__init__()
         self.nb_ref_imgs = nb_ref_imgs
         self.output_exp = output_exp
