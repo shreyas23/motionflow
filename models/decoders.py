@@ -47,29 +47,35 @@ class PoseNet(nn.Module):
 
 class PoseExpNet(nn.Module):
 
-    def __init__(self, nb_ref_imgs=1, output_exp=True, in_ch=3):
+    def __init__(self, nb_ref_imgs=1, output_exp=True, in_ch=3, use_bn=False):
         super(PoseExpNet, self).__init__()
         self.nb_ref_imgs = nb_ref_imgs
         self.output_exp = output_exp
 
         conv_planes = [16, 32, 64, 128, 256, 256, 256]
-        self.conv1 = conv(in_ch*(1+self.nb_ref_imgs), conv_planes[0], kernel_size=7, stride=2)
-        self.conv2 = conv(conv_planes[0], conv_planes[1], kernel_size=5, stride=2)
-        self.conv3 = conv(conv_planes[1], conv_planes[2], stride=2)
-        self.conv4 = conv(conv_planes[2], conv_planes[3], stride=2)
-        self.conv5 = conv(conv_planes[3], conv_planes[4], stride=2)
-        self.conv6 = conv(conv_planes[4], conv_planes[5], stride=2)
-        self.conv7 = conv(conv_planes[5], conv_planes[6], stride=2)
+        self.conv1 = conv(in_ch*(1+self.nb_ref_imgs), conv_planes[0], kernel_size=7, stride=2, use_bn=use_bn)
+        self.conv2 = conv(conv_planes[0], conv_planes[1], kernel_size=5, stride=2, use_bn=use_bn)
+        self.conv3 = conv(conv_planes[1], conv_planes[2], stride=2, use_bn=use_bn)
+        self.conv4 = conv(conv_planes[2], conv_planes[3], stride=2, use_bn=use_bn)
+        self.conv5 = conv(conv_planes[3], conv_planes[4], stride=2, use_bn=use_bn)
+        self.conv6 = conv(conv_planes[4], conv_planes[5], stride=2, use_bn=use_bn)
+        self.conv7 = conv(conv_planes[5], conv_planes[6], stride=2, use_bn=use_bn)
 
         self.pose_pred = nn.Conv2d(conv_planes[6], 6*self.nb_ref_imgs, kernel_size=1, padding=0)
 
         if self.output_exp:
             upconv_planes = [256, 128, 64, 32, 16]
-            self.upconv5 = upconv(conv_planes[4],   upconv_planes[0], kernel_size=4, stride=2)
-            self.upconv4 = upconv(upconv_planes[0], upconv_planes[1], kernel_size=4, stride=2)
-            self.upconv3 = upconv(upconv_planes[1], upconv_planes[2], kernel_size=4, stride=2)
-            self.upconv2 = upconv(upconv_planes[2], upconv_planes[3], kernel_size=4, stride=2)
-            self.upconv1 = upconv(upconv_planes[3], upconv_planes[4], kernel_size=4, stride=2)
+            # self.upconv5 = upconv(conv_planes[4],   upconv_planes[0], kernel_size=4, stride=2, use_bn=use_bn)
+            # self.upconv4 = upconv(upconv_planes[0], upconv_planes[1], kernel_size=4, stride=2, use_bn=use_bn)
+            # self.upconv3 = upconv(upconv_planes[1], upconv_planes[2], kernel_size=4, stride=2, use_bn=use_bn)
+            # self.upconv2 = upconv(upconv_planes[2], upconv_planes[3], kernel_size=4, stride=2, use_bn=use_bn)
+            # self.upconv1 = upconv(upconv_planes[3], upconv_planes[4], kernel_size=4, stride=2, use_bn=use_bn)
+            self.upconv6 = upconv(conv_planes[5], upconv_planes[0], kernel_size=4, stride=2)
+            self.upconv5 = upconv(upconv_planes[0]+conv_planes[4], upconv_planes[1], kernel_size=4, stride=2)
+            self.upconv4 = upconv(upconv_planes[1]+conv_planes[3], upconv_planes[2], kernel_size=4, stride=2)
+            self.upconv3 = upconv(upconv_planes[2]+conv_planes[2], upconv_planes[3], kernel_size=4, stride=2)
+            self.upconv2 = upconv(upconv_planes[3]+conv_planes[1], upconv_planes[4], kernel_size=4, stride=2)
+            self.upconv1 = upconv(upconv_planes[4]+conv_planes[0], upconv_planes[5], kernel_size=4, stride=2)
 
             self.predict_mask5 = nn.Conv2d(upconv_planes[0], self.nb_ref_imgs, kernel_size=3, padding=1)
             self.predict_mask4 = nn.Conv2d(upconv_planes[1], self.nb_ref_imgs, kernel_size=3, padding=1)
@@ -97,11 +103,18 @@ class PoseExpNet(nn.Module):
         pose = pose.mean(3).mean(2) * 0.01
 
         if self.output_exp:
-            out_upconv5 = self.upconv5(out_conv5  )[:, :, 0:out_conv4.size(2), 0:out_conv4.size(3)]
-            out_upconv4 = self.upconv4(out_upconv5)[:, :, 0:out_conv3.size(2), 0:out_conv3.size(3)]
-            out_upconv3 = self.upconv3(out_upconv4)[:, :, 0:out_conv2.size(2), 0:out_conv2.size(3)]
-            out_upconv2 = self.upconv2(out_upconv3)[:, :, 0:out_conv1.size(2), 0:out_conv1.size(3)]
-            out_upconv1 = self.upconv1(out_upconv2)[:, :, 0:x.size(2), 0:x.size(3)]
+            # out_upconv5 = self.upconv5(out_conv5  )[:, :, 0:out_conv4.size(2), 0:out_conv4.size(3)]
+            # out_upconv4 = self.upconv4(out_upconv5)[:, :, 0:out_conv3.size(2), 0:out_conv3.size(3)]
+            # out_upconv3 = self.upconv3(out_upconv4)[:, :, 0:out_conv2.size(2), 0:out_conv2.size(3)]
+            # out_upconv2 = self.upconv2(out_upconv3)[:, :, 0:out_conv1.size(2), 0:out_conv1.size(3)]
+            # out_upconv1 = self.upconv1(out_upconv2)[:, :, 0:x.size(2), 0:x.size(3)]
+            out_upconv6 = self.upconv6(out_conv6)
+            out_upconv5 = self.upconv5(torch.cat((out_upconv6, out_conv5), dim=1))
+            out_upconv4 = self.upconv4(torch.cat((out_upconv5, out_conv4), dim=1))
+            out_upconv3 = self.upconv3(torch.cat((out_upconv4, out_conv3), dim=1))
+            out_upconv2 = self.upconv2(torch.cat((out_upconv3, out_conv2), dim=1))
+            out_upconv1 = self.upconv1(torch.cat((out_upconv2, out_conv1), dim=1))
+
 
             exp_mask5 = torch.sigmoid(self.predict_mask5(out_upconv5))
             exp_mask4 = torch.sigmoid(self.predict_mask4(out_upconv4))

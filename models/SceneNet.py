@@ -53,7 +53,7 @@ class SceneNet(nn.Module):
             self.flow_estimators.append(layer_sf)
 
         if args.use_mask:
-            self.pose_decoder = PoseExpNet(nb_ref_imgs=1, output_exp=args.use_mask, in_ch=3)
+            self.pose_decoder = PoseExpNet(nb_ref_imgs=1, output_exp=args.use_mask, in_ch=3, use_bn=True)
             # self.pose_decoder = PoseNet(nb_ref_imgs=1, in_ch=3, use_bn=False)
             # self.mask_decoder = MotionNet(nb_ref_imgs=1)
         else:
