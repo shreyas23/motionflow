@@ -115,7 +115,6 @@ class PoseExpNet(nn.Module):
             out_upconv2 = self.upconv2(torch.cat((out_upconv3, out_conv2), dim=1))
             out_upconv1 = self.upconv1(torch.cat((out_upconv2, out_conv1), dim=1))
 
-
             exp_mask5 = torch.sigmoid(self.predict_mask5(out_upconv5))
             exp_mask4 = torch.sigmoid(self.predict_mask4(out_upconv4))
             exp_mask3 = torch.sigmoid(self.predict_mask3(out_upconv3))

@@ -186,8 +186,8 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
 
         # consistency weights 
         self._lr_cons_w = 1.0
-        self._static_cons_w = 0.1
-        self._mask_cons_w = 0.1
+        self._static_cons_w = 0.0
+        self._mask_cons_w = 0.0
         self._flow_diff_thresh = 1e-3
 
     def depth_loss_left_img(self, disp_l, disp_r, img_l_aug, img_r_aug, ii):
