@@ -77,11 +77,11 @@ class PoseExpNet(nn.Module):
             self.upconv2 = upconv(upconv_planes[3]+conv_planes[1], upconv_planes[4], kernel_size=4, stride=2)
             self.upconv1 = upconv(upconv_planes[4]+conv_planes[0], upconv_planes[5], kernel_size=4, stride=2)
 
-            self.predict_mask5 = nn.Conv2d(upconv_planes[0], self.nb_ref_imgs, kernel_size=3, padding=1)
-            self.predict_mask4 = nn.Conv2d(upconv_planes[1], self.nb_ref_imgs, kernel_size=3, padding=1)
-            self.predict_mask3 = nn.Conv2d(upconv_planes[2], self.nb_ref_imgs, kernel_size=3, padding=1)
-            self.predict_mask2 = nn.Conv2d(upconv_planes[3], self.nb_ref_imgs, kernel_size=3, padding=1)
-            self.predict_mask1 = nn.Conv2d(upconv_planes[4], self.nb_ref_imgs, kernel_size=3, padding=1)
+            self.predict_mask5 = nn.Conv2d(upconv_planes[1], self.nb_ref_imgs, kernel_size=3, padding=1)
+            self.predict_mask4 = nn.Conv2d(upconv_planes[2], self.nb_ref_imgs, kernel_size=3, padding=1)
+            self.predict_mask3 = nn.Conv2d(upconv_planes[3], self.nb_ref_imgs, kernel_size=3, padding=1)
+            self.predict_mask2 = nn.Conv2d(upconv_planes[4], self.nb_ref_imgs, kernel_size=3, padding=1)
+            self.predict_mask1 = nn.Conv2d(upconv_planes[5], self.nb_ref_imgs, kernel_size=3, padding=1)
 
     def init_weights(self):
         for m in self.modules():
