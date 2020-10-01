@@ -182,7 +182,7 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
 
         # pose weights
         self._pose_smooth_w = 200
-        self._mask_reg_w = 0.2
+        self._mask_reg_w = 0.5
 
         # consistency weights 
         self._static_cons_w = 0.0

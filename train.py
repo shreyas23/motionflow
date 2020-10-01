@@ -119,6 +119,7 @@ args = parser.parse_args()
 
 
 def main():
+  print(args)
   torch.autograd.set_detect_anomaly(True)
   torch.manual_seed(args.torch_seed)
   torch.cuda.manual_seed(args.cuda_seed)
