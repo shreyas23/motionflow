@@ -152,9 +152,13 @@ class SceneNet(nn.Module):
 
         x21 = torch.cat([x2_out, x1_out], dim=1)
         x12 = torch.cat([x1_out, x2_out], dim=1)
+        # r21 = torch.cat([input_dict['input_r2_aug'], input_dict['input_r1_aug']], dim=1)
+        # r12 = torch.cat([input_dict['input_r1_aug'], input_dict['input_r2_aug']], dim=1)
 
         masks_b, pose_b = self.pose_decoder(x21)
         masks_f, pose_f = self.pose_decoder(x12)
+        # masks_b, pose_b = self.pose_decoder(x21)
+        # masks_f, pose_f = self.pose_decoder(x12)
         # masks_b = self.mask_decoder(x21)
         # masks_f = self.mask_decoder(x12)
 
