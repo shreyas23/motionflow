@@ -20,6 +20,7 @@ from augmentations import Augmentation_SceneFlow, Augmentation_Resize_Only
 from datasets.kitti_raw_monosf import KITTI_Raw_KittiSplit_Train, KITTI_Raw_KittiSplit_Valid
 
 from models.SceneNet import SceneNet
+from models.SceneNetStereo import SceneNetStereo
 from models.model_monosceneflow import MonoSceneFlow
 from models.PoseDepthNet import PoseDispNet
 
@@ -132,6 +133,9 @@ def main():
   if DATASET_NAME == 'KITTI':
     if args.model_name == 'scenenet':
       model = SceneNet(args)
+      loss = Loss_SceneFlow_SelfSup_Pose(args)
+    if args.model_name == 'scenenet_stereo':
+      model = SceneNetStereo(args)
       loss = Loss_SceneFlow_SelfSup_Pose(args)
     elif args.model_name == 'monoflow':
       model = MonoSceneFlow(args)
