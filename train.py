@@ -134,7 +134,7 @@ def main():
     if args.model_name == 'scenenet':
       model = SceneNet(args)
       loss = Loss_SceneFlow_SelfSup_Pose(args)
-    if args.model_name == 'scenenet_stereo':
+    elif args.model_name == 'scenenet_stereo':
       model = SceneNetStereo(args)
       loss = Loss_SceneFlow_SelfSup_Pose(args)
     elif args.model_name == 'monoflow':
