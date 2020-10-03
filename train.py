@@ -190,7 +190,7 @@ def main():
         optimizer, factor=args.lr_gamma, verbose=True, mode='min', patience=10)
   elif args.lr_sched_type == 'step':
     print("Using step lr schedule")
-    milestones = [30, 40]
+    milestones = [30]
     lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
         optimizer, milestones=milestones, gamma=args.lr_gamma)
   elif args.lr_sched_type == 'none':
