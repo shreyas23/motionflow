@@ -223,7 +223,7 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
 
 
     def mask_reg_loss(self, mask):
-        loss = tf.binary_cross_entropy(mask + eps, torch.ones_like(mask))
+        loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
         return loss * self._mask_reg_w
 
     
@@ -268,7 +268,7 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
         _, coord = pts2pixel_pose_ms(intrinsics_scaled, pts, pose, [h_dp, w_dp])
         ref_warped = reconstructImg(coord, ref_img)
         valid_pixels = (ref_warped.sum(dim=1, keepdim=True) !=0).detach()
-        valid_pixels = valid_pixels & disp_occ.detach()
+        valid_pixels = valid_pixels * disp_occ.detach()
 
         img_diff = (_elementwise_l1(tgt_img, ref_warped) * (1.0 - self._ssim_w) + _SSIM(tgt_img, ref_warped) * self._ssim_w).mean(dim=1, keepdim=True)
         if mask is not None:
