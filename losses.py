@@ -184,13 +184,13 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
         self._sf_3d_sm = 200
 
         # pose weights
-        self._pose_smooth_w = 200
-        self._mask_reg_w = 0.2
+        self._pose_smooth_w = args.pose_sm_w
+        self._mask_reg_w = args.mask_reg_w
 
         # consistency weights 
-        self._static_cons_w = 0.0
-        self._mask_cons_w = 0.0
-        self._flow_diff_thresh = 1e-3
+        self._static_cons_w = args.static_cons_w
+        self._mask_cons_w = args.mask_cons_w
+        self._flow_diff_thresh = args.flow_diff_thresh
 
 
     def depth_loss_left_img(self, disp_l, disp_r, img_l_aug, img_r_aug, ii):
