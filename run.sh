@@ -1,7 +1,7 @@
 python3 train.py --data_root="/ceph/kitti_jpg/" \
                  --exp_name="test_cons" \
-                 --num_examples=200 \
-                 --resize_only=True \
+                 --num_examples=-1 \
+                 --resize_only=False \
                  --model_name="scenenet_stereo" \
                  --epochs=100 \
                  --batch_size=4 \
@@ -16,6 +16,7 @@ python3 train.py --data_root="/ceph/kitti_jpg/" \
                  --pose_sm_w=200 \
                  --disp_lr_w=1.0 \
                  --mask_reg_w=0.2 \
+                 --mask_sm_w=0.1 \
                  --static_cons_w=0.0 \
                  --mask_cons_w=0.0 \
                  --flow_diff_thresh=1e-3

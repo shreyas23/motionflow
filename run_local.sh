@@ -1,6 +1,6 @@
 python3 train.py --data_root="/external/datasets/kitti_data_jpg/" \
                  --exp_name="test_cons" \
-                 --num_examples=10 \
+                 --num_examples=12 \
                  --resize_only=True \
                  --model_name="scenenet_stereo" \
                  --epochs=100 \
@@ -16,6 +16,8 @@ python3 train.py --data_root="/external/datasets/kitti_data_jpg/" \
                  --pose_sm_w=200 \
                  --disp_lr_w=1.0 \
                  --mask_reg_w=0.2 \
+                 --mask_sm_w=0.1 \
                  --static_cons_w=0.0 \
                  --mask_cons_w=0.0 \
-                 --flow_diff_thresh=1e-3
+                 --flow_diff_thresh=1e-2 \
+                 --no_logging=True
