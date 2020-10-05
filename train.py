@@ -28,7 +28,8 @@ from utils.inverse_warp import flow_warp, pose2flow, inverse_warp, pose_vec2mat
 from utils.sceneflow_util import projectSceneFlow2Flow, disp2depth_kitti, reconstructImg
 from utils.sceneflow_util import pixel2pts_ms, pts2pixel_ms, pts2pixel_pose_ms, pixel2pts_ms_depth
 
-from losses import Loss_SceneFlow_SelfSup, Loss_SceneFlow_SelfSup_Pose, _generate_image_left, _adaptive_disocc_detection
+from losses import Loss_SceneFlow_SelfSup, Loss_SceneFlow_SelfSup_Pose, Loss_SceneFlow_SelfSup_PoseStereo
+from losses import _generate_image_left, _adaptive_disocc_detection
 from losses import Loss_PoseDepth
 
 
@@ -79,7 +80,9 @@ parser.add_argument('--resize_only', type=bool, default=False,
 # weight params
 parser.add_argument('--pose_sm_w', type=float, default=200, help='mask consensus weight')
 parser.add_argument('--disp_lr_w', type=float, default=1.0, help='mask consensus weight')
+parser.add_argument('--disp_smooth_w', type=float, default=0.1, help='mask consensus weight')
 parser.add_argument('--mask_reg_w', type=float, default=0.2, help='mask consensus weight')
+parser.add_argument('--mask_sm_w', type=float, default=0.2, help='mask consensus weight')
 parser.add_argument('--static_cons_w', type=float, default=0.0, help='mask consensus weight')
 parser.add_argument('--mask_cons_w', type=float, default=0.0, help='mask consensus weight')
 parser.add_argument('--flow_diff_thresh', type=float, default=1e-3, help='mask consensus weight')
@@ -128,7 +131,11 @@ args = parser.parse_args()
 
 
 def main():
-  print(args)
+  for arg in vars(args):
+    print(arg, ":", getattr(args, arg))
+  if args.batch_size == 1 and args.use_bn is True:
+    raise Exception
+
   torch.autograd.set_detect_anomaly(True)
   torch.manual_seed(args.torch_seed)
   torch.cuda.manual_seed(args.cuda_seed)
@@ -144,7 +151,7 @@ def main():
       loss = Loss_SceneFlow_SelfSup_Pose(args)
     elif args.model_name == 'scenenet_stereo':
       model = SceneNetStereo(args)
-      loss = Loss_SceneFlow_SelfSup_Pose(args)
+      loss = Loss_SceneFlow_SelfSup_PoseStereo(args)
     elif args.model_name == 'monoflow':
       model = MonoSceneFlow(args)
       loss = Loss_SceneFlow_SelfSup(args)
@@ -373,7 +380,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     writer.add_images('input_l2', img_l2_aug, epoch)
     writer.add_images('input_r2', img_r2_aug, epoch)
 
-    if args.model_name in ['scenenet']:
+    if args.model_name in ['scenenet', 'scenenet_stereo']:
         sf_b = output_dict['flow_b'][0].detach()
         pose = output_dict['pose_b'].detach()
         print(f"Transformation matrices for epoch: {epoch}, {pose}")

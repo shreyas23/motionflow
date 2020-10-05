@@ -8,6 +8,8 @@ import logging
 from utils.interpolation import interpolate2d_as
 from utils.sceneflow_util import pixel2pts_ms, pts2pixel_ms
 
+from .common import conv
+
 def get_grid(x):
     grid_H = torch.linspace(-1.0, 1.0, x.size(3)).view(1, 1, 1, x.size(3)).expand(x.size(0), 1, x.size(2), x.size(3))
     grid_V = torch.linspace(-1.0, 1.0, x.size(2)).view(1, 1, x.size(2), 1).expand(x.size(0), 1, x.size(2), x.size(3))
@@ -91,18 +93,18 @@ def upsample_outputs_as(input_list, ref_list):
     return output_list
 
 
-def conv(in_planes, out_planes, kernel_size=3, stride=1, dilation=1, isReLU=True):
-    if isReLU:
-        return nn.Sequential(
-            nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, dilation=dilation,
-                      padding=((kernel_size - 1) * dilation) // 2, bias=True),
-            nn.LeakyReLU(0.1, inplace=True)
-        )
-    else:
-        return nn.Sequential(
-            nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, dilation=dilation,
-                      padding=((kernel_size - 1) * dilation) // 2, bias=True)
-        )
+# def conv(in_planes, out_planes, kernel_size=3, stride=1, dilation=1, isReLU=True):
+#     if isReLU:
+#         return nn.Sequential(
+#             nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, dilation=dilation,
+#                       padding=((kernel_size - 1) * dilation) // 2, bias=True),
+#             nn.LeakyReLU(0.1, inplace=True)
+#         )
+#     else:
+#         return nn.Sequential(
+#             nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, dilation=dilation,
+#                       padding=((kernel_size - 1) * dilation) // 2, bias=True)
+#         )
 
 
 class upconv(nn.Module):
@@ -139,18 +141,20 @@ class FeatureExtractor(nn.Module):
 
 
 class MonoSceneFlowDecoder(nn.Module):
-    def __init__(self, ch_in):
+    def __init__(self, ch_in, use_bn=False):
         super(MonoSceneFlowDecoder, self).__init__()
 
         self.convs = nn.Sequential(
-            conv(ch_in, 128),
-            conv(128, 128),
-            conv(128, 96),
-            conv(96, 64),
-            conv(64, 32)
+            conv(ch_in, 128, use_bn=use_bn),
+            conv(128, 128, use_bn=use_bn),
+            conv(128, 96, use_bn=use_bn),
+            conv(96, 64, use_bn=use_bn),
+            conv(64, 32, use_bn=use_bn)
         )
-        self.conv_sf = conv(32, 3, isReLU=False)
-        self.conv_d1 = conv(32, 1, isReLU=False)
+        # self.conv_sf = conv(32, 3, isReLU=False)
+        # self.conv_d1 = conv(32, 1, isReLU=False)
+        self.conv_sf = conv(32, 3, use_relu=False)
+        self.conv_d1 = conv(32, 1, use_relu=False)
 
     def forward(self, x):
         x_out = self.convs(x)
@@ -161,20 +165,25 @@ class MonoSceneFlowDecoder(nn.Module):
 
 
 class ContextNetwork(nn.Module):
-    def __init__(self, ch_in):
+    def __init__(self, ch_in, use_bn=False):
         super(ContextNetwork, self).__init__()
 
         self.convs = nn.Sequential(
-            conv(ch_in, 128, 3, 1, 1),
-            conv(128, 128, 3, 1, 2),
-            conv(128, 128, 3, 1, 4),
-            conv(128, 96, 3, 1, 8),
-            conv(96, 64, 3, 1, 16),
-            conv(64, 32, 3, 1, 1)
+            conv(ch_in, 128, 3, 1, 1, use_bn=use_bn),
+            conv(128, 128, 3, 1, 2, use_bn=use_bn),
+            conv(128, 128, 3, 1, 4, use_bn=use_bn),
+            conv(128, 96, 3, 1, 8, use_bn=use_bn),
+            conv(96, 64, 3, 1, 16, use_bn=use_bn),
+            conv(64, 32, 3, 1, 1, use_bn=use_bn)
         )
-        self.conv_sf = conv(32, 3, isReLU=False)
+        # self.conv_sf = conv(32, 3, isReLU=False)
+        # self.conv_d1 = nn.Sequential(
+        #     conv(32, 1, isReLU=False), 
+        #     torch.nn.Sigmoid()
+        # )
+        self.conv_sf = conv(32, 3, use_relu=False)
         self.conv_d1 = nn.Sequential(
-            conv(32, 1, isReLU=False), 
+            conv(32, 1, use_relu=False), 
             torch.nn.Sigmoid()
         )
 

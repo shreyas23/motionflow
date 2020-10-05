@@ -1,1 +1,21 @@
-python3 train.py --data_root=/ceph/kitti_jpg/ --exp_name="test_cons" --num_examples=1000 --resize_only=True --model_name="scenenet_stereo" --epochs=100 --batch_size=4 --log_dir="/ceph/checkpoints/" --num_workers=8 --lr_sched_type='step' --lr=2e-4 --use_mask=True --lr_gamma=0.5 --use_bn=True --shuffle=True
+python3 train.py --data_root="/ceph/kitti_jpg/" \
+                 --exp_name="test_cons" \
+                 --num_examples=200 \
+                 --resize_only=True \
+                 --model_name="scenenet_stereo" \
+                 --epochs=100 \
+                 --batch_size=4 \
+                 --log_dir="/ceph/checkpoints/" \
+                 --num_workers=8 \
+                 --lr_sched_type='step' \
+                 --lr=2e-4 \
+                 --use_mask=True \
+                 --lr_gamma=0.5 \
+                 --use_bn=True \
+                 --shuffle=True \
+                 --pose_sm_w=200 \
+                 --disp_lr_w=1.0 \
+                 --mask_reg_w=0.2 \
+                 --static_cons_w=0.0 \
+                 --mask_cons_w=0.0 \
+                 --flow_diff_thresh=1e-3

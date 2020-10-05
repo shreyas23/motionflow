@@ -14,6 +14,7 @@ from .modules_sceneflow import upconv
 from .modules_sceneflow import FeatureExtractor, MonoSceneFlowDecoder, ContextNetwork
 
 from .decoders import PoseNet, PoseExpNet, MotionNet
+# from .RigidityContextNet import RigidityContextNet
 
 from utils.interpolation import interpolate2d_as
 from utils.sceneflow_util import flow_horizontal_flip, intrinsic_scale, get_pixelgrid, post_processing
@@ -39,19 +40,18 @@ class SceneNetStereo(nn.Module):
         self.upconv_layers = nn.ModuleList()
 
         self.dim_corr = (self.search_range * 2 + 1) ** 2
-        self.disp_range = 81
+        self.disp_range = 192
 
         for l, ch in enumerate(self.num_chs[::-1]):
             if l > self.output_level:
                 break
-
             if l == 0:
                 num_ch_in = self.dim_corr + self.disp_range + ch +ch
             else:
                 num_ch_in = self.dim_corr + self.disp_range + ch + ch + 32 + 3 + 1
                 self.upconv_layers.append(upconv(32, 32, 3, 2))
 
-            layer_sf = MonoSceneFlowDecoder(num_ch_in)
+            layer_sf = MonoSceneFlowDecoder(num_ch_in, use_bn=args.use_bn)
             self.flow_estimators.append(layer_sf)
 
         if args.use_mask:
@@ -65,6 +65,7 @@ class SceneNetStereo(nn.Module):
         self.disp_corr = SpatialCorrelationSampler(patch_size=(1, self.disp_range))
 
         self.context_networks = ContextNetwork(32 + 3 + 1)
+        # self.rigidity_context_network = RigidityContextNet(args, 32 + 32 + 3 + 3 + 1)
         self.sigmoid = torch.nn.Sigmoid()
 
         initialize_msra(self.modules())
@@ -139,7 +140,7 @@ class SceneNetStereo(nn.Module):
                 sceneflows_f.append(flow_f)
                 sceneflows_b.append(flow_b)
                 disps_1.append(disp_l1)
-                disps_2.append(disp_l2)                
+                disps_2.append(disp_l2)
                 break
 
         x1_rev = x1_pyramid[::-1]
