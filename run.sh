@@ -1,5 +1,7 @@
 python3 train.py --data_root="/ceph/kitti_jpg/" \
-                 --exp_name="test_cons" \
+                 --exp_dir="test_cons" \
+                 --exp_name="" \
+                 --log_freq=1 \
                  --num_examples=-1 \
                  --resize_only=False \
                  --model_name="scenenet_stereo" \

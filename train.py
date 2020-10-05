@@ -48,8 +48,10 @@ parser.add_argument('--no_logging', type=bool, default=False,
 parser.add_argument('--log_dir', type=str, default="/external/cnet/checkpoints",
                     help="are you logging this experiment?")
 parser.add_argument('--log_freq', type=int, default=1, help='how often to log statistics')
-parser.add_argument('--exp_name', type=str, default='test',
+parser.add_argument('--exp_dir', type=str, default='test',
                     help='name of experiment, chkpts stored in checkpoints/experiment')
+parser.add_argument('--exp_name', type=str, default='test',
+                    help='name of experiment, chkpts stored in checkpoints/exp_dir/exp_name')
 parser.add_argument('--validate', type=bool, default=False,
                     help='set to true if validating model')
 parser.add_argument('--ckpt', type=str, default="",
@@ -215,11 +217,14 @@ def main():
   if not args.no_logging:
     if not os.path.isdir(args.log_dir):
       os.mkdir(args.log_dir)
-    log_dir = os.path.join(args.log_dir, args.exp_name)
+    log_dir = os.path.join(args.log_dir, args.exp_dir)
     if not os.path.isdir(log_dir):
       os.mkdir(log_dir)
-    log_dir = os.path.join(
-        log_dir, datetime.datetime.now().strftime("%H%M%S-%Y%m%d"))
+    if args.exp_name == "":
+      exp_name = datetime.datetime.now().strftime("%H%M%S-%Y%m%d")
+    else:
+      exp_name = args.exp_name
+    log_dir = os.path.join(log_dir, exp_name)
     writer = SummaryWriter(log_dir)
 
   if args.ckpt != "" and args.use_pretrained:
