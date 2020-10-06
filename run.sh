@@ -1,13 +1,12 @@
 python3 train.py --data_root="/ceph/kitti_jpg/" \
                  --exp_dir="test_cons" \
                  --exp_name="test_parallel" \
-                 --log_freq=1 \
                  --num_examples=1000 \
                  --resize_only=True \
                  --model_name="scenenet_stereo" \
                  --epochs=30 \
                  --num_gpus=2 \
-                 --batch_size=8 \
+                 --batch_size=6 \
                  --log_dir="/ceph/checkpoints/" \
                  --log_freq=1 \
                  --num_workers=16 \
