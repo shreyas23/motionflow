@@ -188,15 +188,19 @@ def main():
   # load the model
   print("Loding model and augmentations and placing on gpu...")
 
-  if args.num_gpus > 1:
-    # dist.init_process_group("nccl")
-    # model = nn.parallel.DistributedDataParallel(model)
-    model = nn.DataParallel(model)
-
   if args.cuda:
     if augmentations is not None:
         augmentations = augmentations.cuda()
-    model = model.cuda()
+    
+    device = torch.device("cuda:0")
+
+    if args.num_gpus > 1:
+        print(f"Using {torch.cuda.device_count()} GPUs...")
+        # dist.init_process_group("nccl")
+        # model = nn.parallel.DistributedDataParallel(model)
+        model = nn.DataParallel(model)
+
+    model = model.to(device)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
