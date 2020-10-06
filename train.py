@@ -135,7 +135,8 @@ args = parser.parse_args()
 
 def main():
   for arg in vars(args):
-    print(arg, ":", getattr(args, arg))
+    print(f"{arg}: {getattr(args, arg)}")
+
   if args.batch_size == 1 and args.use_bn is True:
     raise Exception
 
@@ -192,14 +193,12 @@ def main():
     if augmentations is not None:
         augmentations = augmentations.cuda()
     
-    device = torch.device("cuda:0")
-    model = model.to(device)
+    model = model.cuda()
 
     if args.num_gpus > 1:
         print(f"Using {torch.cuda.device_count()} GPUs...")
-        # dist.init_process_group("nccl")
-        # model = nn.parallel.DistributedDataParallel(model)
-        model = nn.DataParallel(model)
+        torch.distributed.init_process_group(backend="nccl")
+        model = nn.parallel.DistributedDataParallel(model)
 
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False

@@ -4,6 +4,7 @@ import torch.nn.functional as tf
 
 from .common import conv, upconv
 
+
 class PoseNet(nn.Module):
 
     def __init__(self, nb_ref_imgs=1, in_ch=3, use_bn=False):
@@ -99,8 +100,8 @@ class PoseExpNet(nn.Module):
         out_conv6 = self.conv6(out_conv5)
         out_conv7 = self.conv7(out_conv6)
 
-        pose = self.pose_pred(out_conv7)
-        pose = pose.mean(3).mean(2) * 0.01
+        pose_feats = self.pose_pred(out_conv7)
+        pose = pose_feats.mean(3).mean(2) * 0.01
 
         if self.output_exp:
             # out_upconv5 = self.upconv5(out_conv5  )[:, :, 0:out_conv4.size(2), 0:out_conv4.size(3)]
@@ -128,7 +129,7 @@ class PoseExpNet(nn.Module):
             exp_mask1 = None
 
         if self.training:
-            return [exp_mask1, exp_mask2, exp_mask3, exp_mask4, exp_mask5], pose
+            return [exp_mask1, exp_mask2, exp_mask3, exp_mask4, exp_mask5], pose, pose_feats
         else:
             return exp_mask1, pose
 

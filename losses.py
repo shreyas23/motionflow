@@ -226,13 +226,6 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
         loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
         return loss * self._mask_reg_w
 
-    def mask_loss(self, mask):
-        reg_loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
-        sm_loss = (_gradient_x_2nd(mask).abs() + _gradient_y_2nd(mask).abs()).mean()
-        loss = reg_loss * self._mask_reg_w + sm_loss * self._mask_sm_w
-
-        return loss, reg_loss, sm_loss
-
     def static_cons_loss(self, mask, sf, pose, disp, disp_occ, intrinsics, aug_size):
         # convert pose params to induced static scene flow
         _, _, h_dp, w_dp = disp.size()
@@ -241,15 +234,18 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
         local_scale[:, 0] = h_dp
         local_scale[:, 1] = w_dp         
         _, intrinsics_scaled, depth = pixel2pts_ms_depth(intrinsics, disp, local_scale / aug_size)
-        pose_sf = pose2sceneflow(depth.squeeze(1), pose, intrinsics_scaled, torch.inverse(intrinsics_scaled))
+        # pose_sf = pose2sceneflow(depth.squeeze(dim=1), pose, intrinsics_scaled, torch.inverse(intrinsics_scaled))
+        pose_flow = pose2flow(depth.squeeze(dim=1), pose, intrinsics, torch.inverse(intrinsics_scaled))
+
+        flow = projectSceneFlow2Flow(intrinsics_scaled, sf, disp)
 
         # static consistency loss
-        flow_diff = _elementwise_epe(pose_sf, sf)
+        # flow_diff = _elementwise_epe(pose_flow, flow)
+        flow_diff = (pose_flow - flow).abs().mean(dim=1, keepdim=True)
         loss = (flow_diff * mask)[disp_occ].mean()
         flow_diff[~disp_occ].detach_()
 
-        return loss * self._static_cons_w, flow_diff
-
+        return loss * self._static_cons_w, flow_diff.detach()
 
     def mask_consensus_loss(self, mask, flow_diff, pose_err, sf_err):
         # mask consensus loss
@@ -259,6 +255,13 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
         loss = tf.binary_cross_entropy(mask, census_target_mask)
         return loss * self._mask_cons_w, census_target_mask
 
+    def mask_loss(self, mask):
+        reg_loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
+        sm_loss = (_gradient_x_2nd(mask).abs() + _gradient_y_2nd(mask).abs()).mean()
+
+        loss = reg_loss * self._mask_reg_w + sm_loss * self._mask_sm_w
+
+        return loss, reg_loss, sm_loss
 
     def pose_loss(self, pose, disp, disp_occ, intrinsics, ref_img, tgt_img, aug_size, mask=None):
 
@@ -431,10 +434,8 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
             loss_dp_sum = loss_dp_sum + (loss_disp_l1 + loss_disp_l2) * self._weights[ii]
             loss_lr_cons_sum += loss_lr_cons1 + loss_lr_cons2
 
-            # flow_mask_f = 1.0 - mask_f 
-            # flow_mask_b = 1.0 - mask_b 
-            flow_mask_f = None
-            flow_mask_b = None
+            flow_mask_f = 1.0 - mask_f 
+            flow_mask_b = 1.0 - mask_b 
 
             ## Sceneflow Loss
             loss_sceneflow, loss_im, loss_pts, loss_3d_s, sf_diffs = self.sceneflow_loss(sf_f, sf_b, 
@@ -462,7 +463,12 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
                                                                                       img_l2_aug, img_l1_aug, 
                                                                                       aug_size, mask_f)
 
-            # mask regularization loss
+            # pose loss
+            loss_pose_sum += (loss_pose_f + loss_pose_b) * self._weights[ii]
+            loss_pose_im_sum += loss_pose_im_f + loss_pose_im_b
+            loss_pose_sm_sum += loss_pose_sm_f + loss_pose_sm_b
+            
+            # mask loss
             loss_mask_b, loss_mask_reg_b, loss_mask_sm_b = self.mask_loss(mask_b)
             loss_mask_f, loss_mask_reg_f, loss_mask_sm_f = self.mask_loss(mask_f)
 
@@ -470,12 +476,6 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
             loss_mask_reg_sum += (loss_mask_reg_b + loss_mask_reg_f)
             loss_mask_sm_sum += (loss_mask_sm_b + loss_mask_sm_f)
 
-            loss_pose_sum += (loss_pose_f + loss_pose_b) * self._weights[ii]
-            # loss_pose_sum += (loss_pose_f + loss_pose_b + loss_mask_b + loss_mask_f) * self._weights[ii]
-            # loss_pose_sum += (loss_pose_f + loss_pose_b + loss_mask_reg_b + loss_mask_reg_f) * self._weights[ii]
-            loss_pose_im_sum += loss_pose_im_f + loss_pose_im_b
-            loss_pose_sm_sum += loss_pose_sm_f + loss_pose_sm_b
-            
             # static consistency sum
             loss_static_cons_b, flow_diff_b = self.static_cons_loss(mask_b, sf_b, pose_b, disp_l2, disp_occ_l2, k_l2_aug, aug_size)
             loss_static_cons_f, flow_diff_f = self.static_cons_loss(mask_f, sf_f, pose_f, disp_l1, disp_occ_l1, k_l1_aug, aug_size)
@@ -493,16 +493,13 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
         f_loss = loss_sf_sum.detach()
         d_loss = loss_dp_sum.detach()
         p_loss = loss_pose_sum.detach()
-        # m_loss = loss_mask_sum.detach()
 
         max_val = torch.max(torch.max(f_loss, d_loss), p_loss)
 
         f_weight = max_val / f_loss
         d_weight = max_val / d_loss
         p_weight = max_val / p_loss
-        # m_weight = max_val / m_loss
 
-        # total_loss = loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * p_weight + loss_mask_consensus_sum
         total_loss = loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * p_weight + loss_mask_sum
 
         loss_dict = {}

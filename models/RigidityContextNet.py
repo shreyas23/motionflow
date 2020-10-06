@@ -23,16 +23,9 @@ class RigidityContextNet(nn.Module):
             conv(64, 32, 3, 1, 1, use_bn=args.use_bn)
         )
         self.conv_sf = conv(32, 3, use_relu=False)
-        self.conv_d1 = nn.Sequential(
-            conv(32, 1, use_relu=False), 
-            torch.nn.Sigmoid()
-        )
 
-    def forward(self, pose_sf, sf, disp):
-        x = torch.cat([pose_sf, sf, disp], dim=1) 
-
+    def forward(self, x):
         x_out = self.convs(x)
-        sf_refine = self.conv_sf(x_out)
-        disp_refine = self.conv_d1(x_out) * 0.3
+        out_sf = self.conv_sf(x_out)
 
-        return sf_refine, disp_refine
+        return out_sf

@@ -14,7 +14,7 @@ from .modules_sceneflow import upconv
 from .modules_sceneflow import FeatureExtractor, MonoSceneFlowDecoder, ContextNetwork
 
 from .decoders import PoseNet, PoseExpNet, MotionNet
-# from .RigidityContextNet import RigidityContextNet
+from .RigidityContextNet import RigidityContextNet
 
 from utils.interpolation import interpolate2d_as
 from utils.sceneflow_util import flow_horizontal_flip, intrinsic_scale, get_pixelgrid, post_processing
@@ -38,6 +38,7 @@ class SceneNetStereo(nn.Module):
         
         self.flow_estimators = nn.ModuleList()
         self.upconv_layers = nn.ModuleList()
+        # self.rigidity_context_layers = nn.ModuleList()
 
         self.dim_corr = (self.search_range * 2 + 1) ** 2
         self.disp_range = 192
@@ -46,7 +47,7 @@ class SceneNetStereo(nn.Module):
             if l > self.output_level:
                 break
             if l == 0:
-                num_ch_in = self.dim_corr + self.disp_range + ch +ch
+                num_ch_in = self.dim_corr + self.disp_range + ch + ch
             else:
                 num_ch_in = self.dim_corr + self.disp_range + ch + ch + 32 + 3 + 1
                 self.upconv_layers.append(upconv(32, 32, 3, 2))
@@ -54,18 +55,18 @@ class SceneNetStereo(nn.Module):
             layer_sf = MonoSceneFlowDecoder(num_ch_in, use_bn=args.use_bn)
             self.flow_estimators.append(layer_sf)
 
-        if args.use_mask:
-            self.pose_decoder = PoseExpNet(nb_ref_imgs=1, output_exp=args.use_mask, in_ch=3, use_bn=args.use_bn)
-            # self.pose_decoder = PoseNet(nb_ref_imgs=1, in_ch=3, use_bn=False)
-            # self.mask_decoder = MotionNet(nb_ref_imgs=1)
-        else:
-            self.pose_decoder = PoseNet(1)
+            # rigid_context_net = RigidityContextNet(args, 3 + 1 + 6 + 1)
+            # self.rigidity_context_layers.append(rigid_context_net)
+
+        self.pose_decoder = PoseExpNet(nb_ref_imgs=1, output_exp=args.use_mask, in_ch=3, use_bn=args.use_bn)
+        # self.pose_decoder = PoseNet(nb_ref_imgs=1, in_ch=3, use_bn=False)
+        # self.mask_decoder = MotionNet(nb_ref_imgs=1)
+        # self.pose_decoder = PoseNet(1)
 
         self.corr_params = {"pad_size": self.search_range, "kernel_size": 1, "max_disp": self.search_range, "stride1": 1, "stride2": 1, "corr_multiply": 1}        
         self.disp_corr = SpatialCorrelationSampler(patch_size=(1, self.disp_range))
 
         self.context_networks = ContextNetwork(32 + 3 + 1)
-        # self.rigidity_context_network = RigidityContextNet(args, 32 + 32 + 3 + 3 + 1)
         self.sigmoid = torch.nn.Sigmoid()
 
         initialize_msra(self.modules())
@@ -149,8 +150,33 @@ class SceneNetStereo(nn.Module):
         output_dict['flow_b'] = upsample_outputs_as(sceneflows_b[::-1], x1_rev)
         output_dict['disp_l1'] = upsample_outputs_as(disps_1[::-1], x1_rev)
         output_dict['disp_l2'] = upsample_outputs_as(disps_2[::-1], x1_rev)
+
+        x21 = torch.cat([x2_pyramid[-1], x1_pyramid[-1]], dim=1)
+        x12 = torch.cat([x1_pyramid[-1], x2_pyramid[-1]], dim=1)
+
+        masks_b, pose_b, _ = self.pose_decoder(x21)
+        masks_f, pose_f, _ = self.pose_decoder(x12)
+
+        output_dict["pose_b"] = pose_b
+        output_dict["masks_b"] = masks_b
+        output_dict["pose_f"] = pose_f
+        output_dict["masks_f"] = masks_f
+
+        # out_sf_f = []
+        # out_sf_b = []
+
+        # for i, (flow, disp, mask) in enumerate(zip(output_dict["flow_f"], output_dict["disp_l1"], output_dict['masks_f'])):
+        #     x = torch.cat([flow, disp, pose_feats_f, mask], dim=1)
+        #     out_sf_f.append(self.rigidity_context_layers[i](x))
+
+        # for i, (flow, disp, mask) in enumerate(zip(output_dict["flow_b"], output_dict["disp_l2"], output_dict['masks_b'])):
+        #     x = torch.cat([flow, disp, pose_feats_b, mask], dim=1)
+        #     out_sf_b.append(self.rigidity_context_layers[i](x))
         
-        return output_dict, x1_pyramid[-1], x2_pyramid[-1]
+        # output_dict["out_sf_f"] = out_sf_f
+        # output_dict["out_sf_b"] = out_sf_b
+        
+        return output_dict
 
 
     def forward(self, input_dict):
@@ -158,24 +184,7 @@ class SceneNetStereo(nn.Module):
         output_dict = {}
 
         ## Left
-        output_dict, x1_out, x2_out = self.run_pwc(input_dict, input_dict['input_l1_aug'], input_dict['input_l2_aug'], input_dict['input_r1_aug'], input_dict['input_r2_aug'], input_dict['input_k_l1_aug'], input_dict['input_k_l2_aug'])
-
-        x21 = torch.cat([x2_out, x1_out], dim=1)
-        x12 = torch.cat([x1_out, x2_out], dim=1)
-        # r21 = torch.cat([input_dict['input_r2_aug'], input_dict['input_r1_aug']], dim=1)
-        # r12 = torch.cat([input_dict['input_r1_aug'], input_dict['input_r2_aug']], dim=1)
-
-        masks_b, pose_b = self.pose_decoder(x21)
-        masks_f, pose_f = self.pose_decoder(x12)
-        # masks_b, pose_b = self.pose_decoder(x21)
-        # masks_f, pose_f = self.pose_decoder(x12)
-        # masks_b = self.mask_decoder(x21)
-        # masks_f = self.mask_decoder(x12)
-
-        output_dict["pose_b"] = pose_b
-        output_dict["masks_b"] = masks_b
-        output_dict["pose_f"] = pose_f
-        output_dict["masks_f"] = masks_f
+        output_dict = self.run_pwc(input_dict, input_dict['input_l1_aug'], input_dict['input_l2_aug'], input_dict['input_r1_aug'], input_dict['input_r2_aug'], input_dict['input_k_l1_aug'], input_dict['input_k_l2_aug'])
 
         ## Right
         ## ss: train val 
@@ -188,7 +197,7 @@ class SceneNetStereo(nn.Module):
             k_r1_flip = input_dict["input_k_r1_flip_aug"]
             k_r2_flip = input_dict["input_k_r2_flip_aug"]
 
-            output_dict_r, _, _ = self.run_pwc(input_dict, input_r1_flip, input_r2_flip, input_l1_flip, input_l2_flip, k_r1_flip, k_r2_flip)
+            output_dict_r = self.run_pwc(input_dict, input_r1_flip, input_r2_flip, input_l1_flip, input_l2_flip, k_r1_flip, k_r2_flip)
 
             for ii in range(0, len(output_dict_r['flow_f'])):
                 output_dict_r['flow_f'][ii] = flow_horizontal_flip(output_dict_r['flow_f'][ii])
