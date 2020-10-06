@@ -320,8 +320,7 @@ def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_
 
   loss_dict_avg = None
 
-  # for data in tqdm(dataloader):
-  for data in dataloader:
+  for data in tqdm(dataloader):
     loss_dict, output_dict = step(
         args, data, model, loss, augmentations, optimizer)
     
