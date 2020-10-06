@@ -14,6 +14,7 @@ import torch.nn as nn
 from torch.optim import Adam, SGD
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
+import torch.distributed as dist
 
 from augmentations import Augmentation_SceneFlow, Augmentation_Resize_Only
 
@@ -246,6 +247,7 @@ def main():
     model.load_state_dict(ckpt)
 
   if args.num_gpus > 1:
+    dist.init_process_group("nccl")
     model = nn.parallel.DistributedDataParallel(model)
 
   model = model.train()
