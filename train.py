@@ -116,8 +116,8 @@ parser.add_argument('--use_mask', type=bool, default=False,
                     help="whether to use consensus mask in training procedure")
 
 # etc.
-parser.add_argument('--multi_gpu', type=bool,
-                    default=False, help='use multiple gpus')
+parser.add_argument('--num_gpus', type=int,
+                    default=1, help='number of gpus used for training')
 parser.add_argument('--debugging', type=bool,
                     default=False, help='are you debugging?')
 parser.add_argument('--finetuning', type=bool, default=False,
@@ -207,7 +207,7 @@ def main():
         optimizer, factor=args.lr_gamma, verbose=True, mode='min', patience=10)
   elif args.lr_sched_type == 'step':
     print("Using step lr schedule")
-    milestones = [30]
+    milestones = [20]
     lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
         optimizer, milestones=milestones, gamma=args.lr_gamma)
   elif args.lr_sched_type == 'none':
@@ -245,6 +245,9 @@ def main():
             load_epoch), "epoch from state dict does not match with args"
     model.load_state_dict(ckpt)
 
+  if args.num_gpus > 1:
+    model = nn.parallel.DistributedDataParallel(model)
+
   model = model.train()
 
   # run training loop
@@ -275,7 +278,7 @@ def main():
 
     # save model
     if not args.no_logging:
-      if epoch % 1000 == 0 or epoch == args.epochs:
+      if epoch % log_freq == 0 or epoch == args.epochs:
         fp = os.path.join(log_dir, f"{epoch}.ckpt")
         torch.save(model.state_dict(), fp)
 

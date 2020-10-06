@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as tf
@@ -432,7 +430,6 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
             loss_disp_l2, loss_lr_cons2, disp_occ_l2 = self.depth_loss_left_img(disp_l2, disp_r2, img_l2_aug, img_r2_aug, ii)
             loss_dp_sum = loss_dp_sum + (loss_disp_l1 + loss_disp_l2) * self._weights[ii]
             loss_lr_cons_sum += loss_lr_cons1 + loss_lr_cons2
-            loss_dp_sum.register_hook(lambda grad: print("disp img grad:", grad))
 
             # flow_mask_f = 1.0 - mask_f 
             # flow_mask_b = 1.0 - mask_b 
@@ -472,7 +469,6 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
             loss_mask_sum += (loss_mask_b + loss_mask_f) * self._weights[ii]
             loss_mask_reg_sum += (loss_mask_reg_b + loss_mask_reg_f)
             loss_mask_sm_sum += (loss_mask_sm_b + loss_mask_sm_f)
-            loss_mask_sum.register_hook(lambda grad: print("mask grad:", grad))
 
             loss_pose_sum += (loss_pose_f + loss_pose_b) * self._weights[ii]
             # loss_pose_sum += (loss_pose_f + loss_pose_b + loss_mask_b + loss_mask_f) * self._weights[ii]
