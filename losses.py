@@ -371,7 +371,6 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
         for ii in range(0, len(output_dict['flow_f'])):
             output_dict['flow_f'][ii].detach_()
             output_dict['flow_b'][ii].detach_()
-
         return
 
     def forward(self, output_dict, target_dict):
@@ -436,6 +435,8 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
 
             flow_mask_f = 1.0 - mask_f 
             flow_mask_b = 1.0 - mask_b 
+            # flow_mask_f = None
+            # flow_mask_b = None
 
             ## Sceneflow Loss
             loss_sceneflow, loss_im, loss_pts, loss_3d_s, sf_diffs = self.sceneflow_loss(sf_f, sf_b, 
@@ -500,7 +501,7 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
         d_weight = max_val / d_loss
         p_weight = max_val / p_loss
 
-        total_loss = loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * p_weight + loss_mask_sum
+        total_loss = loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * p_weight + loss_mask_sum + loss_mask_consensus_sum
 
         loss_dict = {}
         loss_dict["dp"] = loss_dp_sum

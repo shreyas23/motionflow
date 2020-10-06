@@ -157,8 +157,8 @@ def main():
       model = SceneNet(args)
       loss = Loss_SceneFlow_SelfSup_Pose(args)
     elif args.model_name == 'scenenet_stereo':
-      model = SceneNetStereo(args)
       loss = Loss_SceneFlow_SelfSup_PoseStereo(args)
+      model = SceneNetStereo(args, loss=loss)
     elif args.model_name == 'monoflow':
       model = MonoSceneFlow(args)
       loss = Loss_SceneFlow_SelfSup(args)
@@ -201,6 +201,7 @@ def main():
         print(f"Using {torch.cuda.device_count()} GPUs...")
         # torch.distributed.init_process_group(backend="nccl")
         # model = nn.parallel.DistributedDataParallel(model)
+        augmentations = nn.parallel.DataParallel(augmentations)
         model = nn.parallel.DataParallel(model)
 
     model = model.to(device=device)
@@ -321,11 +322,9 @@ def step(args, data_dict, model, loss, augmentations, optimizer):
     if k in target_keys:
       data_dict[k] = t.requires_grad_(False)
 
-  output_dict = model(data_dict)
-  loss_dict = loss(output_dict, data_dict)
-
-#   training_loss = loss_dict['total_loss'].detach()
-#   assert (not torch.isnan(training_loss)), f"training_loss is NaN: {loss_dict}"
+#   output_dict = model(data_dict)
+#   loss_dict = loss(output_dict, data_dict)
+    loss_dict, output_dict = model(data_dict)
 
   return loss_dict, output_dict
 
