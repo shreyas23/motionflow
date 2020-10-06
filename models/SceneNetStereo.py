@@ -22,11 +22,10 @@ from utils.inverse_warp import pose_vec2mat
 
 
 class SceneNetStereo(nn.Module):
-    def __init__(self, args, loss=None):
+    def __init__(self, args):
         super(SceneNetStereo, self).__init__()
 
         self._args = args
-        self.loss = loss
         self.num_chs = [3, 32, 64, 96, 128, 192, 256]
         self.search_range = 4
         self.output_level = 4
@@ -208,9 +207,4 @@ class SceneNetStereo(nn.Module):
 
             output_dict['output_dict_r'] = output_dict_r
 
-        if self.loss is not None:
-            loss_dict = self.loss(output_dict, input_dict)
-            return loss_dict, output_dict
-        else:
-            return output_dict
-        # return output_dict
+        return output_dict

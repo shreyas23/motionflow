@@ -157,8 +157,8 @@ def main():
       model = SceneNet(args)
       loss = Loss_SceneFlow_SelfSup_Pose(args)
     elif args.model_name == 'scenenet_stereo':
+      model = SceneNetStereo(args)
       loss = Loss_SceneFlow_SelfSup_PoseStereo(args)
-      model = SceneNetStereo(args, loss=loss)
     elif args.model_name == 'monoflow':
       model = MonoSceneFlow(args)
       loss = Loss_SceneFlow_SelfSup(args)
@@ -322,9 +322,8 @@ def step(args, data_dict, model, loss, augmentations, optimizer):
     if k in target_keys:
       data_dict[k] = t.requires_grad_(False)
 
-#   output_dict = model(data_dict)
-#   loss_dict = loss(output_dict, data_dict)
-    loss_dict, output_dict = model(data_dict)
+  output_dict = model(data_dict)
+  loss_dict = loss(output_dict, data_dict)
 
   return loss_dict, output_dict
 

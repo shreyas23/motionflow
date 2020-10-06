@@ -21,4 +21,4 @@ python3 train.py --data_root="/external/datasets/kitti_data_jpg/" \
                  --mask_sm_w=0.1 \
                  --static_cons_w=0.0 \
                  --mask_cons_w=0.1 \
-                 --flow_diff_thresh=1e-3 \
+                 --flow_diff_thresh=1e-3
