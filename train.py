@@ -193,6 +193,7 @@ def main():
         augmentations = augmentations.cuda()
     
     device = torch.device("cuda:0")
+    model = model.to(device)
 
     if args.num_gpus > 1:
         print(f"Using {torch.cuda.device_count()} GPUs...")
@@ -200,7 +201,6 @@ def main():
         # model = nn.parallel.DistributedDataParallel(model)
         model = nn.DataParallel(model)
 
-    model = model.to(device)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
