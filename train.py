@@ -37,6 +37,9 @@ from losses import Loss_PoseDepth
 parser = argparse.ArgumentParser(description="Self Supervised Joint Learning of Scene Flow, Disparity, Rigid Camera Motion, and Motion Segmentation",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
+# distributed params
+parser.add_argument("--local_rank", type=int, default=0)
+
 # runtime params
 parser.add_argument('--data_root', help='path to dataset', required=True)
 parser.add_argument('--epochs', type=int, required=True,
