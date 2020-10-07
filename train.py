@@ -290,7 +290,7 @@ def main():
 
     # save model
     if not args.no_logging:
-      if epoch % log_freq == 0 or epoch == args.epochs:
+      if epoch % args.log_freq == 0 or epoch == args.epochs:
         fp = os.path.join(log_dir, f"{epoch}.ckpt")
         torch.save(model.state_dict(), fp)
 
