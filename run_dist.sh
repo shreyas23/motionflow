@@ -1,7 +1,7 @@
 python3 train.py --data_root="/ceph/kitti_jpg/" \
                  --exp_dir="test_cons" \
                  --exp_name="test_parallel" \
-                 --num_examples=20 \
+                 --num_examples=400 \
                  --resize_only=True \
                  --model_name="scenenet_stereo" \
                  --epochs=50 \
