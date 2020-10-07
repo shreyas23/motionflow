@@ -385,6 +385,9 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
 
     assert (writer is not None), "tensorboard writer not provided"
 
+    print(input_dict.keys())
+    print(output_dict.keys())
+
     img_l1_aug = input_dict['input_l1_aug'].detach()
     img_l2_aug = input_dict['input_l2_aug'].detach()
     img_r2_aug = input_dict['input_r2_aug'].detach()
