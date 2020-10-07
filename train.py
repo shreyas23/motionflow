@@ -201,7 +201,7 @@ def main():
         print(f"Using {torch.cuda.device_count()} GPUs...")
         # torch.distributed.init_process_group(backend="nccl")
         # model = nn.parallel.DistributedDataParallel(model)
-        augmentations = nn.parallel.DataParallel(augmentations)
+        # augmentations = nn.parallel.DataParallel(augmentations)
         model = nn.parallel.DataParallel(model)
 
     model = model.to(device=device)
