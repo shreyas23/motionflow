@@ -488,7 +488,6 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
             loss_mask_consensus_sum += (loss_mask_consensus_b + loss_mask_consensus_f) * self._weights[ii]
             out_masks_b.append(census_mask_b)
             out_masks_f.append(census_mask_f)
-            
 
         # finding weight
         f_loss = loss_sf_sum.detach()
