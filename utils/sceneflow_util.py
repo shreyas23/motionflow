@@ -9,6 +9,15 @@ from .inverse_warp import pose_vec2mat
 from sys import exit
 
 
+def add_pose(pose_mat, pose_res):
+    pose_mat_res = pose_vec2mat(pose_res)
+    R = torch.bmm(pose_mat_res[:, :, :-1], pose_mat[:, :, :-1])
+    t = pose_mat[:, :, -1:] + pose_mat_res[:, :, -1:]
+    pose_mat = torch.cat([R, t], dim=-1)
+
+    return pose_mat 
+
+
 def post_processing(l_disp, r_disp):
     
     b, _, h, w = l_disp.shape
@@ -113,10 +122,12 @@ def pts2pixel_ms(intrinsic, pts, output_sf, disp_size):
     return sf_s, pts_tform, norm_coord
 
 
-def pts2pixel_pose_ms(intrinsic, pts, pose, disp_size):
+def pts2pixel_pose_ms(intrinsic, pts, pose, disp_size, pose_mat=None):
     b, _, h, w = pts.size() 
 
-    pose_mat = pose_vec2mat(pose)
+    if pose is not None and pose_mat is None:
+        pose_mat = pose_vec2mat(pose)
+
     pts_tform = torch.matmul(pose_mat, torch.cat([pts.reshape((b, 3, -1)), torch.ones((b, 1, h*w)).cuda()], dim=1))
     pts_tform = pts_tform.reshape((b, 3, h, w))
     coord = pts2pixel(pts_tform, intrinsic)

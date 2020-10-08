@@ -22,6 +22,7 @@ from datasets.kitti_raw_monosf import KITTI_Raw_KittiSplit_Train, KITTI_Raw_Kitt
 
 from models.SceneNet import SceneNet
 from models.SceneNetStereo import SceneNetStereo
+from models.SceneNetStereoJoint import SceneNetStereoJoint
 from models.model_monosceneflow import MonoSceneFlow
 from models.PoseDepthNet import PoseDispNet
 
@@ -29,7 +30,7 @@ from utils.inverse_warp import flow_warp, pose2flow, inverse_warp, pose_vec2mat
 from utils.sceneflow_util import projectSceneFlow2Flow, disp2depth_kitti, reconstructImg
 from utils.sceneflow_util import pixel2pts_ms, pts2pixel_ms, pts2pixel_pose_ms, pixel2pts_ms_depth
 
-from losses import Loss_SceneFlow_SelfSup, Loss_SceneFlow_SelfSup_Pose, Loss_SceneFlow_SelfSup_PoseStereo
+from losses import Loss_SceneFlow_SelfSup, Loss_SceneFlow_SelfSup_Pose, Loss_SceneFlow_SelfSup_PoseStereo, Loss_SceneFlow_SelfSup_JointStereo
 from losses import _generate_image_left, _adaptive_disocc_detection
 from losses import Loss_PoseDepth
 
@@ -159,6 +160,9 @@ def main():
     elif args.model_name == 'scenenet_stereo':
       model = SceneNetStereo(args)
       loss = Loss_SceneFlow_SelfSup_PoseStereo(args)
+    elif args.model_name == 'scenenet_joint':
+      model = SceneNetStereoJoint(args)
+      loss = Loss_SceneFlow_SelfSup_JointStereo(args)
     elif args.model_name == 'monoflow':
       model = MonoSceneFlow(args)
       loss = Loss_SceneFlow_SelfSup(args)
@@ -197,14 +201,13 @@ def main():
         augmentations = augmentations.cuda()
     
     device = torch.device("cuda:0")
-    if args.num_gpus > 1:
-        print(f"Using {torch.cuda.device_count()} GPUs...")
-        # torch.distributed.init_process_group(backend="nccl")
-        # model = nn.parallel.DistributedDataParallel(model)
-        # augmentations = nn.parallel.DataParallel(augmentations)
-        model = nn.parallel.DataParallel(model)
-
     model = model.to(device=device)
+
+    if args.num_gpus > 1 and torch.cuda.device_count() > 1:
+        print(f"Using {torch.cuda.device_count()} GPUs...")
+
+        model = nn.parallel.DataParallel(model)
+        assert (isinstance(model, nn.DataParallel)), "model is not parallelized"
 
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
@@ -384,9 +387,6 @@ def eval(args, model, loss, dataloader, augmentations):
 def visualize_output(args, input_dict, output_dict, epoch, writer):
 
     assert (writer is not None), "tensorboard writer not provided"
-
-    print(input_dict.keys())
-    print(output_dict.keys())
 
     img_l1_aug = input_dict['input_l1_aug'].detach()
     img_l2_aug = input_dict['input_l2_aug'].detach()

@@ -193,12 +193,12 @@ def flow_warp(img, flow, padding_mode='zeros'):
     return img_tf
 
 
-def pose2flow(depth, pose, intrinsics, intrinsics_inv, rotation_mode='euler', padding_mode=None):
+def pose2flow(depth, pose, intrinsics, intrinsics_inv, rotation_mode='euler', padding_mode=None, pose_mat=None):
     """
     Converts pose parameters to rigid optical flow
     """
     check_sizes(depth, 'depth', 'BHW')
-    check_sizes(pose, 'pose', 'B6')
+    # check_sizes(pose, 'pose', 'B6')
     check_sizes(intrinsics, 'intrinsics', 'B33')
     check_sizes(intrinsics_inv, 'intrinsics', 'B33')
     assert(intrinsics_inv.size() == intrinsics.size())
@@ -209,7 +209,9 @@ def pose2flow(depth, pose, intrinsics, intrinsics_inv, rotation_mode='euler', pa
     grid_y = Variable(torch.arange(0, h).view(1, h, 1).expand(1,h,w), requires_grad=False).type_as(depth).expand_as(depth)  # [bs, H, W]
 
     cam_coords = pixel2cam(depth, intrinsics_inv)  # [B,3,H,W]
-    pose_mat = pose_vec2mat(pose, rotation_mode)  # [B,3,4]
+
+    if pose is not None and pose_mat is None:
+        pose_mat = pose_vec2mat(pose, rotation_mode)  # [B,3,4]
 
     # Get projection matrix for tgt camera frame to source pixel frame
     proj_cam_to_src_pixel = intrinsics.bmm(pose_mat)  # [B, 3, 4]
@@ -221,26 +223,24 @@ def pose2flow(depth, pose, intrinsics, intrinsics_inv, rotation_mode='euler', pa
     return torch.stack((X,Y), dim=1)
 
 
-def pose2sceneflow(depth, pose, intrinsics, intrinsics_inv, rotation_mode='euler', padding_mode=None):
+def pose2sceneflow(depth, pose, intrinsics, intrinsics_inv, rotation_mode='euler', padding_mode=None, pose_mat=None):
     """
-    Converts pose parameters to rigid optical flow
+    Converts pose parameters to rigid scene flow
     """
     check_sizes(depth, 'depth', 'BHW')
-    check_sizes(pose, 'pose', 'B6')
+    # check_sizes(pose, 'pose', 'B6')
     check_sizes(intrinsics, 'intrinsics', 'B33')
     check_sizes(intrinsics_inv, 'intrinsics', 'B33')
     assert(intrinsics_inv.size() == intrinsics.size())
 
     bs, h, w = depth.size()
 
-    grid_x = Variable(torch.arange(0, w).view(1, 1, w).expand(1,h,w), requires_grad=False).type_as(depth).expand_as(depth)  # [bs, H, W]
-    grid_y = Variable(torch.arange(0, h).view(1, h, 1).expand(1,h,w), requires_grad=False).type_as(depth).expand_as(depth)  # [bs, H, W]
-
     # projection matrix from target to points
     cam_coords = pixel2cam(depth, intrinsics_inv)  # [B,3,H,W]
 
     # tform matrix
-    pose_mat = pose_vec2mat(pose, rotation_mode)  # [B,3,4]
+    if pose is not None and pose_mat is None:
+        pose_mat = pose_vec2mat(pose, rotation_mode)  # [B,3,4]
     R = pose_mat[:, :, :-1]
     t = pose_mat[:, :, -1:]
 
@@ -289,7 +289,6 @@ def occlusion_mask(grid, depth):
     mask = grid
 
     return mask
-
 
 
 def inverse_warp(img, depth, pose, intrinsics, intrinsics_inv, rotation_mode='euler', padding_mode='zeros'):
