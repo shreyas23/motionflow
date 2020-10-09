@@ -468,25 +468,24 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
 
             # pose loss
             loss_pose_sum += (loss_pose_f + loss_pose_b) * self._weights[ii]
-            loss_pose_im_sum += (loss_pose_im_f + loss_pose_im_b).detach()
-            loss_pose_sm_sum += (loss_pose_sm_f + loss_pose_sm_b).detach()
+            loss_pose_im_sum += (loss_pose_im_f + loss_pose_im_b)
+            loss_pose_sm_sum += (loss_pose_sm_f + loss_pose_sm_b)
             
             # mask loss
             loss_mask_b, loss_mask_reg_b, loss_mask_sm_b = self.mask_loss(mask_b)
             loss_mask_f, loss_mask_reg_f, loss_mask_sm_f = self.mask_loss(mask_f)
             loss_mask_sum += (loss_mask_b + loss_mask_f) * self._weights[ii]
-            loss_mask_reg_sum += (loss_mask_reg_b + loss_mask_reg_f).detach()
-            loss_mask_sm_sum += (loss_mask_sm_b + loss_mask_sm_f).detach()
+            loss_mask_reg_sum += (loss_mask_reg_b + loss_mask_reg_f)
+            loss_mask_sm_sum += (loss_mask_sm_b + loss_mask_sm_f)
 
             # static consistency sum
             loss_static_cons_b, flow_diff_b = self.static_cons_loss(mask_b, sf_b, pose_b, disp_l2, disp_occ_l2, k_l2_aug, aug_size)
             loss_static_cons_f, flow_diff_f = self.static_cons_loss(mask_f, sf_f, pose_f, disp_l1, disp_occ_l1, k_l1_aug, aug_size)
             loss_static_cons_sum += (loss_static_cons_b + loss_static_cons_f) * self._weights[ii]
-            loss_static_cons_sum.detach_()
 
             # mask consensus sum
-            loss_mask_consensus_b, census_mask_b= self.mask_consensus_loss(mask_b, flow_diff_b, pose_b_diff.detach(), sf_diffs[1].detach())
-            loss_mask_consensus_f, census_mask_f = self.mask_consensus_loss(mask_f, flow_diff_f, pose_f_diff.detach(), sf_diffs[0].detach())
+            loss_mask_consensus_b, census_mask_b= self.mask_consensus_loss(mask_b, flow_diff_b, pose_b_diff, sf_diffs[1])
+            loss_mask_consensus_f, census_mask_f = self.mask_consensus_loss(mask_f, flow_diff_f, pose_f_diff, sf_diffs[0])
             loss_mask_consensus_sum += (loss_mask_consensus_b + loss_mask_consensus_f) * self._weights[ii]
 
             out_masks_b.append(census_mask_b)
@@ -504,7 +503,7 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
         d_weight = max_val / d_loss
         p_weight = max_val / p_loss
 
-        total_loss = loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * p_weight + loss_mask_sum * p_weight + loss_mask_consensus_sum
+        total_loss = loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * p_weight + loss_mask_sum + loss_mask_consensus_sum
 
         loss_dict = {}
         loss_dict["dp"] = loss_dp_sum
