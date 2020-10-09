@@ -38,7 +38,6 @@ class SceneNetStereo(nn.Module):
         
         self.flow_estimators = nn.ModuleList()
         self.upconv_layers = nn.ModuleList()
-        # self.rigidity_context_layers = nn.ModuleList()
 
         self.dim_corr = (self.search_range * 2 + 1) ** 2
         self.disp_range = 192
@@ -55,13 +54,7 @@ class SceneNetStereo(nn.Module):
             layer_sf = MonoSceneFlowDecoder(num_ch_in, use_bn=args.use_bn)
             self.flow_estimators.append(layer_sf)
 
-            # rigid_context_net = RigidityContextNet(args, 3 + 1 + 6 + 1)
-            # self.rigidity_context_layers.append(rigid_context_net)
-
         self.pose_decoder = PoseExpNet(nb_ref_imgs=1, output_exp=args.use_mask, in_ch=3, use_bn=args.use_bn)
-        # self.pose_decoder = PoseNet(nb_ref_imgs=1, in_ch=3, use_bn=False)
-        # self.mask_decoder = MotionNet(nb_ref_imgs=1)
-        # self.pose_decoder = PoseNet(1)
 
         self.corr_params = {"pad_size": self.search_range, "kernel_size": 1, "max_disp": self.search_range, "stride1": 1, "stride2": 1, "corr_multiply": 1}        
         self.disp_corr = SpatialCorrelationSampler(patch_size=(1, self.disp_range))
@@ -71,8 +64,6 @@ class SceneNetStereo(nn.Module):
 
         initialize_msra(self.modules())
         self.pose_decoder.init_weights()
-        # self.mask_decoder.init_weights()
-        # self.mask_decoder.init_mask_weights()
 
     def run_pwc(self, input_dict, x1_raw, x2_raw, r1_raw, r2_raw, k1, k2):
             
@@ -162,20 +153,6 @@ class SceneNetStereo(nn.Module):
         output_dict["pose_f"] = pose_f
         output_dict["masks_f"] = masks_f
 
-        # out_sf_f = []
-        # out_sf_b = []
-
-        # for i, (flow, disp, mask) in enumerate(zip(output_dict["flow_f"], output_dict["disp_l1"], output_dict['masks_f'])):
-        #     x = torch.cat([flow, disp, pose_feats_f, mask], dim=1)
-        #     out_sf_f.append(self.rigidity_context_layers[i](x))
-
-        # for i, (flow, disp, mask) in enumerate(zip(output_dict["flow_b"], output_dict["disp_l2"], output_dict['masks_b'])):
-        #     x = torch.cat([flow, disp, pose_feats_b, mask], dim=1)
-        #     out_sf_b.append(self.rigidity_context_layers[i](x))
-        
-        # output_dict["out_sf_f"] = out_sf_f
-        # output_dict["out_sf_b"] = out_sf_b
-        
         return output_dict
 
 

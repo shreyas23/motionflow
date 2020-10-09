@@ -1,5 +1,5 @@
 python3 train.py --data_root="/ceph/kitti_jpg/" \
-                 --exp_dir="" \
+                 --exp_dir="test_cons" \
                  --exp_name="test_parallel" \
                  --num_examples=-1 \
                  --resize_only=True \
