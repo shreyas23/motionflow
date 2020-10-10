@@ -300,7 +300,7 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
                        k_l1_aug, k_l2_aug,
                        img_l1_aug, img_l2_aug,
                        aug_size, ii,
-                       mask_f=None, mask_b=None):
+                       flow_mask_f=None, flow_mask_b=None):
 
         _, _, h_dp, w_dp = sf_f.size()
         disp_l1 = disp_l1 * w_dp
@@ -330,11 +330,11 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
         img_l1_warp = reconstructImg(coord2, img_l1_aug)
 
         img_diff1 = (_elementwise_l1(img_l1_aug, img_l2_warp) * (1.0 - self._ssim_w) + _SSIM(img_l1_aug, img_l2_warp) * self._ssim_w).mean(dim=1, keepdim=True)
-        if mask_f is not None:
-            img_diff1 = img_diff1 * mask_f
+        if flow_mask_f is not None:
+            img_diff1 = img_diff1 * flow_mask_f
         img_diff2 = (_elementwise_l1(img_l2_aug, img_l1_warp) * (1.0 - self._ssim_w) + _SSIM(img_l2_aug, img_l1_warp) * self._ssim_w).mean(dim=1, keepdim=True)
-        if mask_b is not None:
-            img_diff2 = img_diff2 * mask_b
+        if flow_mask_b is not None:
+            img_diff2 = img_diff2 * flow_mask_b
         loss_im1 = img_diff1[occ_map_f].mean()
         loss_im2 = img_diff2[occ_map_b].mean()
         img_diff1[~occ_map_f].detach_()
@@ -345,11 +345,11 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
         pts_norm1 = torch.norm(pts1, p=2, dim=1, keepdim=True)
         pts_norm2 = torch.norm(pts2, p=2, dim=1, keepdim=True)
         pts_diff1 = _elementwise_epe(pts1_tf, pts2_warp).mean(dim=1, keepdim=True) / (pts_norm1 + 1e-8)
-        if mask_f is not None:
-            pts_diff1 = pts_diff1 * mask_f
+        if flow_mask_f is not None:
+            pts_diff1 = pts_diff1 * flow_mask_f
         pts_diff2 = _elementwise_epe(pts2_tf, pts1_warp).mean(dim=1, keepdim=True) / (pts_norm2 + 1e-8)
-        if mask_b is not None:
-            pts_diff2 = pts_diff2 * mask_b
+        if flow_mask_b is not None:
+            pts_diff2 = pts_diff2 * flow_mask_b
         loss_pts1 = pts_diff1[occ_map_f].mean()
         loss_pts2 = pts_diff2[occ_map_b].mean()
         pts_diff1[~occ_map_f].detach_()
@@ -388,7 +388,6 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
         loss_mask_consensus_sum = 0
         loss_static_cons_sum = 0
         loss_lr_cons_sum = 0
-        loss_cons_sum = 0
         loss_mask_sum = 0
         
         k_l1_aug = target_dict['input_k_l1_aug']
@@ -469,7 +468,7 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
             loss_mask_b, loss_mask_reg_b, loss_mask_sm_b = self.mask_loss(mask_b)
             loss_mask_f, loss_mask_reg_f, loss_mask_sm_f = self.mask_loss(mask_f)
 
-            loss_mask_sum += (loss_mask_b + loss_mask_f)
+            loss_mask_sum += (loss_mask_b + loss_mask_f) * self._weights[ii]
             loss_mask_reg_sum += (loss_mask_reg_b + loss_mask_reg_f)
             loss_mask_sm_sum += (loss_mask_sm_b + loss_mask_sm_f)
 
@@ -481,9 +480,7 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
             # mask consensus sum
             loss_mask_consensus_b, census_mask_b= self.mask_consensus_loss(mask_b, flow_diff_b, pose_b_diff, sf_diffs[1])
             loss_mask_consensus_f, census_mask_f = self.mask_consensus_loss(mask_f, flow_diff_f, pose_f_diff, sf_diffs[0])
-            loss_mask_consensus_sum += (loss_mask_consensus_b + loss_mask_consensus_f)
-
-            loss_mask_sum += (loss_mask_b + loss_mask_f + loss_mask_consensus_b + loss_mask_consensus_f)
+            loss_mask_consensus_sum += (loss_mask_consensus_b + loss_mask_consensus_f) * self._weights[ii]
 
             out_masks_b.append(census_mask_b)
             out_masks_f.append(census_mask_f)
@@ -492,17 +489,15 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
         f_loss = loss_sf_sum.detach()
         d_loss = loss_dp_sum.detach()
         p_loss = loss_pose_sum.detach()
-        m_loss = loss_mask_sum.detach()
 
+        # max_val = torch.max(f_loss, d_loss)
         max_val = torch.max(torch.max(f_loss, d_loss), p_loss)
-        # max_val = torch.max(max_val, m_loss)
 
         f_weight = max_val / f_loss
         d_weight = max_val / d_loss
         p_weight = max_val / p_loss
-        # m_weight = max_val / m_loss
 
-        total_loss = loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * p_weight + loss_mask_sum
+        total_loss = loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * p_weight + loss_mask_sum * p_weight + loss_mask_consensus_sum
 
         loss_dict = {}
         loss_dict["dp"] = loss_dp_sum
@@ -513,7 +508,6 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
         loss_dict["pose"] = loss_pose_sum
         loss_dict["pose_im"] = loss_pose_im_sum
         loss_dict["pose_smooth"] = loss_pose_sm_sum
-        # loss_dict["cons"] = loss_cons_sum
         loss_dict["mask"] = loss_mask_sum
         loss_dict["mask_reg"] = loss_mask_reg_sum
         loss_dict["mask_smooth"] = loss_mask_sm_sum
@@ -802,8 +796,6 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
             loss_dp_sum = loss_dp_sum + (loss_disp_l1 + loss_disp_l2) * self._weights[ii]
             loss_lr_cons_sum += loss_lr_cons1 + loss_lr_cons2
 
-            # flow_mask_f = 1.0 - mask_f 
-            # flow_mask_b = 1.0 - mask_b 
             flow_mask_f = None
             flow_mask_b = None
 
@@ -834,11 +826,15 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
                                                                                       img_l2_aug, img_l1_aug, 
                                                                                       aug_size, mask_f)
 
+            loss_pose_sum += (loss_pose_f + loss_pose_b) * self._weights[ii]
+            loss_pose_im_sum += loss_pose_im_f + loss_pose_im_b
+            loss_pose_sm_sum += loss_pose_sm_f + loss_pose_sm_b
+
             # mask loss
             loss_mask_b, loss_mask_reg_b, loss_mask_sm_b = self.mask_loss(mask_b)
             loss_mask_f, loss_mask_reg_f, loss_mask_sm_f = self.mask_loss(mask_f)
 
-            loss_mask_sum += (loss_mask_b + loss_mask_f) # * self._weights[ii]
+            loss_mask_sum += (loss_mask_b + loss_mask_f) * self._weights[ii]
             loss_mask_reg_sum += (loss_mask_reg_b + loss_mask_reg_f)
             loss_mask_sm_sum += (loss_mask_sm_b + loss_mask_sm_f)
 
@@ -850,13 +846,9 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
             # mask consensus sum
             loss_mask_consensus_b, census_mask_b= self.mask_consensus_loss(mask_b, flow_diff_b, pose_b_diff.detach(), sf_diffs[1].detach())
             loss_mask_consensus_f, census_mask_f = self.mask_consensus_loss(mask_f, flow_diff_f, pose_f_diff.detach(), sf_diffs[0].detach())
-            loss_mask_consensus_sum += (loss_mask_consensus_b + loss_mask_consensus_f) # * self._weights[ii]
+            loss_mask_consensus_sum += (loss_mask_consensus_b + loss_mask_consensus_f) * self._weights[ii]
             out_masks_b.append(census_mask_b)
             out_masks_f.append(census_mask_f)
-
-            loss_pose_sum += (loss_pose_f + loss_pose_b + loss_mask_b + loss_mask_f) * self._weights[ii]
-            loss_pose_im_sum += loss_pose_im_f + loss_pose_im_b
-            loss_pose_sm_sum += loss_pose_sm_f + loss_pose_sm_b
 
         # finding weight
         f_loss = loss_sf_sum.detach()
@@ -869,7 +861,7 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
         d_weight = max_val / d_loss
         p_weight = max_val / p_loss
 
-        total_loss = loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * p_weight # + loss_mask_sum + loss_mask_consensus_sum
+        total_loss = loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * p_weight + loss_mask_sum * p_weight + loss_mask_consensus_sum
 
         loss_dict = {}
         loss_dict["dp"] = loss_dp_sum
@@ -880,7 +872,6 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
         loss_dict["pose"] = loss_pose_sum
         loss_dict["pose_im"] = loss_pose_im_sum
         loss_dict["pose_smooth"] = loss_pose_sm_sum
-        # loss_dict["cons"] = loss_cons_sum
         loss_dict["mask"] = loss_mask_sum
         loss_dict["mask_reg"] = loss_mask_reg_sum
         loss_dict["mask_smooth"] = loss_mask_sm_sum
