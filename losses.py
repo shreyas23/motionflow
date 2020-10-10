@@ -469,7 +469,7 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
             loss_mask_b, loss_mask_reg_b, loss_mask_sm_b = self.mask_loss(mask_b)
             loss_mask_f, loss_mask_reg_f, loss_mask_sm_f = self.mask_loss(mask_f)
 
-            # loss_mask_sum += (loss_mask_b + loss_mask_f)
+            loss_mask_sum += (loss_mask_b + loss_mask_f)
             loss_mask_reg_sum += (loss_mask_reg_b + loss_mask_reg_f)
             loss_mask_sm_sum += (loss_mask_sm_b + loss_mask_sm_f)
 
@@ -495,14 +495,14 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
         m_loss = loss_mask_sum.detach()
 
         max_val = torch.max(torch.max(f_loss, d_loss), p_loss)
-        max_val = torch.max(max_val, m_loss)
+        # max_val = torch.max(max_val, m_loss)
 
         f_weight = max_val / f_loss
         d_weight = max_val / d_loss
         p_weight = max_val / p_loss
-        m_weight = max_val / m_loss
+        # m_weight = max_val / m_loss
 
-        total_loss = loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * p_weight + loss_mask_sum * m_weight
+        total_loss = loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * p_weight + loss_mask_sum
 
         loss_dict = {}
         loss_dict["dp"] = loss_dp_sum
