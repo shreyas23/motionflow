@@ -1,7 +1,7 @@
 python3 train.py --data_root="/external/datasets/kitti_data_jpg/" \
                  --exp_dir="scenenet_stereo" \
                  --exp_name="" \
-                 --num_examples=20 \
+                 --num_examples=30 \
                  --resize_only=True \
                  --model_name="scenenet_stereo" \
                  --epochs=30 \
@@ -21,5 +21,5 @@ python3 train.py --data_root="/external/datasets/kitti_data_jpg/" \
                  --mask_reg_w=0.2 \
                  --mask_sm_w=0.1 \
                  --static_cons_w=0.0 \
-                 --mask_cons_w=0.3 \
+                 --mask_cons_w=0.0 \
                  --flow_diff_thresh=1e-3

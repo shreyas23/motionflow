@@ -145,13 +145,13 @@ class SceneNetStereo(nn.Module):
         x21 = torch.cat([x2_pyramid[-1], x1_pyramid[-1]], dim=1)
         x12 = torch.cat([x1_pyramid[-1], x2_pyramid[-1]], dim=1)
 
-        masks_b, pose_b, _ = self.pose_decoder(x21)
-        masks_f, pose_f, _ = self.pose_decoder(x12)
+        mask_l2, pose_b, _ = self.pose_decoder(x21)
+        mask_l1, pose_f, _ = self.pose_decoder(x12)
 
         output_dict["pose_b"] = pose_b
-        output_dict["masks_b"] = masks_b
+        output_dict["mask_l2"] = mask_l2
         output_dict["pose_f"] = pose_f
-        output_dict["masks_f"] = masks_f
+        output_dict["mask_l1"] = mask_l1
 
         return output_dict
 

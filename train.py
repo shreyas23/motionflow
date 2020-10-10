@@ -399,12 +399,12 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     writer.add_images('input_l2', img_l2_aug, epoch)
     writer.add_images('input_r2', img_r2_aug, epoch)
 
-    if args.model_name in ['scenenet', 'scenenet_stereo']:
+    if args.model_name in ['scenenet', 'scenenet_stereo', 'scenenet_joint']:
         sf_b = output_dict['flow_b'][0].detach()
         pose = output_dict['pose_b'].detach()
         print(f"Transformation matrices for epoch: {epoch}, {pose}")
         if args.use_mask:
-            mask = output_dict['masks_b'][0].detach()
+            mask = output_dict['mask_l2'][0].detach()
             census_mask = output_dict['census_masks_b'][0].detach()
             writer.add_images('mask', mask, epoch)
             writer.add_images('census mask', census_mask, epoch)
@@ -429,7 +429,10 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
         writer.add_images('img_l1_warp', img_l1_warp, epoch)
 
         # camera pose
-        _, coord2 = pts2pixel_pose_ms(k2_scale, pts2, pose, [h_dp, w_dp])
+        if args.model_name == 'scenenet_joint':
+            _, coord2 = pts2pixel_pose_ms(k2_scale, pts2, None, [h_dp, w_dp], pose_mat=pose)
+        else:
+            _, coord2 = pts2pixel_pose_ms(k2_scale, pts2, pose, [h_dp, w_dp])
         img_l1_warp_cam = reconstructImg(coord2, img_l1_aug)
         writer.add_images('img_l1_warp_cam', img_l1_warp_cam, epoch)
 

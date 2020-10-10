@@ -1,5 +1,5 @@
 pip3 install -r requirements.txt &&
-chmod u+x install_modules.sh &&
-./install_modules.sh &&
-chmod u+x run.sh &&
-./run.sh;
+chmod u+x ./scripts/install_modules.sh &&
+./scripts/install_modules.sh &&
+chmod u+x ./scripts/run.sh &&
+./scripts/run.sh;
