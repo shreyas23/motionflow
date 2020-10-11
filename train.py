@@ -53,6 +53,7 @@ parser.add_argument('--no_logging', type=bool, default=False,
 parser.add_argument('--log_dir', type=str, default="/external/cnet/checkpoints",
                     help="are you logging this experiment?")
 parser.add_argument('--log_freq', type=int, default=1, help='how often to log statistics')
+parser.add_argument('--save_freq', type=int, default=1, help='how often to save model state dict')
 parser.add_argument('--exp_dir', type=str, default='test',
                     help='name of experiment, chkpts stored in checkpoints/experiment')
 parser.add_argument('--exp_name', type=str, default='test',
@@ -284,16 +285,14 @@ def main():
       if epoch % args.log_freq == 0:
         visualize_output(args, input_dict, output_dict, epoch, writer)
 
-    # assert (not torch.isnan(train_loss_avg_dict['total_loss'])), "avg training loss is nan"
-
     if args.lr_sched_type == 'plateau':
       lr_scheduler.step(train_loss_avg_dict['total_loss'])
     elif args.lr_sched_type == 'step':
       lr_scheduler.step(epoch)
 
     # save model
-    if not args.no_logging:
-      if epoch % args.log_freq == 0 or epoch == args.epochs:
+    if not args.no_logging and args.save_freq > 0:
+      if epoch % args.save_freq == 0 or epoch == args.epochs:
         fp = os.path.join(log_dir, f"{epoch}.ckpt")
         torch.save(model.state_dict(), fp)
 
