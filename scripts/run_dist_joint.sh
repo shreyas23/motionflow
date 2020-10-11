@@ -1,14 +1,14 @@
 python3 train.py --data_root="/ceph/kitti_jpg/" \
-                 --exp_dir="scenenet_stereo" \
+                 --exp_dir="scenenet_joint" \
                  --exp_name="" \
                  --num_examples=-1 \
-                 --model_name="scenenet_stereo" \
+                 --model_name="scenenet_joint" \
                  --epochs=50 \
                  --num_gpus=2 \
                  --batch_size=6 \
                  --log_dir="/ceph/checkpoints/" \
                  --log_freq=1 \
-                 --save_freq=1 \
+                 --save_freq=1
                  --num_workers=16 \
                  --lr_sched_type='step' \
                  --lr=2e-4 \
