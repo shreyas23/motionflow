@@ -458,14 +458,13 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
                                                                                       img_l2_aug, img_l1_aug, 
                                                                                       aug_size, mask_l1)
 
-            loss_pose, loss_pose_im, loss_pose_pts, loss_pose_3d_s, pose_diffs = self.pose_loss(pose_f, pose_b,
-                                                                                                disp_l1, disp_l2,
-                                                                                                disp_occ_l1, disp_occ_l2,
-                                                                                                k_l1_aug, k_l2_aug,
-                                                                                                img_l1_aug, img_l2_aug, 
-                                                                                                aug_size, ii,
-                                                                                                mask_l1, mask_l2)
-
+            # loss_pose, loss_pose_im, loss_pose_pts, loss_pose_3d_s, pose_diffs = self.pose_loss(pose_f, pose_b,
+            #                                                                                     disp_l1, disp_l2,
+            #                                                                                     disp_occ_l1, disp_occ_l2,
+            #                                                                                     k_l1_aug, k_l2_aug,
+            #                                                                                     img_l1_aug, img_l2_aug, 
+            #                                                                                     aug_size, ii,
+            #                                                                                     mask_l1, mask_l2)
 
             # pose loss
             loss_pose_sum += (loss_pose_f + loss_pose_b) * self._weights[ii]
