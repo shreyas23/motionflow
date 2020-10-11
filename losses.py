@@ -493,18 +493,18 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
             out_masks_l1.append(census_mask_l1)
             
         # # finding weight
-        f_loss = loss_sf_sum.detach()
-        d_loss = loss_dp_sum.detach()
-        p_loss = loss_pose_sum.detach()
+        # f_loss = loss_sf_sum.detach()
+        # d_loss = loss_dp_sum.detach()
+        # p_loss = loss_pose_sum.detach()
 
-        # max_val = torch.max(f_loss, d_loss)
-        max_val = torch.max(torch.max(f_loss, d_loss), p_loss)
+        # # max_val = torch.max(f_loss, d_loss)
+        # max_val = torch.max(torch.max(f_loss, d_loss), p_loss)
 
-        f_weight = max_val / f_loss
-        d_weight = max_val / d_loss
-        p_weight = max_val / p_loss
+        # f_weight = max_val / f_loss
+        # d_weight = max_val / d_loss
+        # p_weight = max_val / p_loss
 
-        total_loss = loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * p_weight + loss_mask_sum * p_weight + loss_mask_consensus_sum
+        total_loss = loss_sf_sum + loss_dp_sum + loss_pose_sum + loss_mask_sum + loss_mask_consensus_sum
 
         loss_dict = {}
         loss_dict["dp"] = loss_dp_sum
@@ -857,18 +857,19 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
             out_masks_b.append(census_mask_b)
             out_masks_f.append(census_mask_f)
 
-        # finding weight
-        f_loss = loss_sf_sum.detach()
-        d_loss = loss_dp_sum.detach()
-        p_loss = loss_pose_sum.detach()
+        # # finding weight
+        # f_loss = loss_sf_sum.detach()
+        # d_loss = loss_dp_sum.detach()
+        # p_loss = loss_pose_sum.detach()
 
-        max_val = torch.max(torch.max(f_loss, d_loss), p_loss)
+        # max_val = torch.max(torch.max(f_loss, d_loss), p_loss)
 
-        f_weight = max_val / f_loss
-        d_weight = max_val / d_loss
-        p_weight = max_val / p_loss
+        # f_weight = max_val / f_loss
+        # d_weight = max_val / d_loss
+        # p_weight = max_val / p_loss
 
-        total_loss = loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * p_weight + loss_mask_sum * p_weight + loss_mask_consensus_sum
+        # total_loss = loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * p_weight + loss_mask_sum * p_weight + loss_mask_consensus_sum
+        total_loss = loss_sf_sum + loss_dp_sum + loss_pose_sum + loss_mask_sum + loss_mask_consensus_sum
 
         loss_dict = {}
         loss_dict["dp"] = loss_dp_sum
