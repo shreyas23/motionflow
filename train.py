@@ -279,8 +279,6 @@ def main():
       val_loss_avg = eval(args, model, loss, val_dataloader, augmentations)
       print(f"\t Epoch {epoch} val loss avg: {val_loss_avg}")
 
-    print(output_dict['pose_b'])
-
     if not args.no_logging:
       for k, v in train_loss_avg_dict.items():
         writer.add_scalar(f'loss/train/{k}', train_loss_avg_dict[k], epoch)
