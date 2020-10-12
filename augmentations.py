@@ -392,7 +392,7 @@ class Augmentation_MonoDepthBaseline(nn.Module):
 
 class Augmentation_SceneFlow_Carla(Augmentation_ScaleCrop):
     def __init__(self, args, photometric=True, trans=0.07, scale=[0.93, 1.0], resize=[256, 832]):
-        super(Augmentation_SceneFlow, self).__init__(
+        super(Augmentation_SceneFlow_Carla, self).__init__(
             args,
             photometric=photometric,
             trans=trans,

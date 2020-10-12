@@ -132,4 +132,3 @@ class FeatureExtractor(nn.Module):
             feature_pyramid.append(x)
 
         return feature_pyramid[::-1]
-

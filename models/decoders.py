@@ -264,7 +264,6 @@ class FlowDispPoseDecoder(nn.Module):
                 conv(32, 32, use_bn=use_bn),
                 conv(32, 16, use_bn=use_bn),
                 conv(16, 1, use_relu=False),
-                torch.nn.Sigmoid()
             )
 
     def forward(self, x):
@@ -301,7 +300,7 @@ class JointContextNetwork(nn.Module):
         # )
         self.conv_sf = conv(32, 3, use_relu=False)
         self.conv_d1 = nn.Sequential(
-            conv(32, 1, use_relu=False), 
+            conv(32, 1, use_relu=False),
             torch.nn.Sigmoid()
         )
         self.convs_pose = nn.Sequential(

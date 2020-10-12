@@ -11,8 +11,9 @@ from spatial_correlation_sampler import SpatialCorrelationSampler
 from .modules_sceneflow import get_grid, WarpingLayer_SF
 from .modules_sceneflow import initialize_msra, upsample_outputs_as
 from .modules_sceneflow import upconv
-from .modules_sceneflow import FeatureExtractor, MonoSceneFlowDecoder
+# from .modules_sceneflow import FeatureExtractor, MonoSceneFlowDecoder
 
+from .encoders import FeatureExtractor
 from .decoders import PoseNet, PoseExpNet, MotionNet, FlowDispPoseDecoder, JointContextNetwork
 
 from .common import WarpingLayer_Pose
@@ -33,7 +34,7 @@ class SceneNetStereoJoint(nn.Module):
         
         self.leakyRELU = nn.LeakyReLU(0.1, inplace=True)
 
-        self.feature_pyramid_extractor = FeatureExtractor(self.num_chs)
+        self.feature_pyramid_extractor = FeatureExtractor(self.num_chs, use_bn=args.use_bn)
         self.warping_layer_sf = WarpingLayer_SF()
         self.warping_layer_pose = WarpingLayer_Pose()
         
@@ -58,7 +59,7 @@ class SceneNetStereoJoint(nn.Module):
         self.corr_params = {"pad_size": self.search_range, "kernel_size": 1, "max_disp": self.search_range, "stride1": 1, "stride2": 1, "corr_multiply": 1}        
         self.disp_corr = SpatialCorrelationSampler(patch_size=(1, self.disp_range))
 
-        self.context_networks = JointContextNetwork(32 + 3 + 1 + 6 + 1)
+        self.context_networks = JointContextNetwork(32 + 3 + 1 + 6 + 1, use_bn=args.use_bn)
         self.sigmoid = torch.nn.Sigmoid()
 
         initialize_msra(self.modules())
@@ -146,6 +147,8 @@ class SceneNetStereoJoint(nn.Module):
             if l != self.output_level:
                 disp_l1 = self.sigmoid(disp_l1) * 0.3
                 disp_l2 = self.sigmoid(disp_l2) * 0.3
+                mask_l1 = self.sigmoid(mask_l1)
+                mask_l2 = self.sigmoid(mask_l2)
                 sceneflows_f.append(flow_f)
                 sceneflows_b.append(flow_b)                
                 disps_1.append(disp_l1)
