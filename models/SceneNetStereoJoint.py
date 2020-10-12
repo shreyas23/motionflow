@@ -76,6 +76,8 @@ class SceneNetStereoJoint(nn.Module):
         # outputs
         sceneflows_f = []
         sceneflows_b = []
+        poses_f = []
+        poses_b = []
         disps_1 = []
         disps_2 = []
         masks_1 = []
@@ -148,15 +150,16 @@ class SceneNetStereoJoint(nn.Module):
                 sceneflows_b.append(flow_b)                
                 disps_1.append(disp_l1)
                 disps_2.append(disp_l2)
-
                 masks_1.append(mask_l1)
                 masks_2.append(mask_l2)
+                poses_f.append(pose_mat_f)
+                poses_b.append(pose_mat_b)
+
             else:
                 flow_res_f, disp_l1, mask_l1, pose_f_res = self.context_networks(torch.cat([x1_out, flow_f, disp_l1, pose_f_out, mask_l1], dim=1))
                 flow_res_b, disp_l2, mask_l2, pose_b_res = self.context_networks(torch.cat([x2_out, flow_b, disp_l2, pose_b_out, mask_l2], dim=1))
                 flow_f = flow_f + flow_res_f
                 flow_b = flow_b + flow_res_b
-
                 pose_mat_f = add_pose(pose_mat_f, pose_f_res)
                 pose_mat_b = add_pose(pose_mat_b, pose_b_res)
 
@@ -166,6 +169,8 @@ class SceneNetStereoJoint(nn.Module):
                 disps_2.append(disp_l2)
                 masks_1.append(mask_l1)
                 masks_2.append(mask_l2)
+                poses_f.append(pose_mat_f)
+                poses_b.append(pose_mat_b)
 
                 break
 
@@ -177,9 +182,8 @@ class SceneNetStereoJoint(nn.Module):
         output_dict['disp_l2'] = upsample_outputs_as(disps_2[::-1], x1_rev)
         output_dict['mask_l1'] = upsample_outputs_as(masks_1[::-1], x1_rev)
         output_dict['mask_l2'] = upsample_outputs_as(masks_2[::-1], x1_rev)
-
-        output_dict["pose_b"] = pose_mat_b
-        output_dict["pose_f"] = pose_mat_f
+        output_dict["pose_f"] = poses_f[::-1]
+        output_dict["pose_b"] = poses_b[::-1]
 
         return output_dict
 

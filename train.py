@@ -279,6 +279,8 @@ def main():
       val_loss_avg = eval(args, model, loss, val_dataloader, augmentations)
       print(f"\t Epoch {epoch} val loss avg: {val_loss_avg}")
 
+    print(output_dict['pose_b'])
+
     if not args.no_logging:
       for k, v in train_loss_avg_dict.items():
         writer.add_scalar(f'loss/train/{k}', train_loss_avg_dict[k], epoch)
@@ -400,7 +402,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
 
     if args.model_name in ['scenenet', 'scenenet_stereo', 'scenenet_joint']:
         sf_b = output_dict['flow_b'][0].detach()
-        pose = output_dict['pose_b'].detach()
+        pose = output_dict['pose_b'][0].detach()
         print(f"Transformation matrices for epoch: {epoch}, {pose}")
         if args.use_mask:
             mask = output_dict['mask_l2'][0].detach()

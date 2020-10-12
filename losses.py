@@ -482,7 +482,7 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
             # static consistency sum
             loss_static_cons_b, flow_diff_b = self.static_cons_loss(mask_l2, sf_b, pose_b, disp_l2, disp_occ_l2, k_l2_aug, aug_size)
             loss_static_cons_f, flow_diff_f = self.static_cons_loss(mask_l1, sf_f, pose_f, disp_l1, disp_occ_l1, k_l1_aug, aug_size)
-            loss_static_cons_sum += (loss_static_cons_b + loss_static_cons_f) # * self._weights[ii]
+            loss_static_cons_sum += (loss_static_cons_b + loss_static_cons_f) * self._weights[ii]
 
             # mask consensus sum
             loss_mask_consensus_l2, census_mask_l2= self.mask_consensus_loss(mask_l2, flow_diff_b, pose_b_diff, sf_diffs[1])
@@ -741,6 +741,8 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
             output_dict['flow_b'][ii].detach_()
             output_dict['mask_l1'][ii].detach_()
             output_dict['mask_l2'][ii].detach_()
+            output_dict['pose_f'][ii].detach_()
+            output_dict['pose_b'][ii].detach_()
         return
 
     def forward(self, output_dict, target_dict):
@@ -767,8 +769,8 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
         k_l2_aug = target_dict['input_k_l2_aug']
         aug_size = target_dict['aug_size']
 
-        pose_b = output_dict['pose_b']
-        pose_f = output_dict['pose_f']
+        # pose_b = output_dict['pose_b']
+        # pose_f = output_dict['pose_f']
         if 'mask_l1' in output_dict:
             masks_f = output_dict['mask_l1']
             masks_b = output_dict['mask_l2']
@@ -782,10 +784,11 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
         disp_r1_dict = output_dict['output_dict_r']['disp_l1']
         disp_r2_dict = output_dict['output_dict_r']['disp_l2']
 
-        for ii, (sf_f, sf_b, disp_l1, disp_l2, disp_r1, disp_r2, mask_f, mask_b) in enumerate(zip(output_dict['flow_f'], output_dict['flow_b'], 
-                                                                                                  output_dict['disp_l1'], output_dict['disp_l2'], 
-                                                                                                  disp_r1_dict, disp_r2_dict,
-                                                                                                  masks_f, masks_b)):
+        for ii, (sf_f, sf_b, disp_l1, disp_l2, disp_r1, disp_r2, pose_f, pose_b, mask_f, mask_b) in enumerate(zip(output_dict['flow_f'], output_dict['flow_b'], 
+                                                                                                                  output_dict['disp_l1'], output_dict['disp_l2'], 
+                                                                                                                  disp_r1_dict, disp_r2_dict,
+                                                                                                                  output_dict['pose_f'], output_dict['pose_b'],
+                                                                                                                  masks_f, masks_b)):
 
             assert(sf_f.size()[2:4] == sf_b.size()[2:4])
             assert(sf_f.size()[2:4] == disp_l1.size()[2:4])
