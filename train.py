@@ -401,7 +401,10 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
 
     if args.model_name in ['scenenet', 'scenenet_stereo', 'scenenet_joint']:
         sf_b = output_dict['flow_b'][0].detach()
-        pose = output_dict['pose_b'][0].detach()
+        if args.model_name == 'scenenet_stereo':
+            pose = output_dict['pose_b'].detach()
+        else:
+            pose = output_dict['pose_b'][0].detach()
         print(f"Transformation matrices for epoch: {epoch}, {pose}")
         if args.use_mask:
             mask = output_dict['mask_l2'][0].detach()
