@@ -588,7 +588,6 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
 
         return loss, loss_lr, left_occ
 
-
     def mask_reg_loss(self, mask):
         loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
         return loss * self._mask_reg_w
@@ -620,6 +619,18 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
         census_target_mask = logical_or(target_mask, flow_similar)
         loss = tf.binary_cross_entropy(mask, census_target_mask.detach())
         return loss * self._mask_cons_w, census_target_mask
+
+    def mask_disp_cons_loss(self, mask_l, mask_r, disp_l, disp_r, left_occ, right_occ):
+        mask_warp_l = _generate_image_left(mask_r, disp_l)
+        mask_warp_r = _generate_image_right(mask_l, disp_r)
+        lr_mask_diff_l = torch.abs(mask_warp_r - disp_l)
+        lr_mask_diff_r = torch.abs(mask_warp_l - disp_r)
+
+        loss_lr = lr_mask_diff_l[left_occ].mean() + lr_mask_diff_r[right_occ].mean()
+        lr_mask_diff_l[~left_occ].detach_()
+        lr_mask_diff_r[~right_occ].detach_()
+
+        return loss_lr
 
     def mask_loss(self, mask):
         reg_loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
