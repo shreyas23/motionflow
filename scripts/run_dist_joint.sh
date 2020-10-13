@@ -1,7 +1,7 @@
 python3 train.py --data_root="/ceph/kitti_jpg/" \
                  --exp_dir="scenenet_joint" \
                  --exp_name="" \
-                 --num_examples=-1 \
+                 --num_examples=1000 \
                  --model_name="scenenet_joint" \
                  --epochs=50 \
                  --num_gpus=2 \
@@ -11,7 +11,7 @@ python3 train.py --data_root="/ceph/kitti_jpg/" \
                  --save_freq=1
                  --num_workers=16 \
                  --lr_sched_type='step' \
-                 --lr=2e-4 \
+                 --lr=1e-4 \
                  --use_mask=True \
                  --lr_gamma=0.5 \
                  --use_bn=True \

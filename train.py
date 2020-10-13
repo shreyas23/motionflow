@@ -411,7 +411,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
         print(f"Transformation matrices for epoch: {epoch}, {pose}")
         if args.use_mask:
             mask = output_dict['mask_l2'][0].detach()
-            census_mask = output_dict['census_masks_b'][0].detach()
+            census_mask = output_dict['census_masks_l2'][0].detach()
             writer.add_images('mask', mask, epoch)
             writer.add_images('census mask', census_mask, epoch)
 

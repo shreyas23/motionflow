@@ -61,9 +61,9 @@ def cam2pixel(cam_coords, proj_c2p_rot, proj_c2p_tr, padding_mode):
     else:
         pcoords = cam_coords_flat
 
-
     if proj_c2p_tr is not None:
         pcoords = pcoords + proj_c2p_tr  # [B, 3, H*W]
+
     X = pcoords[:, 0]
     Y = pcoords[:, 1]
     Z = pcoords[:, 2].clamp(min=1e-3)
@@ -254,6 +254,7 @@ def pose2sceneflow(depth, pose, intrinsics, intrinsics_inv, rotation_mode='euler
 
     if t is not None:
         pcoords = pcoords + t  # [B, 3, H*W]
+
     X = pcoords[:, 0]
     Y = pcoords[:, 1]
     Z = pcoords[:, 2].clamp(min=1e-3)

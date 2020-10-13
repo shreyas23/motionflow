@@ -254,7 +254,7 @@ class FlowDispPoseDecoder(nn.Module):
         self.convs_pose = nn.Sequential(
             conv(32, 32, use_bn=use_bn),
             conv(32, 16, use_bn=use_bn),
-            conv(32, num_refs * 6, kernel_size=1, use_relu=False)
+            conv(16, num_refs * 6, kernel_size=1, use_relu=False)
         )
 
         if use_mask:
