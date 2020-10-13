@@ -11,10 +11,10 @@ from spatial_correlation_sampler import SpatialCorrelationSampler
 from .modules_sceneflow import get_grid, WarpingLayer_SF
 from .modules_sceneflow import initialize_msra, upsample_outputs_as
 from .modules_sceneflow import upconv
-from .modules_sceneflow import FeatureExtractor, MonoSceneFlowDecoder, ContextNetwork
+from .modules_sceneflow import MonoSceneFlowDecoder, ContextNetwork #, FeatureExtractor
 
+from .encoders import FeatureExtractor
 from .decoders import PoseNet, PoseExpNet, MotionNet
-from .RigidityContextNet import RigidityContextNet
 
 from utils.interpolation import interpolate2d_as
 from utils.sceneflow_util import flow_horizontal_flip, intrinsic_scale, get_pixelgrid, post_processing
@@ -33,7 +33,7 @@ class SceneNetStereo(nn.Module):
         
         self.leakyRELU = nn.LeakyReLU(0.1, inplace=True)
 
-        self.feature_pyramid_extractor = FeatureExtractor(self.num_chs)
+        self.feature_pyramid_extractor = FeatureExtractor(self.num_chs, use_bn=args.use_bn)
         self.warping_layer_sf = WarpingLayer_SF()
         
         self.flow_estimators = nn.ModuleList()
@@ -59,7 +59,7 @@ class SceneNetStereo(nn.Module):
         self.corr_params = {"pad_size": self.search_range, "kernel_size": 1, "max_disp": self.search_range, "stride1": 1, "stride2": 1, "corr_multiply": 1}        
         self.disp_corr = SpatialCorrelationSampler(patch_size=(1, self.disp_range))
 
-        self.context_networks = ContextNetwork(32 + 3 + 1)
+        self.context_networks = ContextNetwork(32 + 3 + 1, use_bn=args.use_bn)
         self.sigmoid = torch.nn.Sigmoid()
 
         initialize_msra(self.modules())
@@ -148,9 +148,9 @@ class SceneNetStereo(nn.Module):
         mask_l2, pose_b, _ = self.pose_decoder(x21)
         mask_l1, pose_f, _ = self.pose_decoder(x12)
 
-        output_dict["pose_b"] = pose_b
+        output_dict["pose_b"] = pose_b.contiguous()
         output_dict["mask_l2"] = mask_l2
-        output_dict["pose_f"] = pose_f
+        output_dict["pose_f"] = pose_f.contiguous()
         output_dict["mask_l1"] = mask_l1
 
         return output_dict
@@ -181,6 +181,8 @@ class SceneNetStereo(nn.Module):
                 output_dict_r['flow_b'][ii] = flow_horizontal_flip(output_dict_r['flow_b'][ii])
                 output_dict_r['disp_l1'][ii] = torch.flip(output_dict_r['disp_l1'][ii], [3])
                 output_dict_r['disp_l2'][ii] = torch.flip(output_dict_r['disp_l2'][ii], [3])
+                output_dict_r['mask_l1'][ii] = torch.flip(output_dict_r['disp_l1'][ii], [3])
+                output_dict_r['mask_l2'][ii] = torch.flip(output_dict_r['disp_l2'][ii], [3])
 
             output_dict['output_dict_r'] = output_dict_r
 

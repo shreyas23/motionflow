@@ -280,21 +280,24 @@ def main():
       val_loss_avg = eval(args, model, loss, val_dataloader, augmentations)
       print(f"\t Epoch {epoch} val loss avg: {val_loss_avg}")
 
-    if not args.no_logging:
-      for k, v in train_loss_avg_dict.items():
-        writer.add_scalar(f'loss/train/{k}', train_loss_avg_dict[k], epoch)
-      if epoch % args.log_freq == 0:
-        visualize_output(args, input_dict, output_dict, epoch, writer)
-
     if args.lr_sched_type == 'plateau':
       lr_scheduler.step(train_loss_avg_dict['total_loss'])
     elif args.lr_sched_type == 'step':
       lr_scheduler.step(epoch)
 
     # save model
-    if not args.no_logging and args.save_freq > 0:
-      if epoch % args.save_freq == 0 or epoch == args.epochs:
-        fp = os.path.join(log_dir, f"{epoch}.ckpt")
+    if not args.no_logging:
+      for k, v in train_loss_avg_dict.items():
+        writer.add_scalar(f'loss/train/{k}', train_loss_avg_dict[k], epoch)
+      if epoch % args.log_freq == 0:
+        visualize_output(args, input_dict, output_dict, epoch, writer)
+
+      fp = os.path.join(log_dir, f"{epoch}.ckpt")
+
+      if args.save_freq > 0:
+        if epoch % args.save_freq == 0:
+          torch.save(model.state_dict(), fp)
+      elif epoch == args.epochs:
         torch.save(model.state_dict(), fp)
 
   if not args.no_logging:
@@ -309,7 +312,7 @@ def step(args, data_dict, model, loss, augmentations, optimizer):
   target_keys = list(filter(lambda x: "target" in x, data_dict.keys()))
   tensor_keys = input_keys + target_keys
 
-  # Possibly transfer to Cuda
+  # transfer to cuda
   if args.cuda:
     for k, v in data_dict.items():
       if k in tensor_keys:

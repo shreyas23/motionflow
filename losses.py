@@ -382,6 +382,8 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
         for ii in range(0, len(output_dict['flow_f'])):
             output_dict['flow_f'][ii].detach_()
             output_dict['flow_b'][ii].detach_()
+        output_dict['pose_f'].detach()
+        output_dict['pose_b'].detach()
         return
 
     def forward(self, output_dict, target_dict):

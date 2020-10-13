@@ -5,6 +5,8 @@ import torch.nn as nn
 import torch.nn.functional as tf
 import logging
 
+from sys import exit
+
 from .correlation_package.correlation import Correlation
 from spatial_correlation_sampler import SpatialCorrelationSampler
 
@@ -216,6 +218,8 @@ class SceneNetStereoJoint(nn.Module):
                 output_dict_r['flow_b'][ii] = flow_horizontal_flip(output_dict_r['flow_b'][ii])
                 output_dict_r['disp_l1'][ii] = torch.flip(output_dict_r['disp_l1'][ii], [3])
                 output_dict_r['disp_l2'][ii] = torch.flip(output_dict_r['disp_l2'][ii], [3])
+                output_dict_r['mask_l1'][ii] = torch.flip(output_dict_r['disp_l1'][ii], [3])
+                output_dict_r['mask_l2'][ii] = torch.flip(output_dict_r['disp_l2'][ii], [3])
 
             output_dict['output_dict_r'] = output_dict_r
 
