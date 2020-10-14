@@ -167,6 +167,8 @@ def train(gpu, args):
     torch.manual_seed(args.torch_seed)
     torch.cuda.manual_seed(args.cuda_seed)
 
+    torch.cuda.set_device(gpu)
+
     DATASET_NAME = args.dataset_name
     DATA_ROOT = args.data_root
 
