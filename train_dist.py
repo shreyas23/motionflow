@@ -283,13 +283,15 @@ def train(gpu, args):
         print(f"Training epoch: {epoch}...")
         train_loss_avg_dict, output_dict, input_dict = train_one_epoch(
             args, model, loss, train_dataloader, optimizer, augmentations, lr_scheduler, gpu)
-        print(f"\t Epoch {epoch} train loss avg:")
-        pprint(train_loss_avg_dict)
 
-        if val_dataset is not None:
-            print(f"Validation epoch: {epoch}...")
-            val_loss_avg = eval(args, model, loss, val_dataloader, augmentations)
-            print(f"\t Epoch {epoch} val loss avg: {val_loss_avg}")
+        if gpu == 0:
+            print(f"\t Epoch {epoch} train loss avg:")
+            pprint(train_loss_avg_dict)
+
+            if val_dataset is not None:
+                print(f"Validation epoch: {epoch}...")
+                val_loss_avg = eval(args, model, loss, val_dataloader, augmentations)
+                print(f"\t Epoch {epoch} val loss avg: {val_loss_avg}")
 
         if args.lr_sched_type == 'plateau':
             lr_scheduler.step(train_loss_avg_dict['total_loss'])
