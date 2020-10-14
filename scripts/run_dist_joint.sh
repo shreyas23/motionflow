@@ -1,14 +1,14 @@
 python3 train_dist.py --data_root="/ceph/kitti_jpg/" \
                  --exp_dir="scenenet_joint" \
                  --exp_name="" \
-                 --num_examples=8 \
+                 --num_examples=1000 \
                  --model_name="scenenet_joint" \
-                 --epochs=0 \
+                 --epochs=50 \
                  --num_gpus=2 \
                  --batch_size=8 \
                  --log_dir="/ceph/checkpoints/" \
                  --log_freq=1 \
-                 --save_freq=1
+                 --save_freq=1 \
                  --num_workers=16 \
                  --lr_sched_type='step' \
                  --lr=2e-4 \

@@ -145,6 +145,8 @@ parser.add_argument('--cuda_seed', default=543987,
 args = parser.parse_args()
 
 def main():
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '8888'
     args.world_size = args.num_gpus * args.num_nodes
     mp.spawn(train, nprocs=args.num_gpus, args=(args,))
 
@@ -202,7 +204,7 @@ def train(gpu, args):
             args, DATA_ROOT, num_examples=args.num_examples, flip_augmentations=False, preprocessing_crop=True)
         train_sampler = DistributedSampler(train_dataset, num_replicas=args.world_size, rank=rank)
         train_dataloader = DataLoader(train_dataset, args.batch_size,
-                                    shuffle=args.shuffle, num_workers=args.num_workers, pin_memory=True)
+                                    shuffle=args.shuffle, num_workers=args.num_workers, pin_memory=True, sampler=train_sampler)
         val_dataset = KITTI_Raw_KittiSplit_Valid(
             args, DATA_ROOT, num_examples=args.num_examples)
         val_dataset=None
@@ -221,7 +223,6 @@ def train(gpu, args):
 
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-
 
     # load optimizer and lr scheduler
     optimizer = Adam(model.parameters(), lr=args.lr, betas=[
