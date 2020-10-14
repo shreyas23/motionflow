@@ -204,7 +204,7 @@ def train(gpu, args):
             args, DATA_ROOT, num_examples=args.num_examples, flip_augmentations=False, preprocessing_crop=True)
         train_sampler = DistributedSampler(train_dataset, num_replicas=args.world_size, rank=rank)
         train_dataloader = DataLoader(train_dataset, args.batch_size,
-                                    shuffle=args.shuffle, num_workers=args.num_workers, pin_memory=True, sampler=train_sampler)
+                                    shuffle=False, num_workers=args.num_workers, pin_memory=True, sampler=train_sampler)
         val_dataset = KITTI_Raw_KittiSplit_Valid(
             args, DATA_ROOT, num_examples=args.num_examples)
         val_dataset=None
