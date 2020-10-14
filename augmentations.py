@@ -156,8 +156,8 @@ class Augmentation_ScaleCrop(nn.Module):
 
         # Coord of the resized image
         grid_ww, grid_hh = self._meshgrid(resize[1], resize[0])
-        grid_ww = (grid_ww - (resize[1] - 1.0) / 2.0).unsqueeze(0).cuda()
-        grid_hh = (grid_hh - (resize[0] - 1.0) / 2.0).unsqueeze(0).cuda()
+        grid_ww = (grid_ww - (resize[1] - 1.0) / 2.0).unsqueeze(0).cuda(self._device)
+        grid_hh = (grid_hh - (resize[0] - 1.0) / 2.0).unsqueeze(0).cuda(self._device)
         grid_pts = torch.cat([grid_ww, grid_hh, torch.ones_like(
             grid_hh)], dim=0).unsqueeze(0).expand(self._batch, -1, -1, -1)
 
@@ -165,7 +165,7 @@ class Augmentation_ScaleCrop(nn.Module):
         scale_tform = self._identity(self._batch, self._device)
         scale_tform[:, 0, 0] = scale_x[:, 0]
         scale_tform[:, 1, 1] = scale_y[:, 0]
-        pts_tform = torch.matmul(scale_tform, grid_pts.cuda().view(
+        pts_tform = torch.matmul(scale_tform, grid_pts.cuda(self._device).view(
             self._batch, 3, -1))
 
         # 2st - trans and rotate -> to original image (each pixel contains the coordinates in the original images)
@@ -230,8 +230,8 @@ class Augmentation_ScaleCrop(nn.Module):
 
         # Coord of the resized image
         pt_o = torch.zeros([1, 1]).float()
-        grid_ww = (pt_o - (resize[1] - 1.0) / 2.0).unsqueeze(0).cuda()
-        grid_hh = (pt_o - (resize[0] - 1.0) / 2.0).unsqueeze(0).cuda()
+        grid_ww = (pt_o - (resize[1] - 1.0) / 2.0).unsqueeze(0).cuda(self._device)
+        grid_hh = (pt_o - (resize[0] - 1.0) / 2.0).unsqueeze(0).cuda(self._device)
         grid_pts = torch.cat([grid_ww, grid_hh, torch.ones_like(
             grid_hh)], dim=0).unsqueeze(0).expand(self._batch, -1, -1, -1)
 
@@ -239,7 +239,7 @@ class Augmentation_ScaleCrop(nn.Module):
         scale_tform = self._identity(self._batch, self._device)
         scale_tform[:, 0, 0] = scale_x[:, 0]
         scale_tform[:, 1, 1] = scale_y[:, 0]
-        pts_tform = torch.matmul(scale_tform, grid_pts.cuda().view(
+        pts_tform = torch.matmul(scale_tform, grid_pts.cuda(self._device).view(
             self._batch, 3, -1))
 
         # 2st - trans and rotate -> to original image (each pixel contains the coordinates in the original images)

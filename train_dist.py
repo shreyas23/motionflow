@@ -173,7 +173,7 @@ def train(gpu, args):
     print(f"Using {torch.cuda.device_count()} GPUs...")
     print("Loading model")
     if args.model_name == 'scenenet':
-        model = SceneNet(args).to(device=gpu)
+        model = SceneNet(args).cuda(device=gpu)
         model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
         loss = Loss_SceneFlow_SelfSup_Pose(args)
     elif args.model_name == 'scenenet_stereo':
