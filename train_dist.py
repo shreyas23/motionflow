@@ -14,7 +14,11 @@ import torch.nn as nn
 from torch.optim import Adam, SGD
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
+
 import torch.distributed as dist
+import torch.multiprocessing as mp
+from torch.nn.parallel import DistributedDataParallel
+from torch.nn.utils.data import DistributedSampler
 
 from augmentations import Augmentation_SceneFlow, Augmentation_Resize_Only
 
@@ -40,6 +44,7 @@ parser = argparse.ArgumentParser(description="Self Supervised Joint Learning of 
 
 # distributed params
 parser.add_argument("--local_rank", type=int, default=0)
+parser.add_argument("--num_nodes", type=int, default=1)
 
 # runtime params
 parser.add_argument('--data_root', help='path to dataset', required=True)
@@ -137,6 +142,8 @@ parser.add_argument('--cuda_seed', default=543987,
                     help='random seed for reproducibility')
 
 args = parser.parse_args()
+
+def main():
 
 
 def main():
