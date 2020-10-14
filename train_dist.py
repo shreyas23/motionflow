@@ -265,12 +265,11 @@ def train(gpu, args):
         load_epoch = args.start_epoch - 1
         ckpt_fp = os.path.join(log_dir, f"{load_epoch}.ckpt")
 
-    print(f"Loading model from {ckpt_fp}...")
+        print(f"Loading model from {ckpt_fp}...")
 
-    ckpt = torch.load(ckpt_fp)
-    assert (ckpt['epoch'] ==
-            load_epoch), "epoch from state dict does not match with args"
-    model.load_state_dict(ckpt)
+        ckpt = torch.load(ckpt_fp)
+        assert (ckpt['epoch'] == load_epoch), "epoch from state dict does not match with args"
+        model.load_state_dict(ckpt)
 
     model.train()
 
