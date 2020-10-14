@@ -1,4 +1,4 @@
-python3 train.py --data_root="/ceph/kitti_jpg/" \
+python3 train_dist.py --data_root="/ceph/kitti_jpg/" \
                  --exp_dir="scenenet_joint" \
                  --exp_name="" \
                  --num_examples=8 \
