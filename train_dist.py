@@ -173,23 +173,23 @@ def train(gpu, args):
     print(f"Using {torch.cuda.device_count()} GPUs...")
     print("Loading model")
     if args.model_name == 'scenenet':
-        model = SceneNet(args).cuda()
+        model = SceneNet(args).to(device=gpu)
         model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
         loss = Loss_SceneFlow_SelfSup_Pose(args)
     elif args.model_name == 'scenenet_stereo':
-        model = SceneNetStereo(args).cuda()
+        model = SceneNetStereo(args).cuda(device=gpu)
         model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
         loss = Loss_SceneFlow_SelfSup_PoseStereo(args)
     elif args.model_name == 'scenenet_joint':
-        model = SceneNetStereoJoint(args).cuda()
+        model = SceneNetStereoJoint(args).cuda(device=gpu)
         model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
         loss = Loss_SceneFlow_SelfSup_JointStereo(args)
     elif args.model_name == 'monoflow':
-        model = MonoSceneFlow(args).cuda()
+        model = MonoSceneFlow(args).cuda(device=gpu)
         model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
         loss = Loss_SceneFlow_SelfSup(args)
     elif args.model_name == 'posedepth':
-        model = PoseDispNet(args).cuda()
+        model = PoseDispNet(args).cuda(device=gpu)
         model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
         loss = Loss_PoseDepth()
     else:
@@ -218,6 +218,9 @@ def train(gpu, args):
         else:
             print("Augmentations: Augmentation_SceneFlow")
             augmentations = Augmentation_SceneFlow(args)
+
+        if args.cuda:
+            augmentations = augmentations.cuda(device=gpu)
     else:
         raise NotImplementedError
 
@@ -277,7 +280,7 @@ def train(gpu, args):
     for epoch in range(args.start_epoch, args.epochs + 1):
         print(f"Training epoch: {epoch}...")
         train_loss_avg_dict, output_dict, input_dict = train_one_epoch(
-            args, model, loss, train_dataloader, optimizer, augmentations, lr_scheduler)
+            args, model, loss, train_dataloader, optimizer, augmentations, lr_scheduler, gpu)
         print(f"\t Epoch {epoch} train loss avg:")
         pprint(train_loss_avg_dict)
 
@@ -312,7 +315,7 @@ def train(gpu, args):
     return
 
 
-def step(args, data_dict, model, loss, augmentations, optimizer):
+def step(args, data_dict, model, loss, augmentations, optimizer, gpu):
     # Get input and target tensor keys
     input_keys = list(filter(lambda x: "input" in x, data_dict.keys()))
     target_keys = list(filter(lambda x: "target" in x, data_dict.keys()))
@@ -322,7 +325,7 @@ def step(args, data_dict, model, loss, augmentations, optimizer):
     if args.cuda:
         for k, v in data_dict.items():
             if k in tensor_keys:
-                data_dict[k] = v.cuda(non_blocking=True)
+                data_dict[k] = v.cuda(device=gpu, non_blocking=True)
 
     if augmentations is not None:
         with torch.no_grad():
@@ -340,13 +343,13 @@ def step(args, data_dict, model, loss, augmentations, optimizer):
     return loss_dict, output_dict
 
 
-def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_scheduler):
+def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_scheduler, gpu):
 
     loss_dict_avg = None
 
     for data in tqdm(dataloader):
         loss_dict, output_dict = step(
-            args, data, model, loss, augmentations, optimizer)
+            args, data, model, loss, augmentations, optimizer, gpu)
         
         if loss_dict_avg is None:
             loss_dict_avg = {k:0 for k in loss_dict.keys()}
