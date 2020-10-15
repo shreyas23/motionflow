@@ -260,7 +260,7 @@ def train(gpu, args):
         else:
             exp_name = args.exp_name
             log_dir = os.path.join(log_dir, exp_name)
-            writer = SummaryWriter(log_dir)
+        writer = SummaryWriter(log_dir)
 
     if args.ckpt != "" and args.use_pretrained:
         state_dict = torch.load(args.ckpt)['state_dict']
