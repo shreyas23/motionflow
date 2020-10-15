@@ -298,25 +298,24 @@ def train(gpu, args):
         elif args.lr_sched_type == 'step':
             lr_scheduler.step(epoch)
 
-    #     # save model
-    #     if not args.no_logging:
-    #         for k, v in train_loss_avg_dict.items():
-    #             writer.add_scalar(f'loss/train/{k}', train_loss_avg_dict[k], epoch)
-    #         if epoch % args.log_freq == 0:
-    #             visualize_output(args, input_dict, output_dict, epoch, writer)
+        if gpu == 0:
+            # save model
+            if not args.no_logging:
+                for k, v in train_loss_avg_dict.items():
+                    writer.add_scalar(f'loss/train/{k}', train_loss_avg_dict[k], epoch)
+                if epoch % args.log_freq == 0:
+                    visualize_output(args, input_dict, output_dict, epoch, writer)
 
-    #         fp = os.path.join(log_dir, f"{epoch}.ckpt")
+                fp = os.path.join(log_dir, f"{epoch}.ckpt")
 
-    #         if args.save_freq > 0:
-    #             if epoch % args.save_freq == 0:
-    #                 torch.save(model.state_dict(), fp)
-    #         elif epoch == args.epochs:
-    #             torch.save(model.state_dict(), fp)
+                if args.save_freq > 0:
+                    if epoch % args.save_freq == 0:
+                        torch.save(model.state_dict(), fp)
+                elif epoch == args.epochs:
+                    torch.save(model.state_dict(), fp)
 
-    # if not args.no_logging:
-    #     writer.flush()
-
-    return
+            if not args.no_logging:
+                writer.flush()
 
 
 def step(args, data_dict, model, loss, augmentations, optimizer, gpu):
