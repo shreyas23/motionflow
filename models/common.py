@@ -10,6 +10,10 @@ from utils.sceneflow_util import pixel2pts_ms, pts2pixel_pose_ms
     https://github.com/NVlabs/SENSE/blob/master/sense/models/common.py
 """
 
+def post_process(pose, depth, mask, sf):
+    post_sf = None
+    return post_sf
+
 
 def conv(in_chs, out_chs, kernel_size=3, stride=1, dilation=1, bias=True, use_relu=True, use_bn=False):
   layers = []

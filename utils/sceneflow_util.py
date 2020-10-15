@@ -12,7 +12,7 @@ from sys import exit
 def add_pose(pose_mat, pose_res):
     pose_mat_res = pose_vec2mat(pose_res)
     R = torch.bmm(pose_mat_res[:, :, :-1], pose_mat[:, :, :-1])
-    t = pose_mat[:, :, -1:] + pose_mat_res[:, :, -1:]
+    t = pose_mat_res[:, :, -1:] + pose_mat[:, :, -1:]
     pose_mat = torch.cat([R, t], dim=-1)
 
     return pose_mat 

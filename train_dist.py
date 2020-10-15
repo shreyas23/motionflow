@@ -79,7 +79,7 @@ parser.add_argument('--encoder_name', type=str, default="pwc",
 
 # dataset params
 parser.add_argument('--dataset_name', default='KITTI', help='KITTI or Carla')
-parser.add_argument('--batch_size', type=int, default=1, help='batch size')
+parser.add_argument('--batch_size', type=int, default=4, help='batch size')
 parser.add_argument('--num_views', type=int, default=2,
                     help="number of views present in training data")
 parser.add_argument('--num_examples', type=int, default=-1,
@@ -145,6 +145,10 @@ parser.add_argument('--cuda_seed', default=543987,
 args = parser.parse_args()
 
 def main():
+
+    for arg in vars(args):
+        print(f"{arg}: {getattr(args, arg)}")
+
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '8888'
     args.world_size = args.num_gpus * args.num_nodes
@@ -156,9 +160,6 @@ def train(gpu, args):
     rank = args.nr * args.num_gpus + gpu
 
     dist.init_process_group(backend="nccl", world_size=args.world_size, rank=rank)
-
-    for arg in vars(args):
-        print(f"{arg}: {getattr(args, arg)}")
 
     if args.batch_size == 1 and args.use_bn is True:
         raise Exception
