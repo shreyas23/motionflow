@@ -250,7 +250,9 @@ def train(gpu, args):
     if not args.no_logging:
         if not os.path.isdir(args.log_dir):
             os.mkdir(args.log_dir)
-            log_dir = os.path.join(args.log_dir, args.exp_dir)
+
+        log_dir = os.path.join(args.log_dir, args.exp_dir)
+
         if not os.path.isdir(log_dir):
             os.mkdir(log_dir)
         if args.exp_name == "":
