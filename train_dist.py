@@ -34,7 +34,8 @@ from utils.inverse_warp import flow_warp, pose2flow, inverse_warp, pose_vec2mat
 from utils.sceneflow_util import projectSceneFlow2Flow, disp2depth_kitti, reconstructImg
 from utils.sceneflow_util import pixel2pts_ms, pts2pixel_ms, pts2pixel_pose_ms, pixel2pts_ms_depth
 
-from losses import Loss_SceneFlow_SelfSup, Loss_SceneFlow_SelfSup_Pose, Loss_SceneFlow_SelfSup_PoseStereo, Loss_SceneFlow_SelfSup_JointStereo
+from losses import Loss_SceneFlow_SelfSup_PoseStereo, Loss_SceneFlow_SelfSup_JointStereo
+# from losses import Loss_SceneFlow_SelfSup, Loss_SceneFlow_SelfSup_Pose, Loss_SceneFlow_SelfSup_PoseStereo, Loss_SceneFlow_SelfSup_JointStereo
 from losses import _generate_image_left, _adaptive_disocc_detection
 from losses import Loss_PoseDepth
 
@@ -204,7 +205,7 @@ def train(gpu, args):
     print("Loading dataset and dataloaders...")
     if DATASET_NAME == 'KITTI':
         train_dataset = KITTI_Raw_KittiSplit_Train(
-            args, DATA_ROOT, num_examples=args.num_examples, flip_augmentations=False, preprocessing_crop=True)
+            args, DATA_ROOT, num_examples=args.num_examples)
         train_sampler = DistributedSampler(train_dataset, num_replicas=args.world_size, rank=rank)
         train_dataloader = DataLoader(train_dataset, args.batch_size,
                                     shuffle=False, num_workers=args.num_workers, pin_memory=True, sampler=train_sampler)
@@ -217,7 +218,7 @@ def train(gpu, args):
         # define augmentations
         if args.resize_only:
             print("Augmentations: Augmentation_Resize_Only")
-            augmentations = Augmentation_Resize_Only(args, photometric=False)
+            augmentations = Augmentation_Resize_Only(args)
         else:
             print("Augmentations: Augmentation_SceneFlow")
             augmentations = Augmentation_SceneFlow(args)
