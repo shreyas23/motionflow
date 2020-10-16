@@ -240,7 +240,7 @@ def train(gpu, args):
             optimizer, factor=args.lr_gamma, verbose=True, mode='min', patience=10)
     elif args.lr_sched_type == 'step':
         print("Using step lr schedule")
-        milestones = [20]
+        milestones = [10, 15]
         lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
             optimizer, milestones=milestones, gamma=args.lr_gamma)
     elif args.lr_sched_type == 'none':
@@ -259,7 +259,8 @@ def train(gpu, args):
             exp_name = datetime.datetime.now().strftime("%H%M%S-%Y%m%d")
         else:
             exp_name = args.exp_name
-            log_dir = os.path.join(log_dir, exp_name)
+
+        log_dir = os.path.join(log_dir, exp_name)
         writer = SummaryWriter(log_dir)
 
     if args.ckpt != "" and args.use_pretrained:
