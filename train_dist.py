@@ -34,7 +34,8 @@ from utils.inverse_warp import flow_warp, pose2flow, inverse_warp, pose_vec2mat
 from utils.sceneflow_util import projectSceneFlow2Flow, disp2depth_kitti, reconstructImg
 from utils.sceneflow_util import pixel2pts_ms, pts2pixel_ms, pts2pixel_pose_ms, pixel2pts_ms_depth
 
-from losses import Loss_SceneFlow_SelfSup, Loss_SceneFlow_SelfSup_Pose, Loss_SceneFlow_SelfSup_PoseStereo, Loss_SceneFlow_SelfSup_JointStereo
+from losses import Loss_SceneFlow_SelfSup_PoseStereo, Loss_SceneFlow_SelfSup_JointStereo
+# from losses import Loss_SceneFlow_SelfSup, Loss_SceneFlow_SelfSup_Pose, Loss_SceneFlow_SelfSup_PoseStereo, Loss_SceneFlow_SelfSup_JointStereo
 from losses import _generate_image_left, _adaptive_disocc_detection
 from losses import Loss_PoseDepth
 
@@ -204,10 +205,10 @@ def train(gpu, args):
     print("Loading dataset and dataloaders...")
     if DATASET_NAME == 'KITTI':
         train_dataset = KITTI_Raw_KittiSplit_Train(
-            args, DATA_ROOT, num_examples=args.num_examples, flip_augmentations=False, preprocessing_crop=True)
+            args, DATA_ROOT, num_examples=args.num_examples)
         train_sampler = DistributedSampler(train_dataset, num_replicas=args.world_size, rank=rank, shuffle=True)
         train_dataloader = DataLoader(train_dataset, args.batch_size,
-                                    shuffle=False, num_workers=args.num_workers, pin_memory=True, sampler=train_sampler)
+                                    shuffle=(train_sampler is None), num_workers=args.num_workers, pin_memory=True, sampler=train_sampler)
         val_dataset = KITTI_Raw_KittiSplit_Valid(
             args, DATA_ROOT, num_examples=args.num_examples)
         val_dataset=None
@@ -217,7 +218,7 @@ def train(gpu, args):
         # define augmentations
         if args.resize_only:
             print("Augmentations: Augmentation_Resize_Only")
-            augmentations = Augmentation_Resize_Only(args, photometric=False)
+            augmentations = Augmentation_Resize_Only(args)
         else:
             print("Augmentations: Augmentation_SceneFlow")
             augmentations = Augmentation_SceneFlow(args)
@@ -240,14 +241,14 @@ def train(gpu, args):
             optimizer, factor=args.lr_gamma, verbose=True, mode='min', patience=10)
     elif args.lr_sched_type == 'step':
         print("Using step lr schedule")
-        milestones = [20]
+        milestones = [10, 15]
         lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
             optimizer, milestones=milestones, gamma=args.lr_gamma)
     elif args.lr_sched_type == 'none':
         lr_scheduler = None
 
     # set up logging
-    if not args.no_logging:
+    if not args.no_logging and gpu == 0:
         if not os.path.isdir(args.log_dir):
             os.mkdir(args.log_dir)
 
@@ -259,7 +260,8 @@ def train(gpu, args):
             exp_name = datetime.datetime.now().strftime("%H%M%S-%Y%m%d")
         else:
             exp_name = args.exp_name
-            log_dir = os.path.join(log_dir, exp_name)
+
+        log_dir = os.path.join(log_dir, exp_name)
         writer = SummaryWriter(log_dir)
 
     if args.ckpt != "" and args.use_pretrained:
@@ -305,24 +307,23 @@ def train(gpu, args):
         elif args.lr_sched_type == 'step':
             lr_scheduler.step(epoch)
 
-        if gpu == 0:
-            # save model
-            if not args.no_logging:
-                for k, v in train_loss_avg_dict.items():
-                    writer.add_scalar(f'loss/train/{k}', train_loss_avg_dict[k], epoch)
-                if epoch % args.log_freq == 0:
-                    visualize_output(args, input_dict, output_dict, epoch, writer)
+        # save model
+        if not args.no_logging and gpu==0:
+            for k, v in train_loss_avg_dict.items():
+                writer.add_scalar(f'loss/train/{k}', train_loss_avg_dict[k], epoch)
+            if epoch % args.log_freq == 0:
+                visualize_output(args, input_dict, output_dict, epoch, writer)
 
-                fp = os.path.join(log_dir, f"{epoch}.ckpt")
+            writer.flush()
 
-                if args.save_freq > 0:
-                    if epoch % args.save_freq == 0:
-                        torch.save(model.state_dict(), fp)
-                elif epoch == args.epochs:
+            fp = os.path.join(log_dir, f"{epoch}.ckpt")
+
+            if args.save_freq > 0:
+                if epoch % args.save_freq == 0:
                     torch.save(model.state_dict(), fp)
+            elif epoch == args.epochs:
+                torch.save(model.state_dict(), fp)
 
-            if not args.no_logging:
-                writer.flush()
 
 
 def step(args, data_dict, model, loss, augmentations, optimizer, gpu):
@@ -438,7 +439,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
         print(f"Transformation matrices for epoch: {epoch}, {pose}")
         if args.use_mask:
             mask = output_dict['mask_l2'][0].detach()
-            census_mask = output_dict['census_masks_b'][0].detach()
+            census_mask = output_dict['census_masks_l2'][0].detach()
             writer.add_images('mask', mask, epoch)
             writer.add_images('census mask', census_mask, epoch)
 
