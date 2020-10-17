@@ -205,7 +205,7 @@ def train(gpu, args):
     if DATASET_NAME == 'KITTI':
         train_dataset = KITTI_Raw_KittiSplit_Train(
             args, DATA_ROOT, num_examples=args.num_examples, flip_augmentations=False, preprocessing_crop=True)
-        train_sampler = DistributedSampler(train_dataset, num_replicas=args.world_size, rank=rank)
+        train_sampler = DistributedSampler(train_dataset, num_replicas=args.world_size, rank=rank, shuffle=True)
         train_dataloader = DataLoader(train_dataset, args.batch_size,
                                     shuffle=False, num_workers=args.num_workers, pin_memory=True, sampler=train_sampler)
         val_dataset = KITTI_Raw_KittiSplit_Valid(
@@ -283,6 +283,10 @@ def train(gpu, args):
 
     # run training loop
     for epoch in range(args.start_epoch, args.epochs + 1):
+
+        # need to set epoch in order to shuffle indices
+        train_sampler.set_epoch(epoch)
+
         print(f"Training epoch: {epoch}...")
         train_loss_avg_dict, output_dict, input_dict = train_one_epoch(
             args, model, loss, train_dataloader, optimizer, augmentations, lr_scheduler, gpu)
