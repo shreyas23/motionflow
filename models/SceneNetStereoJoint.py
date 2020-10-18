@@ -247,4 +247,38 @@ class SceneNetStereoJoint(nn.Module):
 
             output_dict['output_dict_r'] = output_dict_r
 
+        ## Post Processing 
+        ## ss:           eval
+        ## ft: train val eval
+        if self._args.evaluation or self._args.finetuning:
+
+            input_l1_flip = torch.flip(input_dict['input_l1_aug'], [3])
+            input_l2_flip = torch.flip(input_dict['input_l2_aug'], [3])
+            input_r1_flip = torch.flip(input_dict['input_r1_aug'], [3])
+            input_r2_flip = torch.flip(input_dict['input_r2_aug'], [3])
+            k_l1_flip = input_dict["input_k_l1_flip_aug"]
+            k_l2_flip = input_dict["input_k_l2_flip_aug"]
+            k_r1_flip = input_dict["input_k_r1_flip_aug"]
+            k_r2_flip = input_dict["input_k_r2_flip_aug"]
+
+            # output_dict_flip = self.run_pwc(input_dict, input_l1_flip, input_l2_flip, k_l1_flip, k_l2_flip)
+            output_dict_flip = self.run_pwc(input_dict, input_l1_flip, input_l2_flip, input_r1_flip, input_r2_flip, k_l1_flip, k_l2_flip)
+
+            flow_f_pp = []
+            flow_b_pp = []
+            disp_l1_pp = []
+            disp_l2_pp = []
+
+            for ii in range(0, len(output_dict_flip['flow_f'])):
+
+                flow_f_pp.append(post_processing(output_dict['flow_f'][ii], flow_horizontal_flip(output_dict_flip['flow_f'][ii])))
+                flow_b_pp.append(post_processing(output_dict['flow_b'][ii], flow_horizontal_flip(output_dict_flip['flow_b'][ii])))
+                disp_l1_pp.append(post_processing(output_dict['disp_l1'][ii], torch.flip(output_dict_flip['disp_l1'][ii], [3])))
+                disp_l2_pp.append(post_processing(output_dict['disp_l2'][ii], torch.flip(output_dict_flip['disp_l2'][ii], [3])))
+
+            output_dict['flow_f_pp'] = flow_f_pp
+            output_dict['flow_b_pp'] = flow_b_pp
+            output_dict['disp_l1_pp'] = disp_l1_pp
+            output_dict['disp_l2_pp'] = disp_l2_pp
+
         return output_dict
