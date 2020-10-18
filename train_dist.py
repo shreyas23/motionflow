@@ -219,10 +219,8 @@ def train(gpu, args):
 
         # define augmentations
         if args.resize_only:
-            print("Augmentations: Augmentation_Resize_Only")
             augmentations = Augmentation_Resize_Only(args)
         else:
-            print("Augmentations: Augmentation_SceneFlow")
             augmentations = Augmentation_SceneFlow(args)
 
         if args.cuda:
@@ -265,27 +263,27 @@ def train(gpu, args):
         else:
             exp_name = args.exp_name
 
-        log_dir = os.path.join(log_dir, exp_name)
-        writer = SummaryWriter(log_dir)
+        args.ckpt_dir = os.path.join(log_dir, exp_name)
+        writer = SummaryWriter(args.ckpt_dir)
     else:
         writer=None
 
-    if args.ckpt != "" and args.use_pretrained:
-        state_dict = torch.load(args.ckpt)['state_dict']
-        new_state_dict = OrderedDict()
-        for k, v in state_dict.items():
-            name = k[7:]
-            new_state_dict[name] = v
-            model.load_state_dict(new_state_dict)
-    elif args.start_epoch > 0:
-        load_epoch = args.start_epoch - 1
-        ckpt_fp = os.path.join(log_dir, f"{load_epoch}.ckpt")
+    # if args.ckpt != "" and args.use_pretrained:
+    #     state_dict = torch.load(args.ckpt)['state_dict']
+    #     new_state_dict = OrderedDict()
+    #     for k, v in state_dict.items():
+    #         name = k[7:]
+    #         new_state_dict[name] = v
+    #         model.load_state_dict(new_state_dict)
+    # elif args.start_epoch > 0:
+    #     load_epoch = args.start_epoch - 1
+    #     ckpt_fp = os.path.join(log_dir, f"{load_epoch}.ckpt")
 
-        print(f"Loading model from {ckpt_fp}...")
+    #     print(f"Loading model from {ckpt_fp}...")
 
-        ckpt = torch.load(ckpt_fp)
-        assert (ckpt['epoch'] == load_epoch), "epoch from state dict does not match with args"
-        model.load_state_dict(ckpt)
+    #     ckpt = torch.load(ckpt_fp)
+    #     assert (ckpt['epoch'] == load_epoch), "epoch from state dict does not match with args"
+    #     model.load_state_dict(ckpt)
 
     model.train()
 
@@ -295,7 +293,8 @@ def train(gpu, args):
         # need to set epoch in order to shuffle indices
         train_sampler.set_epoch(epoch)
 
-        print(f"Training epoch: {epoch}...")
+        if gpu == 0:
+            print(f"Training epoch: {epoch}...")
         train_loss_avg_dict, output_dict, input_dict = train_one_epoch(
             args, model, loss, train_dataloader, optimizer, augmentations, lr_scheduler, gpu, writer)
 
@@ -313,29 +312,28 @@ def train(gpu, args):
         elif args.lr_sched_type == 'step':
             lr_scheduler.step(epoch)
 
-        # save model
-        fp = os.path.join(log_dir, f"{epoch}.ckpt")
+        if not args.no_logging:
+            fp = os.path.join(args.ckpt_dir, f"{epoch}.ckpt")
+            if gpu == 0:
+                # for k, v in train_loss_avg_dict.items():
+                #     writer.add_scalar(f'loss/train/{k}', train_loss_avg_dict[k], epoch)
+                if epoch % args.log_freq == 0:
+                    visualize_output(args, input_dict, output_dict, epoch, writer)
 
-        if not args.no_logging and gpu==0:
-            # for k, v in train_loss_avg_dict.items():
-            #     writer.add_scalar(f'loss/train/{k}', train_loss_avg_dict[k], epoch)
-            if epoch % args.log_freq == 0:
-                visualize_output(args, input_dict, output_dict, epoch, writer)
+                writer.flush()
 
-            writer.flush()
-
-            if args.save_freq > 0:
-                if epoch % args.save_freq == 0:
+                if args.save_freq > 0:
+                    if epoch % args.save_freq == 0:
+                        torch.save(model.state_dict(), fp)
+                elif epoch == args.epochs:
                     torch.save(model.state_dict(), fp)
-            elif epoch == args.epochs:
-                torch.save(model.state_dict(), fp)
 
-        dist.barrier()
+            dist.barrier()
 
-        # configure map_location properly
-        map_location = {'cuda:%d' % 0: 'cuda:%d' % rank}
-        model.load_state_dict(
-            torch.load(fp, map_location=map_location))
+            # configure map_location properly
+            map_location = {'cuda:%d' % 0: 'cuda:%d' % rank}
+            model.load_state_dict(
+                torch.load(fp, map_location=map_location))
 
 
 def step(args, data_dict, model, loss, augmentations, optimizer, gpu, writer, i):

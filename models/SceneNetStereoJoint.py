@@ -64,7 +64,31 @@ class SceneNetStereoJoint(nn.Module):
         self.context_networks = JointContextNetwork(32 + 3 + 1 + 6 + 1, use_bn=args.use_bn)
         self.sigmoid = torch.nn.Sigmoid()
 
-        initialize_msra(self.modules())
+        # initialize_msra(self.modules())
+        self.initialize_weights()
+
+
+    def initialize_weights(self):
+        logging.info("Initializing weights")
+        for layer in self.modules():
+            if isinstance(layer, nn.Conv2d):
+                nn.init.kaiming_normal_(layer.weight)
+                # nn.init.xavier_uniform_(layer.weight)
+                if layer.bias is not None:
+                    nn.init.constant_(layer.bias, 0)
+
+            elif isinstance(layer, nn.ConvTranspose2d):
+                nn.init.kaiming_normal_(layer.weight)
+                # nn.init.xavier_uniform_(layer.weight)
+                if layer.bias is not None:
+                    nn.init.constant_(layer.bias, 0)
+
+            elif isinstance(layer, nn.LeakyReLU):
+                pass
+
+            elif isinstance(layer, nn.Sequential):
+                pass
+
 
     def run_pwc(self, input_dict, x1_raw, x2_raw, r1_raw, r2_raw, k1, k2):
             
