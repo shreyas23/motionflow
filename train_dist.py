@@ -130,8 +130,8 @@ parser.add_argument('--use_mask', type=bool, default=False,
                     help="whether to use consensus mask in training procedure")
 
 # etc.
-parser.add_argument('--num_gpus', type=int,
-                    default=1, help='number of gpus used for training')
+# parser.add_argument('--num_gpus', type=int,
+#                     default=1, help='number of gpus used for training')
 parser.add_argument('--debugging', type=bool,
                     default=False, help='are you debugging?')
 parser.add_argument('--finetuning', type=bool, default=False,
@@ -155,6 +155,7 @@ def main():
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '8888'
 
+    args.num_gpus = torch.cuda.device_count()
     args.world_size = args.num_gpus * args.num_nodes
     mp.spawn(train, nprocs=args.num_gpus, args=(args,))
 
