@@ -267,6 +267,8 @@ def train(gpu, args):
 
         log_dir = os.path.join(log_dir, exp_name)
         writer = SummaryWriter(log_dir)
+    else:
+        writer=None
 
     if args.ckpt != "" and args.use_pretrained:
         state_dict = torch.load(args.ckpt)['state_dict']
@@ -295,7 +297,7 @@ def train(gpu, args):
 
         print(f"Training epoch: {epoch}...")
         train_loss_avg_dict, output_dict, input_dict = train_one_epoch(
-            args, model, loss, train_dataloader, optimizer, augmentations, lr_scheduler, gpu)
+            args, model, loss, train_dataloader, optimizer, augmentations, lr_scheduler, gpu, writer)
 
         if gpu == 0:
             print(f"\t Epoch {epoch} train loss avg:")
@@ -336,7 +338,7 @@ def train(gpu, args):
             torch.load(fp, map_location=map_location))
 
 
-def step(args, data_dict, model, loss, augmentations, optimizer, gpu, i):
+def step(args, data_dict, model, loss, augmentations, optimizer, gpu, writer, i):
     # Get input and target tensor keys
     input_keys = list(filter(lambda x: "input" in x, data_dict.keys()))
     target_keys = list(filter(lambda x: "target" in x, data_dict.keys()))
@@ -368,13 +370,13 @@ def step(args, data_dict, model, loss, augmentations, optimizer, gpu, i):
     return loss_dict, output_dict
 
 
-def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_scheduler, gpu):
+def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_scheduler, gpu, writer):
 
     loss_dict_avg = None
 
     for i, data in enumerate(tqdm(dataloader)):
         loss_dict, output_dict = step(
-            args, data, model, loss, augmentations, optimizer, gpu, i)
+            args, data, model, loss, augmentations, optimizer, gpu, writer, i)
         
         if loss_dict_avg is None:
             loss_dict_avg = {k:0 for k in loss_dict.keys()}
