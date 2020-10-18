@@ -1,7 +1,7 @@
 python3 train_dist.py --data_root="/ceph/kitti_jpg/" \
                  --exp_dir="scenenet_joint" \
                  --exp_name="" \
-                 --num_examples=-1 \
+                 --num_examples=1000 \
                  --model_name="scenenet_joint" \
                  --epochs=50 \
                  --num_gpus=4 \
@@ -20,6 +20,6 @@ python3 train_dist.py --data_root="/ceph/kitti_jpg/" \
                  --disp_lr_w=1.0 \
                  --mask_reg_w=0.2 \
                  --mask_sm_w=0.1 \
-                 --static_cons_w=0.0 \
+                 --static_cons_w=0.1 \
                  --mask_cons_w=0.3 \
                  --flow_diff_thresh=1e-3

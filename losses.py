@@ -632,13 +632,13 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
 
         pose_flow = pose2flow(depth.squeeze(dim=1), None, intrinsics, torch.inverse(intrinsics_scaled), pose_mat=pose)
         flow = projectSceneFlow2Flow(intrinsics_scaled, sf, disp)
-        
+
+        flow_diff = (pose_flow - flow).abs().mean(dim=1, keepdim=True)
+
         # static consistency loss
         flow_loss = _elementwise_epe(pose_flow, flow).mean(dim=1, keepdim=True)
-        flow_diff = (pose_flow - flow).abs().mean(dim=1, keepdim=True)
         loss = (flow_loss * mask)[disp_occ].mean()
         flow_loss[~disp_occ].detach_()
-        # flow_diff[~disp_occ].detach_()
 
         return loss * self._static_cons_w, flow_diff.detach()
 
@@ -646,8 +646,8 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
         # mask consensus loss
         target_mask = (pose_err <= sf_err).float()
         flow_similar = (flow_diff < self._flow_diff_thresh).float()
-        census_target_mask = logical_or(target_mask, flow_similar)
-        loss = tf.binary_cross_entropy(mask, census_target_mask.detach())
+        census_target_mask = logical_or(target_mask, flow_similar).detach()
+        loss = tf.binary_cross_entropy(mask, census_target_mask)
         return loss * self._mask_cons_w, census_target_mask
 
     def mask_lr_loss(self, mask_l, mask_r, disp_l, disp_r, left_occ, right_occ):

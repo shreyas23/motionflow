@@ -232,8 +232,10 @@ def train(gpu, args):
     torch.backends.cudnn.benchmark = False
 
     # load optimizer and lr scheduler
-    optimizer = Adam(model.parameters(), lr=args.lr, betas=[
-                    args.momentum, args.beta], weight_decay=args.weight_decay)
+    optimizer = Adam(model.parameters(), 
+                     lr=args.lr, 
+                     betas=[args.momentum, args.beta], 
+                     weight_decay=args.weight_decay)
 
     if args.lr_sched_type == 'plateau':
         print("Using plateau lr schedule")
