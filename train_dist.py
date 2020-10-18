@@ -251,7 +251,7 @@ def train(gpu, args):
         lr_scheduler = None
 
     # set up logging
-    if not args.no_logging and gpu == 0:
+    if not args.no_logging:
         if not os.path.isdir(args.log_dir):
             os.mkdir(args.log_dir)
 
@@ -264,10 +264,11 @@ def train(gpu, args):
         else:
             exp_name = args.exp_name
 
-        args.ckpt_dir = os.path.join(log_dir, exp_name)
-        writer = SummaryWriter(args.ckpt_dir)
-    else:
-        writer=None
+        log_dir = os.path.join(log_dir, exp_name)
+        if gpu == 0:
+            writer = SummaryWriter(log_dir)
+        else:
+            writer = None
 
     # if args.ckpt != "" and args.use_pretrained:
     #     state_dict = torch.load(args.ckpt)['state_dict']
@@ -297,7 +298,7 @@ def train(gpu, args):
         if gpu == 0:
             print(f"Training epoch: {epoch}...")
         train_loss_avg_dict, output_dict, input_dict = train_one_epoch(
-            args, model, loss, train_dataloader, optimizer, augmentations, lr_scheduler, gpu, writer)
+            args, model, loss, train_dataloader, optimizer, augmentations, lr_scheduler, gpu)
 
         if gpu == 0:
             print(f"\t Epoch {epoch} train loss avg:")
@@ -314,10 +315,10 @@ def train(gpu, args):
             lr_scheduler.step(epoch)
 
         if not args.no_logging:
-            fp = os.path.join(args.ckpt_dir, f"{epoch}.ckpt")
+            fp = os.path.join(log_dir, f"{epoch}.ckpt")
             if gpu == 0:
-                # for k, v in train_loss_avg_dict.items():
-                #     writer.add_scalar(f'loss/train/{k}', train_loss_avg_dict[k], epoch)
+                for k, v in train_loss_avg_dict.items():
+                    writer.add_scalar(f'loss/train/{k}', v.item(), epoch)
                 if epoch % args.log_freq == 0:
                     visualize_output(args, input_dict, output_dict, epoch, writer)
 
@@ -329,15 +330,17 @@ def train(gpu, args):
                 elif epoch == args.epochs:
                     torch.save(model.state_dict(), fp)
 
-            dist.barrier()
+            if args.save_freq > 0:
+                if epoch % args.save_freq == 0:
+                    dist.barrier()
 
-            # configure map_location properly
-            map_location = {'cuda:%d' % 0: 'cuda:%d' % rank}
-            model.load_state_dict(
-                torch.load(fp, map_location=map_location))
+                    # configure map_location properly
+                    map_location = {'cuda:%d' % 0: 'cuda:%d' % rank}
+                    model.load_state_dict(
+                        torch.load(fp, map_location=map_location))
 
 
-def step(args, data_dict, model, loss, augmentations, optimizer, gpu, writer, i):
+def step(args, data_dict, model, loss, augmentations, optimizer, gpu):
     # Get input and target tensor keys
     input_keys = list(filter(lambda x: "input" in x, data_dict.keys()))
     target_keys = list(filter(lambda x: "target" in x, data_dict.keys()))
@@ -362,20 +365,16 @@ def step(args, data_dict, model, loss, augmentations, optimizer, gpu, writer, i)
     output_dict = model(data_dict)
     loss_dict = loss(output_dict, data_dict)
 
-    if not args.no_logging and gpu==0:
-        for k, v in loss_dict.items():
-            writer.add_scalar(f'loss/train/{k}', loss_dict[k], i)
-
     return loss_dict, output_dict
 
 
-def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_scheduler, gpu, writer):
+def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_scheduler, gpu):
 
     loss_dict_avg = None
 
     for i, data in enumerate(tqdm(dataloader)):
         loss_dict, output_dict = step(
-            args, data, model, loss, augmentations, optimizer, gpu, writer, i)
+            args, data, model, loss, augmentations, optimizer, gpu)
         
         if loss_dict_avg is None:
             loss_dict_avg = {k:0 for k in loss_dict.keys()}
