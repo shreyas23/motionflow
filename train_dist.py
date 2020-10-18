@@ -150,6 +150,8 @@ def main():
     for arg in vars(args):
         print(f"{arg}: {getattr(args, arg)}")
 
+    print(f"Using {torch.cuda.device_count()} GPUs...")
+
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '8888'
 
@@ -175,8 +177,7 @@ def train(gpu, args):
     DATASET_NAME = args.dataset_name
     DATA_ROOT = args.data_root
 
-    print(f"Using {torch.cuda.device_count()} GPUs...")
-    print("Loading model")
+    print(f"Loading model onto gpu: {gpu}")
     if args.model_name == 'scenenet':
         model = SceneNet(args).cuda(device=gpu)
         model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
@@ -203,7 +204,7 @@ def train(gpu, args):
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"The model has {num_params} learnable parameters")
 
-    print("Loading dataset and dataloaders...")
+    print(f"Loading dataset and dataloaders onto gpu: {gpu}...")
     if DATASET_NAME == 'KITTI':
         train_dataset = KITTI_Raw_KittiSplit_Train(
             args, DATA_ROOT, num_examples=args.num_examples)
@@ -311,15 +312,15 @@ def train(gpu, args):
             lr_scheduler.step(epoch)
 
         # save model
+        fp = os.path.join(log_dir, f"{epoch}.ckpt")
+
         if not args.no_logging and gpu==0:
-            for k, v in train_loss_avg_dict.items():
-                writer.add_scalar(f'loss/train/{k}', train_loss_avg_dict[k], epoch)
+            # for k, v in train_loss_avg_dict.items():
+            #     writer.add_scalar(f'loss/train/{k}', train_loss_avg_dict[k], epoch)
             if epoch % args.log_freq == 0:
                 visualize_output(args, input_dict, output_dict, epoch, writer)
 
             writer.flush()
-
-            fp = os.path.join(log_dir, f"{epoch}.ckpt")
 
             if args.save_freq > 0:
                 if epoch % args.save_freq == 0:
@@ -327,9 +328,15 @@ def train(gpu, args):
             elif epoch == args.epochs:
                 torch.save(model.state_dict(), fp)
 
+        dist.barrier()
+
+        # configure map_location properly
+        map_location = {'cuda:%d' % 0: 'cuda:%d' % rank}
+        model.load_state_dict(
+            torch.load(fp, map_location=map_location))
 
 
-def step(args, data_dict, model, loss, augmentations, optimizer, gpu):
+def step(args, data_dict, model, loss, augmentations, optimizer, gpu, i):
     # Get input and target tensor keys
     input_keys = list(filter(lambda x: "input" in x, data_dict.keys()))
     target_keys = list(filter(lambda x: "target" in x, data_dict.keys()))
@@ -354,6 +361,10 @@ def step(args, data_dict, model, loss, augmentations, optimizer, gpu):
     output_dict = model(data_dict)
     loss_dict = loss(output_dict, data_dict)
 
+    if not args.no_logging and gpu==0:
+        for k, v in loss_dict.items():
+            writer.add_scalar(f'loss/train/{k}', loss_dict[k], i)
+
     return loss_dict, output_dict
 
 
@@ -361,9 +372,9 @@ def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_
 
     loss_dict_avg = None
 
-    for data in tqdm(dataloader):
+    for i, data in enumerate(tqdm(dataloader)):
         loss_dict, output_dict = step(
-            args, data, model, loss, augmentations, optimizer, gpu)
+            args, data, model, loss, augmentations, optimizer, gpu, i)
         
         if loss_dict_avg is None:
             loss_dict_avg = {k:0 for k in loss_dict.keys()}
