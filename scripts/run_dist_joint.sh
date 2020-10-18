@@ -4,7 +4,6 @@ python3 train_dist.py --data_root="/ceph/kitti_jpg/" \
                  --num_examples=1000 \
                  --model_name="scenenet_joint" \
                  --epochs=50 \
-                 --num_gpus=4 \
                  --batch_size=4 \
                  --log_dir="/ceph/checkpoints/" \
                  --log_freq=1 \
