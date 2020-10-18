@@ -1,7 +1,7 @@
 python3 train_dist.py --data_root="/ceph/kitti_jpg/" \
                  --exp_dir="scenenet_joint" \
                  --exp_name="" \
-                 --num_examples=1000 \
+                 --num_examples=100 \
                  --model_name="scenenet_joint" \
                  --epochs=50 \
                  --batch_size=4 \

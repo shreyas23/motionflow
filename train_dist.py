@@ -325,10 +325,8 @@ def train(gpu, args):
                 writer.flush()
 
                 if args.save_freq > 0:
-                    if epoch % args.save_freq == 0:
+                    if epoch % args.save_freq == 0 or epoch == args.epochs:
                         torch.save(model.state_dict(), fp)
-                elif epoch == args.epochs:
-                    torch.save(model.state_dict(), fp)
 
             if args.save_freq > 0:
                 if epoch % args.save_freq == 0:
