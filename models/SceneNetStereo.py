@@ -148,9 +148,9 @@ class SceneNetStereo(nn.Module):
         mask_l2, pose_b, _ = self.pose_decoder(x21)
         mask_l1, pose_f, _ = self.pose_decoder(x12)
 
-        output_dict["pose_b"] = pose_b.contiguous()
+        output_dict["pose_b"] = pose_b
         output_dict["mask_l2"] = mask_l2
-        output_dict["pose_f"] = pose_f.contiguous()
+        output_dict["pose_f"] = pose_f
         output_dict["mask_l1"] = mask_l1
 
         return output_dict
