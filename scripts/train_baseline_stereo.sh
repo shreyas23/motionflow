@@ -1,3 +1,6 @@
+pip3 install -r requirements.txt &&
+chmod u+x ./scripts/install_modules.sh &&
+./scripts/install_modules.sh &&
 python3 train_dist.py --data_root="/ceph/kitti_jpg/" \
                  --exp_dir="baseline_stereo" \
                  --exp_name="" \
@@ -16,6 +19,7 @@ python3 train_dist.py --data_root="/ceph/kitti_jpg/" \
                  --use_bn=True \
                  --pose_sm_w=200 \
                  --mask_lr_w=1.0 \
+                 --pose_lr_w=1.0 \
                  --disp_lr_w=1.0 \
                  --mask_reg_w=0.3 \
                  --mask_sm_w=0.1 \

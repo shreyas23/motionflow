@@ -144,7 +144,6 @@ parser.add_argument('--cuda_seed', default=543987,
 
 args = parser.parse_args()
 
-print(args.pose_lr_w)
 
 def main():
 
@@ -297,7 +296,7 @@ def train(gpu, args):
         train_sampler.set_epoch(epoch)
 
         if gpu == 0:
-            print(f"Training epoch: {epoch}...")
+            print(f"Training epoch: {epoch}...\n")
         train_loss_avg_dict, output_dict, input_dict = train_one_epoch(
             args, model, loss, train_dataloader, optimizer, augmentations, lr_scheduler, gpu)
 
@@ -306,9 +305,9 @@ def train(gpu, args):
             pprint(train_loss_avg_dict)
 
             if val_dataset is not None:
-                print(f"Validation epoch: {epoch}...")
+                print(f"Validation epoch: {epoch}...\n")
                 val_loss_avg = eval(args, model, loss, val_dataloader, augmentations)
-                print(f"\t Epoch {epoch} val loss avg: {val_loss_avg}")
+                print(f"\t Epoch {epoch} val loss avg: {val_loss_avg}\n")
 
         if args.lr_sched_type == 'plateau':
             lr_scheduler.step(train_loss_avg_dict['total_loss'])
@@ -449,7 +448,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
             pose = output_dict['pose_b'].detach()
         else:
             pose = output_dict['pose_b'][0].detach()
-        print(f"Transformation matrices for epoch: {epoch}, {pose}")
+        print(f"Transformation matrices for epoch: {epoch}, \n{pose}\n")
         if args.use_mask:
             mask = output_dict['mask_l2'][0].detach()
             census_mask = output_dict['census_masks_l2'][0].detach()
@@ -498,3 +497,4 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
 
 if __name__ == '__main__':
   main()
+

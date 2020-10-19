@@ -1,3 +1,6 @@
+pip3 install -r requirements.txt &&
+chmod u+x ./scripts/install_modules.sh &&
+./scripts/install_modules.sh &&
 python3 train_dist.py --data_root="/ceph/kitti_jpg/" \
                  --exp_dir="baseline_joint" \
                  --exp_name="" \
