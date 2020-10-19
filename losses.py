@@ -585,6 +585,7 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
 
         # consistency weights 
         self._mask_lr_w = args.mask_lr_w
+        self._pose_lr_w = args.pose_lr_w
         self._disp_lr_w = args.disp_lr_w
         self._static_cons_w = args.static_cons_w
 
@@ -733,12 +734,19 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
 
         flow_f = pose2flow(depth_l1.squeeze(dim=1), None, k1_scale, torch.inverse(k1_scale), pose_mat=pose_f)
         flow_b = pose2flow(depth_l2.squeeze(dim=1), None, k2_scale, torch.inverse(k2_scale), pose_mat=pose_b)
+        sf_f = pose2sceneflow(depth_l1.squeeze(dim=1), None, torch.inverse(k1_scale), pose_mat=pose_f)
+        sf_b = pose2sceneflow(depth_l2.squeeze(dim=1), None, torch.inverse(k2_scale), pose_mat=pose_b)
         occ_map_b = _adaptive_disocc_detection(flow_f).detach() * disp_occ_l2
         occ_map_f = _adaptive_disocc_detection(flow_b).detach() * disp_occ_l1
 
         ## Image reconstruction loss
         img_l2_warp = reconstructImg(coord1, img_l2_aug)
         img_l1_warp = reconstructImg(coord2, img_l1_aug)
+
+        valid_l2_warp = (img_l2_warp.sum(dim=1, keepdim=True) !=0).detach()
+        valid_l1_warp = (img_l1_warp.sum(dim=1, keepdim=True) !=0).detach()
+        occ_map_f *= valid_l2_warp
+        occ_map_b *= valid_l1_warp
 
         img_diff1 = (_elementwise_l1(img_l1_aug, img_l2_warp) * (1.0 - self._ssim_w) + _SSIM(img_l1_aug, img_l2_warp) * self._ssim_w).mean(dim=1, keepdim=True)
         if mask_f is not None:
@@ -768,7 +776,7 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
         loss_pts = loss_pts1 + loss_pts2
 
         ## 3D motion smoothness loss
-        loss_3d_s = ( (_smoothness_motion_2nd(flow_f, img_l1_aug, beta=10.0) / (pts_norm1 + 1e-8)).mean() + (_smoothness_motion_2nd(flow_b, img_l2_aug, beta=10.0) / (pts_norm2 + 1e-8)).mean() ) / (2 ** ii)
+        loss_3d_s = ( (_smoothness_motion_2nd(sf_f, img_l1_aug, beta=10.0) / (pts_norm1 + 1e-8)).mean() + (_smoothness_motion_2nd(sf_b, img_l2_aug, beta=10.0) / (pts_norm2 + 1e-8)).mean() ) / (2 ** ii)
 
         ## Loss Summnation
         sceneflow_loss = loss_im + self._sf_3d_pts * loss_pts + self._sf_3d_sm * loss_3d_s

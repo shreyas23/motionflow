@@ -223,17 +223,15 @@ def pose2flow(depth, pose, intrinsics, intrinsics_inv, rotation_mode='euler', pa
     return torch.stack((X,Y), dim=1)
 
 
-def pose2sceneflow(depth, pose, intrinsics, intrinsics_inv, rotation_mode='euler', padding_mode=None, pose_mat=None):
+def pose2sceneflow(depth, pose, intrinsics_inv, rotation_mode='euler', padding_mode=None, pose_mat=None):
     """
     Converts pose parameters to rigid scene flow
     """
     check_sizes(depth, 'depth', 'BHW')
     # check_sizes(pose, 'pose', 'B6')
-    check_sizes(intrinsics, 'intrinsics', 'B33')
     check_sizes(intrinsics_inv, 'intrinsics', 'B33')
-    assert(intrinsics_inv.size() == intrinsics.size())
 
-    bs, h, w = depth.size()
+    _, h, w = depth.size()
 
     # projection matrix from target to points
     cam_coords = pixel2cam(depth, intrinsics_inv)  # [B,3,H,W]
