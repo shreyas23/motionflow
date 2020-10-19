@@ -252,19 +252,21 @@ def train(gpu, args):
 
     # set up logging
     if not args.no_logging:
-        if not os.path.isdir(args.log_dir):
+        if not os.path.isdir(args.log_dir) and gpu == 0:
             os.mkdir(args.log_dir)
 
         log_dir = os.path.join(args.log_dir, args.exp_dir)
 
-        if not os.path.isdir(log_dir):
+        if not os.path.isdir(log_dir) and gpu == 0:
             os.mkdir(log_dir)
+
         if args.exp_name == "":
             exp_name = datetime.datetime.now().strftime("%H%M%S-%Y%m%d")
         else:
             exp_name = args.exp_name
 
         log_dir = os.path.join(log_dir, exp_name)
+
         if gpu == 0:
             writer = SummaryWriter(log_dir)
         else:
