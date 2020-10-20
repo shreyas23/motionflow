@@ -496,4 +496,3 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
 
 if __name__ == '__main__':
   main()
-

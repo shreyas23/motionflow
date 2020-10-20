@@ -1,8 +1,8 @@
 pip3 install -r requirements.txt &&
 chmod u+x ./scripts/install_modules.sh &&
 ./scripts/install_modules.sh &&
-mkdir -p ./data/kitti_jpg/ &&
-tar -xvf /ceph/kitti_2012.tar ./data/kitti_jpg/ &&
+mkdir -p ./data/ &&
+cp -r /ceph/kitti_jpg ./data/kitti_jpg &&
 python3 train_dist.py --data_root="./data/kitti_jpg/" \
                  --exp_dir="baseline_stereo" \
                  --exp_name="baseline_v1" \
