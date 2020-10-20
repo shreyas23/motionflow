@@ -1,25 +1,26 @@
 pip3 install -r requirements.txt &&
 chmod u+x ./scripts/install_modules.sh &&
 ./scripts/install_modules.sh &&
-python3 train_dist.py --data_root="/ceph/kitti_jpg/" \
+tar -xvf /ceph/kitti_2012.tar ./data/kitti_jpg/ &&
+python3 train_dist.py --data_root="./data/kitti_jpg/" \
                  --exp_dir="baseline_stereo" \
-                 --exp_name="" \
+                 --exp_name="baseline_v1" \
                  --num_examples=-1 \
                  --model_name="scenenet_stereo" \
-                 --epochs=50 \
+                 --epochs=25 \
                  --batch_size=4 \
                  --log_dir="/ceph/checkpoints/" \
                  --log_freq=1 \
                  --save_freq=1 \
-                 --num_workers=16 \
+                 --num_workers=20 \
                  --lr_sched_type='step' \
                  --lr=2e-4 \
                  --use_mask=True \
                  --lr_gamma=0.5 \
                  --use_bn=True \
                  --pose_sm_w=200 \
-                 --mask_lr_w=1.0 \
                  --pose_lr_w=1.0 \
+                 --mask_lr_w=1.0 \
                  --disp_lr_w=1.0 \
                  --mask_reg_w=0.3 \
                  --mask_sm_w=0.1 \
