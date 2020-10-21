@@ -750,8 +750,10 @@ class Loss_SceneFlow_SelfSup_PoseStereo(nn.Module):
         self._flow_diff_thresh = args.flow_diff_thresh
 
         # consistency weights 
+        self._sf_lr_w = args.sf_lr_w
+        self._pose_lr_w = args.pose_lr_w
+        self._pts_lr_w = args.pts_lr_w
         self._mask_lr_w = args.mask_lr_w
-        self._flow_lr_w = args.flow_lr_w
         self._disp_lr_w = args.disp_lr_w
         self._static_cons_w = args.static_cons_w
 
