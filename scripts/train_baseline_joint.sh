@@ -1,13 +1,14 @@
 pip3 install -r requirements.txt &&
 chmod u+x ./scripts/install_modules.sh &&
 ./scripts/install_modules.sh &&
-tar -C ./ -xf /ceph/part1.tar  &
-tar -C ./ -xf /ceph/part2.tar  &
-tar -C ./ -xf /ceph/part3.tar  &
-tar -C ./ -xf /ceph/part4.tar  &
-tar -C ./ -xf /ceph/part5.tar  &
+mkdir -p kitti_jpg/ &&
+cp -r /ceph/kitti_jpg/2011_09_26/ kitti_jpg/ &
+cp -r /ceph/kitti_jpg/2011_09_28/ kitti_jpg/ &
+cp -r /ceph/kitti_jpg/2011_09_29/ kitti_jpg/ &
+cp -r /ceph/kitti_jpg/2011_09_30/ kitti_jpg/ &
+cp -r /ceph/kitti_jpg/2011_10_03/ kitti_jpg/ &
 wait
-python3 train_dist.py --data_root="./ceph/kitti_jpg/" \
+python3 train_dist.py --data_root="./kitti_jpg/" \
                  --exp_dir="baseline_joint" \
                  --exp_name="baseline_v1" \
                  --num_examples=-1 \
