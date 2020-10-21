@@ -1,13 +1,7 @@
 pip3 install -r requirements.txt &&
 chmod u+x ./scripts/install_modules.sh &&
 ./scripts/install_modules.sh &&
-mkdir /mnt/data/kitti_jpg &&
-cp -r /ceph/kitti_jpg/2011_09_26/ /mnt/data/kitti_jpg/ &
-cp -r /ceph/kitti_jpg/2011_09_28/ /mnt/data/kitti_jpg/ &
-cp -r /ceph/kitti_jpg/2011_09_29/ /mnt/data/kitti_jpg/ &
-cp -r /ceph/kitti_jpg/2011_09_30/ /mnt/data/kitti_jpg/ &
-cp -r /ceph/kitti_jpg/2011_10_03/ /mnt/data/kitti_jpg/ &
-wait &&
+rsync -Par /ceph/kitti_jpg /mnt/data/ && 
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --exp_dir="baseline_stereo" \
                  --exp_name="baseline_v1" \
