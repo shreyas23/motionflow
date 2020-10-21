@@ -1,14 +1,9 @@
 pip3 install -r requirements.txt &&
 chmod u+x ./scripts/install_modules.sh &&
 ./scripts/install_modules.sh &&
-mkdir -p kitti_jpg/ &&
-cp -r /ceph/kitti_jpg/2011_09_26/ kitti_jpg/ &
-cp -r /ceph/kitti_jpg/2011_09_28/ kitti_jpg/ &
-cp -r /ceph/kitti_jpg/2011_09_29/ kitti_jpg/ &
-cp -r /ceph/kitti_jpg/2011_09_30/ kitti_jpg/ &
-cp -r /ceph/kitti_jpg/2011_10_03/ kitti_jpg/ &
-wait
-python3 train_dist.py --data_root="./kitti_jpg/" \
+mkdir /mnt/data/kitti_jpg &&
+rsync -Par /ceph/kitti_jpg /mnt/data
+python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --exp_dir="baseline_joint" \
                  --exp_name="baseline_v1" \
                  --num_examples=-1 \
