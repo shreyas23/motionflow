@@ -296,15 +296,36 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
         
         return loss_lr
 
-    def pts_lr_loss(self, pts_l, pts_r, cam_l2r, cam_r2l, left_occ, right_occ):
+    def pts_lr_loss(self, disp_l, disp_r, cam_l2r, cam_r2l, k_l_aug, k_r_aug, left_occ, right_occ, aug_size):
+
+        b, _, h_dp, w_dp = disp_l.size()
+        disp_l = disp_l * w_dp
+        disp_r = disp_r * w_dp
+
+        # scale
+        local_scale = torch.zeros_like(aug_size)
+        local_scale[:, 0] = h_dp
+        local_scale[:, 1] = w_dp         
+
+        pts_l, _ = pixel2pts_ms(k_l_aug, disp_l, local_scale / aug_size)
+
+        # transform points into right cam coord. system
+        pts_l_flat = torch.cat([pts_l.reshape((b, 3, -1)), torch.ones(b, 1, h_dp*w_dp)]) # B, 4, H*W
+        pts_l_tform = torch.bmm(cam_l2r, pts_l_flat).reshape((b, 3, h_dp, w_dp))  # B, 3, H, W
+        proj_pts_l = _generate_image_right(pts_l_tform, disp_r)
+
+        pts_r, _ = pixel2pts_ms(k_r_aug, disp_r, local_scale / aug_size)
+
+        # transform points into left cam coord. system
+        pts_r_flat = torch.cat([pts_r.reshape((b, 3, -1)), torch.ones(b, 1, h_dp*w_dp)]) # B, 4, H*W
+        pts_r_tform = torch.bmm(cam_r2l, pts_r_flat).reshape((b, 3, h_dp, w_dp))  # B, 3, H, W
+        proj_pts_r = _generate_image_left(pts_r_tform, disp_l)
+
         pts_norm_l = torch.norm(pts_l, p=2, dim=1, keepdim=True)
         pts_norm_r = torch.norm(pts_r, p=2, dim=1, keepdim=True)
 
-        pts_warp_l = _generate_pts_left(pts_r, cam_r2l)
-        pts_warp_r = _generate_pts_right(pts_l, cam_l2r)
-
-        diff_l = _elementwise_epe(pts_warp_r, pts_l).mean(dim=1, keepdim=True) / (pts_norm_l + 1e-8)
-        diff_r = _elementwise_epe(pts_warp_l, pts_r).mean(dim=1, keepdim=True) / (pts_norm_r + 1e-8)
+        diff_l = _elementwise_epe(proj_pts_r, pts_l).mean(dim=1, keepdim=True) / (pts_norm_l + 1e-8)
+        diff_r = _elementwise_epe(proj_pts_l, pts_r).mean(dim=1, keepdim=True) / (pts_norm_r + 1e-8)
 
         loss_lr = diff_l[left_occ].mean() + diff_r[right_occ].mean()
         diff_l[~left_occ].detach_()
@@ -392,7 +413,7 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
         occ_map_b = _adaptive_disocc_detection(flow_f).detach() * disp_occ_l2
         occ_map_f = _adaptive_disocc_detection(flow_b).detach() * disp_occ_l1
 
-        # flow lr loss and pts lr loss
+        # pose_flow lr loss
         # pts_r1, k_r1_scale, depth_r1 = pixel2pts_ms_depth(k_r1_aug, disp_r1, local_scale / aug_size)
         # pts_r2, k_r2_scale, depth_r2 = pixel2pts_ms_depth(k_r2_aug, disp_r2, local_scale / aug_size)
         # sf_fr = pose2sceneflow(depth_r1.squeeze(dim=1), None, torch.inverse(k_r1_scale), pose_mat=pose_fr)
