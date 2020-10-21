@@ -1,11 +1,11 @@
 pip3 install -r requirements.txt &&
 chmod u+x ./scripts/install_modules.sh &&
 ./scripts/install_modules.sh &&
-tar -C ./ -xvf /ceph/2011_09_26.tar  &&
-tar -C ./ -xvf /ceph/2011_09_28.tar  &&
-tar -C ./ -xvf /ceph/2011_09_29.tar  &&
-tar -C ./ -xvf /ceph/2011_09_30.tar  &&
-tar -C ./ -xvf /ceph/2011_10_03.tar  &&
+tar -C ./ -xvf /ceph/part1.tar  &&
+tar -C ./ -xvf /ceph/part2.tar  &&
+tar -C ./ -xvf /ceph/part3.tar  &&
+tar -C ./ -xvf /ceph/part4.tar  &&
+tar -C ./ -xvf /ceph/part5.tar  &&
 python3 train_dist.py --data_root="./ceph/kitti_jpg/" \
                  --exp_dir="baseline_stereo" \
                  --exp_name="baseline_v1" \
