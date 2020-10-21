@@ -1,9 +1,7 @@
 pip3 install -r requirements.txt &&
 chmod u+x ./scripts/install_modules.sh &&
 ./scripts/install_modules.sh &&
-# rsync -Par /ceph/kitti_jpg /mnt/data/ && 
-# python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
-python3 train_dist.py --data_root="/ceph/kitti_jpg/" \
+python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --exp_dir="baseline_joint" \
                  --exp_name="baseline_v1" \
                  --num_examples=-1 \
