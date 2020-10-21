@@ -64,7 +64,8 @@ class KITTI_Raw(data.Dataset):
         ## loading calibration matrix
         self.intrinsic_dict_l = {}
         self.intrinsic_dict_r = {}        
-        self.intrinsic_dict_l, self.intrinsic_dict_r = read_calib_into_dict(path_dir)
+        self.cam_r2l = {}
+        self.intrinsic_dict_l, self.intrinsic_dict_r, self.cam_l2r, self.cam_r2l = read_calib_into_dict(path_dir)
 
         self._to_tensor = vision_transforms.Compose([
             vision_transforms.ToPILImage(),
@@ -85,6 +86,8 @@ class KITTI_Raw(data.Dataset):
         datename = dirname[:10]
         k_l1 = torch.from_numpy(self.intrinsic_dict_l[datename]).float()
         k_r1 = torch.from_numpy(self.intrinsic_dict_r[datename]).float()
+        cam_l2r = torch.from_numpy(self.cam_l2r[datename]).float()
+        cam_r2l = torch.from_numpy(self.cam_r2l[datename]).float()
         
         # input size
         h_orig, w_orig, _ = img_list_np[0].shape
@@ -152,6 +155,8 @@ class KITTI_Raw(data.Dataset):
                 "input_k_r1": k_r1,
                 "input_k_l2": k_l1,
                 "input_k_r2": k_r1,
+                "input_cam_l2r": cam_l2r,
+                "input_cam_r2l": cam_r2l
             }
             example_dict.update(common_dict)
 

@@ -110,8 +110,8 @@ def read_calib_into_dict(path_dir):
     calibration_file_list = ['2011_09_26', '2011_09_28', '2011_09_29', '2011_09_30', '2011_10_03']
     intrinsic_dict_l = {}
     intrinsic_dict_r = {}
-    cam_r2l = {}
     cam_l2r = {}
+    cam_r2l = {}
 
     for ii, date in enumerate(calibration_file_list):
         file_name = "cam_intrinsics/calib_cam_to_cam_" + date + '.txt'
@@ -122,19 +122,29 @@ def read_calib_into_dict(path_dir):
         intrinsic_dict_l[date] = P_rect_02[:3, :3]
         intrinsic_dict_r[date] = P_rect_03[:3, :3]
 
-        # load trans. from 00 to 02
+        # load trans. from 00 to 0X
         R_02 = file_data['R_02'].reshape(3, 3)
         t_02 = file_data['T_02'].reshape(3, 1)
         T_02 = np.concatenate([np.concatenate([R_02, t_02], axis=1), np.zeros((1, 4))], axis=0)
 
-        # load trans. from 03 to 00
+        R_03 = file_data['R_03'].reshape(3, 3)
+        t_03 = file_data['T_03'].reshape(3, 1)
+        T_03 = np.concatenate([np.concatenate([R_03, t_03], axis=1), np.zeros((1, 4))], axis=0)
+
+        # load trans. from 0X to 00
         R_03 = np.eye(4)
         R_03[:3, :3] = file_data['R_03'].reshape(3, 3)
         t_03 = np.eye(4)
         t_03[:3, -1] = -file_data['T_03']
         T_30 = np.dot(R_03.T, t_03)
 
-        # calc. trans from 03 to 02
-        cam_r2l[date] = np.dot(T_02, T_30)[:-1].astype(np.float32)
+        R_02 = np.eye(4)
+        R_02[:3, :3] = file_data['R_02'].reshape(3, 3)
+        t_02 = np.eye(4)
+        t_02[:3, -1] = -file_data['T_02']
+        T_20 = np.dot(R_02.T, t_02)
 
-    return intrinsic_dict_l, intrinsic_dict_r  # , cam_r2l
+        cam_r2l[date] = np.dot(T_02, T_30)[:-1].astype(np.float32)
+        cam_l2r[date] = np.dot(T_03, T_20)[:-1].astype(np.float32)
+
+    return intrinsic_dict_l, intrinsic_dict_r, cam_l2r, cam_r2l

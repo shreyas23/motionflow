@@ -72,13 +72,13 @@ class SceneNetStereoJoint(nn.Module):
         logging.info("Initializing weights")
         for layer in self.modules():
             if isinstance(layer, nn.Conv2d):
-                nn.init.kaiming_normal_(layer.weight)
+                # nn.init.kaiming_normal_(layer.weight)
                 # nn.init.xavier_uniform_(layer.weight)
                 if layer.bias is not None:
                     nn.init.constant_(layer.bias, 0)
 
             elif isinstance(layer, nn.ConvTranspose2d):
-                nn.init.kaiming_normal_(layer.weight)
+                # nn.init.kaiming_normal_(layer.weight)
                 # nn.init.xavier_uniform_(layer.weight)
                 if layer.bias is not None:
                     nn.init.constant_(layer.bias, 0)
@@ -261,7 +261,6 @@ class SceneNetStereoJoint(nn.Module):
             k_r1_flip = input_dict["input_k_r1_flip_aug"]
             k_r2_flip = input_dict["input_k_r2_flip_aug"]
 
-            # output_dict_flip = self.run_pwc(input_dict, input_l1_flip, input_l2_flip, k_l1_flip, k_l2_flip)
             output_dict_flip = self.run_pwc(input_dict, input_l1_flip, input_l2_flip, input_r1_flip, input_r2_flip, k_l1_flip, k_l2_flip)
 
             flow_f_pp = []
