@@ -72,6 +72,21 @@ def _apply_disparity(img, disp):
 
     return output
 
+def _apply_disparity_ret(img, disp):
+    batch_size, _, height, width = img.size()
+
+    # Original coordinates of pixels
+    x_base = torch.linspace(0, 1, width).repeat(batch_size, height, 1).type_as(img)
+    y_base = torch.linspace(0, 1, height).repeat(batch_size, width, 1).transpose(1, 2).type_as(img)
+
+    # Apply shift in X direction
+    x_shifts = disp[:, 0, :, :]  # Disparity is passed in NCHW format with 1 channel
+    flow_field = torch.stack((x_base + x_shifts, y_base), dim=3)
+    # In grid_sample coordinates are assumed to be between -1 and 1
+    output = tf.grid_sample(img, 2 * flow_field - 1, mode='bilinear', padding_mode='zeros')
+
+    return output, flow_field
+
 def _generate_flow_left(flow, r2l):
     warp_flow = None
     return warp_flow
@@ -296,15 +311,36 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
         
         return loss_lr
 
-    def pts_lr_loss(self, pts_l, pts_r, cam_l2r, cam_r2l, left_occ, right_occ):
+    def pts_lr_loss(self, disp_l, disp_r, cam_l2r, cam_r2l, k_l_aug, k_r_aug, left_occ, right_occ, aug_size):
+
+        b, _, h_dp, w_dp = disp_l.size()
+        disp_l = disp_l * w_dp
+        disp_r = disp_r * w_dp
+
+        # scale
+        local_scale = torch.zeros_like(aug_size)
+        local_scale[:, 0] = h_dp
+        local_scale[:, 1] = w_dp         
+
+        pts_l, _ = pixel2pts_ms(k_l_aug, disp_l, local_scale / aug_size)
+
+        # transform points into right cam coord. system
+        pts_l_flat = torch.cat([pts_l.reshape((b, 3, -1)), torch.ones(b, 1, h_dp*w_dp)]) # B, 4, H*W
+        pts_l_tform = torch.bmm(cam_l2r, pts_l_flat).reshape((b, 3, h_dp, w_dp))  # B, 3, H, W
+        proj_pts_l = _generate_image_right(pts_l_tform, disp_r)
+
+        pts_r, _ = pixel2pts_ms(k_r_aug, disp_r, local_scale / aug_size)
+
+        # transform points into left cam coord. system
+        pts_r_flat = torch.cat([pts_r.reshape((b, 3, -1)), torch.ones(b, 1, h_dp*w_dp)]) # B, 4, H*W
+        pts_r_tform = torch.bmm(cam_r2l, pts_r_flat).reshape((b, 3, h_dp, w_dp))  # B, 3, H, W
+        proj_pts_r = _generate_image_left(pts_r_tform, disp_l)
+
         pts_norm_l = torch.norm(pts_l, p=2, dim=1, keepdim=True)
         pts_norm_r = torch.norm(pts_r, p=2, dim=1, keepdim=True)
 
-        pts_warp_l = _generate_pts_left(pts_r, cam_r2l)
-        pts_warp_r = _generate_pts_right(pts_l, cam_l2r)
-
-        diff_l = _elementwise_epe(pts_warp_r, pts_l).mean(dim=1, keepdim=True) / (pts_norm_l + 1e-8)
-        diff_r = _elementwise_epe(pts_warp_l, pts_r).mean(dim=1, keepdim=True) / (pts_norm_r + 1e-8)
+        diff_l = _elementwise_epe(proj_pts_r, pts_l).mean(dim=1, keepdim=True) / (pts_norm_l + 1e-8)
+        diff_r = _elementwise_epe(proj_pts_l, pts_r).mean(dim=1, keepdim=True) / (pts_norm_r + 1e-8)
 
         loss_lr = diff_l[left_occ].mean() + diff_r[right_occ].mean()
         diff_l[~left_occ].detach_()
