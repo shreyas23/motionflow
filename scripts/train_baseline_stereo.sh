@@ -1,13 +1,7 @@
 pip3 install -r requirements.txt &&
 chmod u+x ./scripts/install_modules.sh &&
 ./scripts/install_modules.sh &&
-tar -C ./ -xf /ceph/part1.tar  &
-tar -C ./ -xf /ceph/part2.tar  &
-tar -C ./ -xf /ceph/part3.tar  &
-tar -C ./ -xf /ceph/part4.tar  &
-tar -C ./ -xf /ceph/part5.tar  &
-wait
-python3 train_dist.py --data_root="./ceph/kitti_jpg/" \
+python3 train_dist.py --data_root="/ceph/kitti_jpg/" \
                  --exp_dir="baseline_stereo" \
                  --exp_name="baseline_v1" \
                  --num_examples=-1 \
@@ -17,7 +11,7 @@ python3 train_dist.py --data_root="./ceph/kitti_jpg/" \
                  --log_dir="/ceph/checkpoints/" \
                  --log_freq=1 \
                  --save_freq=1 \
-                 --num_workers=20 \
+                 --num_workers=24 \
                  --lr_sched_type='step' \
                  --lr=2e-4 \
                  --use_mask=True \
