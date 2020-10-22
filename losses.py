@@ -12,8 +12,6 @@ from models.modules_sceneflow import WarpingLayer_Flow
 from utils.inverse_warp import inverse_warp, pose_vec2mat, flow_warp, pose2flow, pose2sceneflow
 from utils.sceneflow_util import pixel2pts_ms_depth
 
-import matplotlib.pyplot as plt
-
 eps = 1e-8
 
 ###############################################
@@ -71,19 +69,6 @@ def _apply_disparity(img, disp):
     output = tf.grid_sample(img, 2 * flow_field - 1, mode='bilinear', padding_mode='zeros')
 
     return output
-
-def _generate_flow_left(flow, r2l):
-    warp_flow = None
-    return warp_flow
-def _generate_flow_right(flow, l2r):
-    warp_flow = None
-    return warp_flow
-def _generate_pts_left(pts, r2l):
-    warp_pts = None
-    return warp_pts
-def _generate_pts_right(pts, l2r):
-    warp_pts = None
-    return warp_pts
 
 def _generate_image_left(img, disp):
     return _apply_disparity(img, -disp)
@@ -174,6 +159,101 @@ def _depth2disp_kitti_K(depth, k_value):
 
 
 ###############################################
+## Consistency functions
+###############################################
+
+def static_cons_loss(mask, sf, pose, disp, disp_occ, intrinsics, aug_size):
+    # convert pose params to induced static scene flow
+    _, _, h_dp, w_dp = disp.size()
+    disp = disp * w_dp
+    local_scale = torch.zeros_like(aug_size)
+    local_scale[:, 0] = h_dp
+    local_scale[:, 1] = w_dp         
+    _, intrinsics_scaled, depth = pixel2pts_ms_depth(intrinsics, disp, local_scale / aug_size)
+
+    pose_flow = pose2flow(depth.squeeze(dim=1), None, intrinsics, torch.inverse(intrinsics_scaled), pose_mat=pose)
+    flow = projectSceneFlow2Flow(intrinsics_scaled, sf, disp)
+
+    flow_diff = (pose_flow - flow).abs().mean(dim=1, keepdim=True)
+
+    # static consistency loss
+    flow_loss = _elementwise_epe(pose_flow, flow).mean(dim=1, keepdim=True)
+    loss = (flow_loss * mask)[disp_occ].mean()
+    flow_loss[~disp_occ].detach_()
+
+    return loss, flow_diff.detach()
+
+def mask_consensus_loss(mask, flow_diff, pose_err, sf_err):
+    # mask consensus loss
+    target_mask = (pose_err <= sf_err).float()
+    flow_similar = (flow_diff < self._flow_diff_thresh).float()
+    census_target_mask = logical_or(target_mask, flow_similar).detach()
+    loss = tf.binary_cross_entropy(mask, census_target_mask)
+    return loss, census_target_mask
+
+def mask_lr_loss(mask_l, mask_r, disp_l, disp_r, left_occ, right_occ):
+    mask_warp_l = _generate_image_left(mask_r, disp_l)
+    mask_warp_r = _generate_image_right(mask_l, disp_r)
+    lr_mask_diff_l = torch.abs(mask_warp_r - mask_l)
+    lr_mask_diff_r = torch.abs(mask_warp_l - mask_r)
+
+    loss_lr = lr_mask_diff_l[left_occ].mean() + lr_mask_diff_r[right_occ].mean()
+    lr_mask_diff_l[~left_occ].detach_()
+    lr_mask_diff_r[~right_occ].detach_()
+
+    return loss_lr
+
+def pts_lr_loss(disp_l, disp_r, cam_l2r, cam_r2l, k_l_aug, k_r_aug, left_occ, right_occ, aug_size):
+
+    b, _, h_dp, w_dp = disp_l.size()
+    disp_l = disp_l * w_dp
+    disp_r = disp_r * w_dp
+
+    # scale
+    local_scale = torch.zeros_like(aug_size)
+    local_scale[:, 0] = h_dp
+    local_scale[:, 1] = w_dp         
+
+    pts_l, _ = pixel2pts_ms(k_l_aug, disp_l, local_scale / aug_size)
+
+    # transform points into right cam coord. system
+    pts_l_flat = torch.cat([pts_l.reshape((b, 3, -1)), torch.ones(b, 1, h_dp*w_dp)]) # B, 4, H*W
+    pts_l_tform = torch.bmm(cam_l2r, pts_l_flat).reshape((b, 3, h_dp, w_dp))  # B, 3, H, W
+    proj_pts_l = _generate_image_right(pts_l_tform, disp_r)
+
+    pts_r, _ = pixel2pts_ms(k_r_aug, disp_r, local_scale / aug_size)
+
+    # transform points into left cam coord. system
+    pts_r_flat = torch.cat([pts_r.reshape((b, 3, -1)), torch.ones(b, 1, h_dp*w_dp)]) # B, 4, H*W
+    pts_r_tform = torch.bmm(cam_r2l, pts_r_flat).reshape((b, 3, h_dp, w_dp))  # B, 3, H, W
+    proj_pts_r = _generate_image_left(pts_r_tform, disp_l)
+
+    pts_norm_l = torch.norm(pts_l, p=2, dim=1, keepdim=True)
+    pts_norm_r = torch.norm(pts_r, p=2, dim=1, keepdim=True)
+
+    diff_l = _elementwise_epe(proj_pts_r, pts_l).mean(dim=1, keepdim=True) / (pts_norm_l + 1e-8)
+    diff_r = _elementwise_epe(proj_pts_l, pts_r).mean(dim=1, keepdim=True) / (pts_norm_r + 1e-8)
+
+    loss_lr = diff_l[left_occ].mean() + diff_r[right_occ].mean()
+    diff_l[~left_occ].detach_()
+    diff_r[~right_occ].detach_()
+
+    return loss_lr
+
+def flow_lr_loss(flow_l, flow_r, disp_l, disp_r, left_occ, right_occ):
+    flow_warp_l = _generate_image_left(flow_r, disp_l)
+    flow_warp_r = _generate_image_right(flow_l, disp_r)
+
+    diff_l = _elementwise_epe(flow_warp_r, flow_l).mean(dim=1, keepdim=True)
+    diff_r = _elementwise_epe(flow_warp_l, flow_r).mean(dim=1, keepdim=True)
+
+    loss_lr = diff_l[left_occ].mean() + diff_r[right_occ].mean()
+    diff_l[~left_occ].detach_()
+    diff_r[~right_occ].detach_()
+    
+    return loss_lr
+
+###############################################
 ## Loss function
 ###############################################
 
@@ -238,101 +318,6 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
 
         return loss, loss_lr, left_occ, right_occ
 
-    def mask_reg_loss(self, mask):
-        loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
-        return loss * self._mask_reg_w
-
-    def static_cons_loss(self, mask, sf, pose, disp, disp_occ, intrinsics, aug_size):
-        # convert pose params to induced static scene flow
-        _, _, h_dp, w_dp = disp.size()
-        disp = disp * w_dp
-        local_scale = torch.zeros_like(aug_size)
-        local_scale[:, 0] = h_dp
-        local_scale[:, 1] = w_dp         
-        _, intrinsics_scaled, depth = pixel2pts_ms_depth(intrinsics, disp, local_scale / aug_size)
-
-        pose_flow = pose2flow(depth.squeeze(dim=1), None, intrinsics, torch.inverse(intrinsics_scaled), pose_mat=pose)
-        flow = projectSceneFlow2Flow(intrinsics_scaled, sf, disp)
-
-        flow_diff = (pose_flow - flow).abs().mean(dim=1, keepdim=True)
-
-        # static consistency loss
-        flow_loss = _elementwise_epe(pose_flow, flow).mean(dim=1, keepdim=True)
-        loss = (flow_loss * mask)[disp_occ].mean()
-        flow_loss[~disp_occ].detach_()
-
-        return loss * self._static_cons_w, flow_diff.detach()
-
-    def mask_consensus_loss(self, mask, flow_diff, pose_err, sf_err):
-        # mask consensus loss
-        target_mask = (pose_err <= sf_err).float()
-        flow_similar = (flow_diff < self._flow_diff_thresh).float()
-        census_target_mask = logical_or(target_mask, flow_similar).detach()
-        loss = tf.binary_cross_entropy(mask, census_target_mask)
-        return loss * self._mask_cons_w, census_target_mask
-
-    def mask_lr_loss(self, mask_l, mask_r, disp_l, disp_r, left_occ, right_occ):
-        mask_warp_l = _generate_image_left(mask_r, disp_l)
-        mask_warp_r = _generate_image_right(mask_l, disp_r)
-        lr_mask_diff_l = torch.abs(mask_warp_r - mask_l)
-        lr_mask_diff_r = torch.abs(mask_warp_l - mask_r)
-
-        loss_lr = lr_mask_diff_l[left_occ].mean() + lr_mask_diff_r[right_occ].mean()
-        lr_mask_diff_l[~left_occ].detach_()
-        lr_mask_diff_r[~right_occ].detach_()
-
-        return loss_lr * self._mask_lr_w
-
-    def flow_lr_loss(self, flow_l, flow_r, cam_l2r, cam_r2l, left_occ, right_occ):
-        flow_warp_l = _generate_flow_left(flow_r, cam_r2l)
-        flow_warp_r = _generate_flow_right(flow_l, cam_l2r)
-
-        diff_l = _elementwise_epe(flow_warp_r, flow_l) .mean(dim=1, keepdim=True)
-        diff_r = _elementwise_epe(flow_warp_l, flow_r) .mean(dim=1, keepdim=True)
-
-        loss_lr = diff_l[left_occ].mean() + diff_r[right_occ].mean()
-        diff_l[~left_occ].detach_()
-        diff_r[~right_occ].detach_()
-        
-        return loss_lr
-
-    def pts_lr_loss(self, disp_l, disp_r, cam_l2r, cam_r2l, k_l_aug, k_r_aug, left_occ, right_occ, aug_size):
-
-        b, _, h_dp, w_dp = disp_l.size()
-        disp_l = disp_l * w_dp
-        disp_r = disp_r * w_dp
-
-        # scale
-        local_scale = torch.zeros_like(aug_size)
-        local_scale[:, 0] = h_dp
-        local_scale[:, 1] = w_dp         
-
-        pts_l, _ = pixel2pts_ms(k_l_aug, disp_l, local_scale / aug_size)
-
-        # transform points into right cam coord. system
-        pts_l_flat = torch.cat([pts_l.reshape((b, 3, -1)), torch.ones(b, 1, h_dp*w_dp)]) # B, 4, H*W
-        pts_l_tform = torch.bmm(cam_l2r, pts_l_flat).reshape((b, 3, h_dp, w_dp))  # B, 3, H, W
-        proj_pts_l = _generate_image_right(pts_l_tform, disp_r)
-
-        pts_r, _ = pixel2pts_ms(k_r_aug, disp_r, local_scale / aug_size)
-
-        # transform points into left cam coord. system
-        pts_r_flat = torch.cat([pts_r.reshape((b, 3, -1)), torch.ones(b, 1, h_dp*w_dp)]) # B, 4, H*W
-        pts_r_tform = torch.bmm(cam_r2l, pts_r_flat).reshape((b, 3, h_dp, w_dp))  # B, 3, H, W
-        proj_pts_r = _generate_image_left(pts_r_tform, disp_l)
-
-        pts_norm_l = torch.norm(pts_l, p=2, dim=1, keepdim=True)
-        pts_norm_r = torch.norm(pts_r, p=2, dim=1, keepdim=True)
-
-        diff_l = _elementwise_epe(proj_pts_r, pts_l).mean(dim=1, keepdim=True) / (pts_norm_l + 1e-8)
-        diff_r = _elementwise_epe(proj_pts_l, pts_r).mean(dim=1, keepdim=True) / (pts_norm_r + 1e-8)
-
-        loss_lr = diff_l[left_occ].mean() + diff_r[right_occ].mean()
-        diff_l[~left_occ].detach_()
-        diff_r[~right_occ].detach_()
-
-        return loss_lr
-
     def mask_loss(self, mask):
         reg_loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
         sm_loss = (_gradient_x_2nd(mask).abs() + _gradient_y_2nd(mask).abs()).mean()
@@ -340,40 +325,6 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
         loss = reg_loss * self._mask_reg_w + sm_loss * self._mask_sm_w
 
         return loss, reg_loss, sm_loss
-
-    def old_pose_loss(self, pose, disp, disp_occ, intrinsics, ref_img, tgt_img, aug_size, mask=None):
-
-        _, _, h_dp, w_dp = disp.size()
-        disp = disp * w_dp
-
-        ## scale
-        local_scale = torch.zeros_like(aug_size)
-        local_scale[:, 0] = h_dp
-        local_scale[:, 1] = w_dp         
-
-        pts, intrinsics_scaled, depth = pixel2pts_ms_depth(intrinsics, disp, local_scale / aug_size)
-        _, coord = pts2pixel_pose_ms(intrinsics_scaled, pts, None, [h_dp, w_dp], pose_mat=pose)
-
-        ref_warped = reconstructImg(coord, ref_img)
-        valid_pixels = (ref_warped.sum(dim=1, keepdim=True) !=0).detach()
-        valid_pixels = valid_pixels * disp_occ.detach()
-
-        img_diff = (_elementwise_l1(tgt_img, ref_warped) * (1.0 - self._ssim_w) + _SSIM(tgt_img, ref_warped) * self._ssim_w).mean(dim=1, keepdim=True)
-        if mask is not None:
-            loss_img = (img_diff * mask)[valid_pixels].mean()
-        else:
-            loss_img = img_diff[valid_pixels].mean()
-            
-        img_diff[~valid_pixels].detach_()
-
-        ## 3D motion smoothness loss
-        pts_norm = torch.norm(pts, p=2, dim=1, keepdim=True)
-        flow = pose2sceneflow(depth.squeeze(dim=1), None, intrinsics_scaled, torch.inverse(intrinsics_scaled), pose_mat=pose)
-        
-        loss_smooth = ( _smoothness_motion_2nd(flow, tgt_img, beta=10.0) / (pts_norm + 1e-8)).mean()
-        loss = loss_img + loss_smooth * self._pose_smooth_w
-
-        return loss, loss_img, loss_smooth, img_diff
 
     def pose_loss(self, 
                   pose_f, pose_b, 
@@ -414,13 +365,13 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
         occ_map_f = _adaptive_disocc_detection(flow_b).detach() * disp_occ_l1
 
         # pose_flow lr loss
-        # pts_r1, k_r1_scale, depth_r1 = pixel2pts_ms_depth(k_r1_aug, disp_r1, local_scale / aug_size)
-        # pts_r2, k_r2_scale, depth_r2 = pixel2pts_ms_depth(k_r2_aug, disp_r2, local_scale / aug_size)
-        # sf_fr = pose2sceneflow(depth_r1.squeeze(dim=1), None, torch.inverse(k_r1_scale), pose_mat=pose_fr)
-        # sf_br = pose2sceneflow(depth_r2.squeeze(dim=1), None, torch.inverse(k_r2_scale), pose_mat=pose_br)
-        # loss_lr_flow1 = self.pts_lr_loss(sf_f, sf_fr, disp_l1, disp_r1, disp_occ_l1, disp_occ_r1) 
-        # loss_lr_flow2 = self.pts_lr_loss(sf_b, sf_br, disp_l2, disp_r2, disp_occ_l2, disp_occ_r2)
-        # loss_lr_flow = (loss_lr_flow1 + loss_lr_flow2)
+        _, k_r1_scale, depth_r1 = pixel2pts_ms_depth(k_r1_aug, disp_r1, local_scale / aug_size)
+        _, k_r2_scale, depth_r2 = pixel2pts_ms_depth(k_r2_aug, disp_r2, local_scale / aug_size)
+        sf_fr = pose2sceneflow(depth_r1.squeeze(dim=1), None, torch.inverse(k_r1_scale), pose_mat=pose_fr)
+        sf_br = pose2sceneflow(depth_r2.squeeze(dim=1), None, torch.inverse(k_r2_scale), pose_mat=pose_br)
+        loss_lr1 = flow_lr_loss(sf_f, sf_fr, disp_l1, disp_r1, disp_occ_l1, disp_occ_r1) 
+        loss_lr2 = flow_lr_loss(sf_b, sf_br, disp_l2, disp_r2, disp_occ_l2, disp_occ_r2)
+        loss_lr = loss_lr1 + loss_lr2
 
         ## Image reconstruction loss
         img_l2_warp = reconstructImg(coord1, img_l2_aug)
@@ -462,10 +413,9 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
         loss_3d_s = ( (_smoothness_motion_2nd(sf_f, img_l1_aug, beta=10.0) / (pts_norm1 + 1e-8)).mean() + (_smoothness_motion_2nd(sf_b, img_l2_aug, beta=10.0) / (pts_norm2 + 1e-8)).mean() ) / (2 ** ii)
 
         ## Loss Summnation
-        sceneflow_loss = loss_im + self._sf_3d_pts * loss_pts + self._sf_3d_sm * loss_3d_s #+ loss_lr * self._pose_lr_w
+        sceneflow_loss = loss_im + self._sf_3d_pts * loss_pts + self._sf_3d_sm * loss_3d_s + loss_lr * self._pose_lr_w
         
-        # return sceneflow_loss, loss_im, loss_pts, loss_3d_s, loss_lr, [img_diff1, img_diff2]
-        return sceneflow_loss, loss_im, loss_pts, loss_3d_s, [img_diff1, img_diff2]
+        return sceneflow_loss, loss_im, loss_pts, loss_3d_s, loss_lr, [img_diff1, img_diff2]
 
 
     def sceneflow_loss(self, 
@@ -504,9 +454,9 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
         occ_map_b = _adaptive_disocc_detection(flow_f).detach() * disp_occ_l2
         occ_map_f = _adaptive_disocc_detection(flow_b).detach() * disp_occ_l1
 
-        # loss_lr1 = self.flow_lr_loss(sf_f, sf_fr, cam_l2r, cam_r2l, disp_occ_l1, disp_occ_r1) 
-        # loss_lr2 = self.flow_lr_loss(sf_b, sf_br, cam_l2r, cam_r2l, disp_occ_l2, disp_occ_r2)
-        # loss_lr = (loss_lr1 + loss_lr2)
+        loss_lr1 = flow_lr_loss(sf_f, sf_fr, disp_l1, disp_r1, disp_occ_l1, disp_occ_r1) 
+        loss_lr2 = flow_lr_loss(sf_b, sf_br, disp_l2, disp_r2, disp_occ_l2, disp_occ_r2)
+        loss_lr = loss_lr1 + loss_lr2
 
         ## Image reconstruction loss
         img_l2_warp = reconstructImg(coord1, img_l2_aug)
@@ -543,10 +493,9 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
         loss_3d_s = ( (_smoothness_motion_2nd(sf_f, img_l1_aug, beta=10.0) / (pts_norm1 + 1e-8)).mean() + (_smoothness_motion_2nd(sf_b, img_l2_aug, beta=10.0) / (pts_norm2 + 1e-8)).mean() ) / (2 ** ii)
 
         ## Loss Summnation
-        sceneflow_loss = loss_im + self._sf_3d_pts * loss_pts + self._sf_3d_sm * loss_3d_s #+ loss_lr * self._sf_lr_w
+        sceneflow_loss = loss_im + self._sf_3d_pts * loss_pts + self._sf_3d_sm * loss_3d_s + loss_lr * self._sf_lr_w
         
-        # return sceneflow_loss, loss_im, loss_pts, loss_3d_s, loss_lr, [img_diff1, img_diff2]
-        return sceneflow_loss, loss_im, loss_pts, loss_3d_s, [img_diff1, img_diff2]
+        return sceneflow_loss, loss_im, loss_pts, loss_3d_s, loss_lr, [img_diff1, img_diff2]
 
     def detaching_grad_of_outputs(self, output_dict):
         
@@ -577,6 +526,7 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
         loss_static_cons_sum = 0
         loss_lr_sf_sum = 0
         loss_lr_pose_sum = 0
+        loss_lr_pts_sum = 0
         loss_lr_mask_sum = 0
         loss_lr_disp_sum = 0
         loss_mask_sum = 0
@@ -634,8 +584,7 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
             flow_mask_l2 = None
 
             ## Sceneflow Loss
-            loss_sceneflow, loss_im, loss_pts, loss_3d_s, sf_diffs = self.sceneflow_loss(sf_f, sf_b,
-            # loss_sceneflow, loss_im, loss_pts, loss_3d_s, loss_sf_lr, sf_diffs = self.sceneflow_loss(sf_f, sf_b,
+            loss_sceneflow, loss_im, loss_pts, loss_3d_s, loss_sf_lr, sf_diffs = self.sceneflow_loss(sf_f, sf_b,
                                                                                                      sf_fr[ii], sf_br[ii],
                                                                                                      disp_l1, disp_l2,
                                                                                                      disp_r1, disp_r2,
@@ -651,10 +600,9 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
             loss_sf_2d = loss_sf_2d + loss_im
             loss_sf_3d = loss_sf_3d + loss_pts
             loss_sf_sm = loss_sf_sm + loss_3d_s
-            # loss_lr_sf_sum += loss_sf_lr
+            loss_lr_sf_sum += loss_sf_lr
             
-            loss_pose, loss_pose_im, loss_pose_pts, loss_pose_3d_s, pose_diffs = self.pose_loss(pose_f, pose_b,
-            # loss_pose, loss_pose_im, loss_pose_pts, loss_pose_3d_s, loss_pose_lr, pose_diffs = self.pose_loss(pose_f, pose_b,
+            loss_pose, loss_pose_im, loss_pose_pts, loss_pose_3d_s, loss_pose_lr, pose_diffs = self.pose_loss(pose_f, pose_b,
                                                                                                               pose_fr[ii], pose_br[ii],
                                                                                                               disp_l1, disp_l2,
                                                                                                               disp_r1, disp_r2,
@@ -670,7 +618,7 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
             loss_pose_im_sum += loss_pose_im
             loss_pose_pts_sum += loss_pose_pts
             loss_pose_sm_sum += loss_pose_3d_s
-            # loss_lr_pose_sum += loss_pose_lr
+            loss_lr_pose_sum += loss_pose_lr
 
             # mask loss
             loss_mask_b, loss_mask_reg_b, loss_mask_sm_b = self.mask_loss(mask_l2)
@@ -731,8 +679,9 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
         loss_dict["mask_reg"] = loss_mask_reg_sum
         loss_dict["mask_smooth"] = loss_mask_sm_sum
         loss_dict["mask_consensus"] = loss_mask_consensus_sum
-        # loss_dict["sf_lr"] = loss_lr_sf_sum
-        # loss_dict["pose_lr"] = loss_lr_pose_sum
+        loss_dict["sf_lr"] = loss_lr_sf_sum
+        loss_dict["pose_lr"] = loss_lr_pose_sum
+        loss_dict["pts_lr"] = loss_lr_pts_sum
         loss_dict["mask_lr"] = loss_lr_mask_sum
         loss_dict["static_cons"] = loss_static_cons_sum
         loss_dict["disp_lr"] = loss_lr_disp_sum
