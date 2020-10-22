@@ -142,6 +142,8 @@ class KITTI_Raw(data.Dataset):
                 "input_k_r1": k_l1,
                 "input_k_l2": k_r1,
                 "input_k_r2": k_l1,
+                "input_cam_l2r": cam_l2r,
+                "input_cam_r2l": cam_r2l
             }
             example_dict.update(common_dict)
 
@@ -155,8 +157,8 @@ class KITTI_Raw(data.Dataset):
                 "input_k_r1": k_r1,
                 "input_k_l2": k_l1,
                 "input_k_r2": k_r1,
-                # "input_cam_l2r": cam_l2r,
-                # "input_cam_r2l": cam_r2l
+                "input_cam_l2r": cam_l2r,
+                "input_cam_r2l": cam_r2l
             }
             example_dict.update(common_dict)
 
