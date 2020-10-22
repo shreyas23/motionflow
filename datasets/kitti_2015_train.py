@@ -99,8 +99,10 @@ class KITTI_2015_Train_Base(data.Dataset):
 
         ## loading calibration matrix
         self.intrinsic_dict_l = {}
-        self.intrinsic_dict_r = {}        
-        self.intrinsic_dict_l, self.intrinsic_dict_r = read_calib_into_dict(path_dir)
+        self.intrinsic_dict_r = {}
+        self.cam_l2r = {}
+        self.cam_r2l = {}
+        self.intrinsic_dict_l, self.intrinsic_dict_r, self.cam_l2r, self.cam_r2l = read_calib_into_dict(path_dir)
 
 
 
@@ -145,6 +147,9 @@ class KITTI_2015_MonoSceneFlow(KITTI_2015_Train_Base):
         basename = os.path.basename(self._image_list[index][0])[:6]
         k_l1 = torch.from_numpy(self.intrinsic_dict_l[get_date_from_width(img_list_np[0].shape[1])]).float()
         k_r1 = torch.from_numpy(self.intrinsic_dict_r[get_date_from_width(img_list_np[2].shape[1])]).float()
+
+        cam_l2r = torch.from_numpy(self.cam_l2r[get_date_from_width(img_list_np[0].shape[1])]).float()
+        cam_r2l = torch.from_numpy(self.cam_r2l[get_date_from_width(img_list_np[2].shape[1])]).float()
         
         # input size
         h_orig, w_orig, _ = img_list_np[0].shape
@@ -196,6 +201,8 @@ class KITTI_2015_MonoSceneFlow(KITTI_2015_Train_Base):
             "input_k_l2": k_l1,
             "input_k_r1": k_r1,
             "input_k_r2": k_r1,
+            "input_cam_l2r": cam_l2r,
+            "input_cam_r2l": cam_r2l,
             "input_size": input_im_size
         }
 

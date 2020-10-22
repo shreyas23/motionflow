@@ -106,7 +106,6 @@ class SceneNetStereo(nn.Module):
             disp_corr1 = self.leakyRELU(self.disp_corr(x1, r1).squeeze(dim=1))
             disp_corr2 = self.leakyRELU(self.disp_corr(x2, r2).squeeze(dim=1))
 
-            # monosf estimator
             if l == 0:
                 x1_out, flow_f, disp_l1 = self.flow_estimators[l](torch.cat([out_corr_relu_f, disp_corr1, x1, x2], dim=1))
                 x2_out, flow_b, disp_l2 = self.flow_estimators[l](torch.cat([out_corr_relu_b, disp_corr2, x2, x1], dim=1))
