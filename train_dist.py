@@ -52,7 +52,7 @@ parser.add_argument("--nr", type=int, default=0)
 parser.add_argument('--data_root', help='path to dataset', required=True)
 parser.add_argument('--epochs', type=int, required=True,
                     help='number of epochs to run')
-parser.add_argument('--start_epoch', type=int, default=0,
+parser.add_argument('--start_epoch', type=int, default=1,
                     help='resume from checkpoint (using experiment name)')
 parser.add_argument('--cuda', type=bool, default=True, help='use gpu?')
 parser.add_argument('--no_logging', type=bool, default=False,
@@ -246,7 +246,7 @@ def train(gpu, args):
             optimizer, factor=args.lr_gamma, verbose=True, mode='min', patience=10)
     elif args.lr_sched_type == 'step':
         print("Using step lr schedule")
-        milestones = [5, 10, 12]
+        milestones = [10, 12]
         lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
             optimizer, milestones=milestones, gamma=args.lr_gamma)
     elif args.lr_sched_type == 'none':
@@ -279,17 +279,14 @@ def train(gpu, args):
     elif args.start_epoch > 0:
         load_epoch = args.start_epoch - 1
         ckpt_fp = os.path.join(log_dir, f"{load_epoch}.ckpt")
-
-        print(f"Loading model from {ckpt_fp}...")
-
+        print(f"Loading model from {ckpt_fp} onto gpu: {gpu}")
         ckpt = torch.load(ckpt_fp)
-        assert (ckpt['epoch'] == load_epoch), "epoch from state dict does not match with args"
         model.load_state_dict(ckpt)
 
     model.train()
 
     # run training loop
-    for epoch in range(curr_epoch, args.epochs + 1):
+    for epoch in range(curr_epoch, curr_epoch + args.epochs + 1):
 
         # need to set epoch in order to shuffle indices
         train_sampler.set_epoch(epoch)
