@@ -41,4 +41,3 @@ tqdm==4.46.1
 urllib3==1.25.9
 Werkzeug==1.0.1
 zipp==3.1.0
-spatial-correlation-sampler

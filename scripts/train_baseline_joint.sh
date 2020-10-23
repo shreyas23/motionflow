@@ -1,4 +1,5 @@
 pip3 install -r requirements.txt &&
+pip3 install spatial-correlation-sampler &&
 chmod u+x ./scripts/install_modules.sh &&
 ./scripts/install_modules.sh &&
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
