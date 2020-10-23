@@ -27,6 +27,7 @@ from datasets.kitti_raw_monosf import KITTI_Raw_KittiSplit_Train, KITTI_Raw_Kitt
 from models.SceneNet import SceneNet
 from models.SceneNetStereo import SceneNetStereo
 from models.SceneNetStereoJoint import SceneNetStereoJoint
+from models.SceneNetMonoJoint import SceneNetMonoJoint
 from models.model_monosceneflow import MonoSceneFlow
 from models.PoseDepthNet import PoseDispNet
 

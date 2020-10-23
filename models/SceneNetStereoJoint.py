@@ -64,7 +64,6 @@ class SceneNetStereoJoint(nn.Module):
         self.context_networks = JointContextNetwork(32 + 3 + 1 + 6 + 1, use_bn=args.use_bn)
         self.sigmoid = torch.nn.Sigmoid()
 
-        # initialize_msra(self.modules())
         self.initialize_weights()
 
 

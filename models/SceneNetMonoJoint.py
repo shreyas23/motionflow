@@ -8,7 +8,6 @@ import logging
 from sys import exit
 
 from .correlation_package.correlation import Correlation
-from spatial_correlation_sampler import SpatialCorrelationSampler
 
 from .modules_sceneflow import get_grid, WarpingLayer_SF
 from .modules_sceneflow import initialize_msra, upsample_outputs_as
@@ -24,9 +23,9 @@ from utils.interpolation import interpolate2d_as
 from utils.sceneflow_util import flow_horizontal_flip, intrinsic_scale, get_pixelgrid, post_processing, add_pose
 
 
-class SceneNetStereoJoint(nn.Module):
+class SceneNetMonoJoint(nn.Module):
     def __init__(self, args):
-        super(SceneNetStereoJoint, self).__init__()
+        super(SceneNetMonoJoint, self).__init__()
 
         self._args = args
         self.num_chs = [3, 32, 64, 96, 128, 192, 256]
@@ -56,7 +55,6 @@ class SceneNetStereoJoint(nn.Module):
             self.flow_estimators.append(layer_sf)
 
         self.corr_params = {"pad_size": self.search_range, "kernel_size": 1, "max_disp": self.search_range, "stride1": 1, "stride2": 1, "corr_multiply": 1}        
-        self.disp_corr = SpatialCorrelationSampler(patch_size=(1, self.disp_range))
 
         self.context_networks = JointContextNetwork(32 + 3 + 1 + 6 + 1, use_bn=args.use_bn)
         self.sigmoid = torch.nn.Sigmoid()
@@ -69,13 +67,13 @@ class SceneNetStereoJoint(nn.Module):
         logging.info("Initializing weights")
         for layer in self.modules():
             if isinstance(layer, nn.Conv2d):
-                nn.init.kaiming_normal_(layer.weight)
+                # nn.init.kaiming_normal_(layer.weight)
                 # nn.init.xavier_uniform_(layer.weight)
                 if layer.bias is not None:
                     nn.init.constant_(layer.bias, 0)
 
             elif isinstance(layer, nn.ConvTranspose2d):
-                nn.init.kaiming_normal_(layer.weight)
+                # nn.init.kaiming_normal_(layer.weight)
                 # nn.init.xavier_uniform_(layer.weight)
                 if layer.bias is not None:
                     nn.init.constant_(layer.bias, 0)
@@ -87,15 +85,13 @@ class SceneNetStereoJoint(nn.Module):
                 pass
 
 
-    def run_pwc(self, input_dict, x1_raw, x2_raw, r1_raw, r2_raw, k1, k2):
+    def run_pwc(self, input_dict, x1_raw, x2_raw, k1, k2):
             
         output_dict = {}
 
         # on the bottom level are original images
         x1_pyramid = self.feature_pyramid_extractor(x1_raw) + [x1_raw]
         x2_pyramid = self.feature_pyramid_extractor(x2_raw) + [x2_raw]
-        r1_pyramid = self.feature_pyramid_extractor(r1_raw) + [r1_raw]
-        r2_pyramid = self.feature_pyramid_extractor(r2_raw) + [r2_raw]
 
         # outputs
         sceneflows_f = []
@@ -107,7 +103,7 @@ class SceneNetStereoJoint(nn.Module):
         masks_1 = []
         masks_2 = []
 
-        for l, (x1, x2, r1, r2) in enumerate(zip(x1_pyramid, x2_pyramid, r1_pyramid, r2_pyramid)):
+        for l, (x1, x2) in enumerate(zip(x1_pyramid, x2_pyramid)):
 
             # warping
             if l == 0:
@@ -145,20 +141,18 @@ class SceneNetStereoJoint(nn.Module):
             out_corr_pose_relu_f = self.leakyRELU(out_corr_pose_f)
             out_corr_pose_relu_b = self.leakyRELU(out_corr_pose_b)
 
-            disp_corr1 = self.leakyRELU(self.disp_corr(x1, r1).squeeze(dim=1))
-            disp_corr2 = self.leakyRELU(self.disp_corr(x2, r2).squeeze(dim=1))
 
             # monosf estimator
             if l == 0:
-                x1_out, flow_f, disp_l1, mask_l1, pose_f, pose_f_out = self.flow_estimators[l](torch.cat([out_corr_relu_f, out_corr_pose_relu_f, disp_corr1, x1], dim=1))
-                x2_out, flow_b, disp_l2, mask_l2, pose_b, pose_b_out = self.flow_estimators[l](torch.cat([out_corr_relu_b, out_corr_pose_relu_b, disp_corr2, x2], dim=1))
+                x1_out, flow_f, disp_l1, mask_l1, pose_f, pose_f_out = self.flow_estimators[l](torch.cat([out_corr_relu_f, out_corr_pose_relu_f, x1], dim=1))
+                x2_out, flow_b, disp_l2, mask_l2, pose_b, pose_b_out = self.flow_estimators[l](torch.cat([out_corr_relu_b, out_corr_pose_relu_b, x2], dim=1))
                 pose_mat_f = pose_vec2mat(pose_f)
                 pose_mat_b = pose_vec2mat(pose_b)
             else:
                 x1_out, flow_f_res, disp_l1, mask_l1, pose_f_res, pose_f_out = self.flow_estimators[l](torch.cat([
-                    out_corr_relu_f, out_corr_pose_relu_f, disp_corr1, x1, x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
+                    out_corr_relu_f, out_corr_pose_relu_f, x1, x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
                 x2_out, flow_b_res, disp_l2, mask_l2, pose_b_res, pose_b_out = self.flow_estimators[l](torch.cat([
-                    out_corr_relu_b, out_corr_pose_relu_b, disp_corr2, x2, x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
+                    out_corr_relu_b, out_corr_pose_relu_b, x2, x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
 
                 flow_f = flow_f + flow_f_res
                 flow_b = flow_b + flow_b_res
