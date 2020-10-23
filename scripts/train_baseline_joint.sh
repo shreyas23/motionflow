@@ -1,6 +1,3 @@
-pip install -r requirements.txt &&
-chmod u+x ./scripts/install_modules.sh &&
-./scripts/install_modules.sh &&
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --exp_dir="baseline_joint" \
                  --exp_name="baseline_v1" \
