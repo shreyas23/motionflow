@@ -27,7 +27,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --mask_cons_w=0.0 \
                  --flow_diff_thresh=1e-3 &&
 
-python3 train_dist.py --data_root="/ceph/kitti_jpg/" \
+python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --exp_dir="jointnet" \
                  --exp_name="test" \
                  --num_examples=20 \
