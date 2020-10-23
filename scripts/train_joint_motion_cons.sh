@@ -26,14 +26,13 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --static_cons_w=0.0 \
                  --mask_cons_w=0.0 \
                  --flow_diff_thresh=1e-3 &&
-
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --exp_dir="jointnet" \
                  --exp_name="test" \
                  --num_examples=20 \
                  --model_name="scenenet_joint" \
                  --start_epoch=6 \
-                 --epochs=50 \
+                 --epochs=15 \
                  --batch_size=4 \
                  --log_dir="/ceph/checkpoints/" \
                  --log_freq=1 \
