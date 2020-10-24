@@ -279,13 +279,17 @@ def train(gpu, args):
 
     if args.ckpt != "" and args.use_pretrained:
         state_dict = torch.load(args.ckpt)
-        model.load_state_dict(state_dict)
+        model.load_state_dict(state_dict['model'])
+        optimizer.load_state_dict(state_dict['optimizer'])
+        del state_dict
     elif args.start_epoch > 1:
         load_epoch = args.start_epoch - 1
         ckpt_fp = os.path.join(log_dir, f"{load_epoch}.ckpt")
         print(f"Loading model from {ckpt_fp} onto gpu: {gpu}")
-        ckpt = torch.load(ckpt_fp)
-        model.load_state_dict(ckpt)
+        state_dict = torch.load(ckpt_fp)
+        model.load_state_dict(state_dict['model'])
+        optimizer.load_state_dict(state_dict['optimizer'])
+        del state_dict
 
     model.train()
 
@@ -326,7 +330,8 @@ def train(gpu, args):
 
                 if args.save_freq > 0:
                     if epoch % args.save_freq == 0 or epoch == args.epochs:
-                        torch.save(model.state_dict(), fp)
+                        save_dict = {'model': model.state_dict(), 'optimizer': optimizer.state_dict()}
+                        torch.save(save_dict, fp)
 
             if args.save_freq > 0:
                 if epoch % args.save_freq == 0:
