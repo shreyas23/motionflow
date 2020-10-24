@@ -1,11 +1,9 @@
-pip3 install -r requirements.txt &&
-chmod u+x ./scripts/install_modules.sh &&
-./scripts/install_modules.sh &&
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --exp_dir="jointnet" \
-                 --exp_name="test" \
-                 --num_examples=20 \
+                 --exp_name="v1" \
+                 --num_examples=16 \
                  --model_name="scenenet_joint" \
+                 --start_epoch=1 \
                  --epochs=5 \
                  --batch_size=4 \
                  --log_dir="/ceph/checkpoints/" \
@@ -13,7 +11,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --save_freq=1 \
                  --num_workers=32 \
                  --lr_sched_type='none' \
-                 --lr=1e-4 \
+                 --lr=2e-4 \
                  --use_mask=True \
                  --lr_gamma=0.5 \
                  --use_bn=True \
@@ -28,8 +26,8 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --flow_diff_thresh=1e-3 &&
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --exp_dir="jointnet" \
-                 --exp_name="test" \
-                 --num_examples=20 \
+                 --exp_name="v1" \
+                 --num_examples=16 \
                  --model_name="scenenet_joint" \
                  --start_epoch=6 \
                  --epochs=15 \
@@ -47,7 +45,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --pts_lr_w=1.0 \
                  --mask_lr_w=1.0 \
                  --disp_lr_w=1.0 \
-                 --mask_reg_w=0.0 \
+                 --mask_reg_w=0.1 \
                  --mask_sm_w=0.1 \
                  --static_cons_w=0.1 \
                  --mask_cons_w=0.3 \

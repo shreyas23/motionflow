@@ -172,7 +172,6 @@ def train(gpu, args):
     if args.batch_size == 1 and args.use_bn is True:
         raise Exception
 
-    torch.autograd.set_detect_anomaly(True)
     torch.manual_seed(args.torch_seed)
     torch.cuda.manual_seed(args.cuda_seed)
 
@@ -182,15 +181,19 @@ def train(gpu, args):
     DATA_ROOT = args.data_root
 
     print(f"Loading model onto gpu: {gpu}")
-    if args.model_name == 'scenenet_mono':
+    if args.model_name == 'scenenet_pose_mono':
         model = SceneNet(args).cuda(device=gpu)
         model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
         loss = Loss_SceneFlow_SelfSup_Pose(args)
-    elif args.model_name == 'scenenet_stereo':
+    elif args.model_name == 'scenenet_pose_stereo':
         model = SceneNetStereo(args).cuda(device=gpu)
         model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
         loss = Loss_SceneFlow_SelfSup_Pose(args)
-    elif args.model_name == 'scenenet_joint':
+    elif args.model_name == 'scenenet_joint_mono':
+        model = SceneNetStereoJoint(args).cuda(device=gpu)
+        model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
+        loss = Loss_SceneFlow_SelfSup_JointStereo(args)
+    elif args.model_name == 'scenenet_joint_stereo':
         model = SceneNetStereoJoint(args).cuda(device=gpu)
         model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
         loss = Loss_SceneFlow_SelfSup_JointStereo(args)
@@ -287,7 +290,7 @@ def train(gpu, args):
     model.train()
 
     # run training loop
-    for epoch in range(curr_epoch, curr_epoch + args.epochs + 1):
+    for epoch in range(curr_epoch, curr_epoch + args.epochs):
 
         # need to set epoch in order to shuffle indices
         train_sampler.set_epoch(epoch)
