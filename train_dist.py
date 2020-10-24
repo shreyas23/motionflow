@@ -280,7 +280,7 @@ def train(gpu, args):
     if args.ckpt != "" and args.use_pretrained:
         state_dict = torch.load(args.ckpt)
         model.load_state_dict(state_dict)
-    elif args.start_epoch > 0:
+    elif args.start_epoch > 1:
         load_epoch = args.start_epoch - 1
         ckpt_fp = os.path.join(log_dir, f"{load_epoch}.ckpt")
         print(f"Loading model from {ckpt_fp} onto gpu: {gpu}")
