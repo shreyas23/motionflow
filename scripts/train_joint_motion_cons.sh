@@ -1,6 +1,6 @@
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --exp_dir="jointnet" \
-                 --exp_name="v1" \
+                 --exp_name="test" \
                  --num_examples=16 \
                  --model_name="scenenet_joint" \
                  --start_epoch=1 \
@@ -26,7 +26,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --flow_diff_thresh=1e-3 &&
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --exp_dir="jointnet" \
-                 --exp_name="v1" \
+                 --exp_name="test" \
                  --num_examples=16 \
                  --model_name="scenenet_joint" \
                  --start_epoch=6 \
