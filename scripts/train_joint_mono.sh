@@ -1,8 +1,8 @@
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --exp_dir="baseline_joint" \
-                 --exp_name="baseline_v1" \
+                 --exp_name="v1" \
                  --num_examples=-1 \
-                 --model_name="scenenet_joint_stereo" \
+                 --model_name="scenenet_joint_mono" \
                  --epochs=25 \
                  --batch_size=4 \
                  --log_dir="/ceph/checkpoints/" \
