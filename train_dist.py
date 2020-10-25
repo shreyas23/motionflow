@@ -70,8 +70,6 @@ parser.add_argument('--validate', type=bool, default=False,
                     help='set to true if validating model')
 parser.add_argument('--ckpt', type=str, default="",
                     help="path to model checkpoint if using one")
-parser.add_argument('--use_pretrained', type=bool,
-                    default=False, help="use pretrained model from authors")
 
 # module params
 parser.add_argument('--model_name', type=str,
@@ -276,7 +274,7 @@ def train(gpu, args):
 
     curr_epoch = args.start_epoch
 
-    if args.ckpt != "" and args.use_pretrained:
+    if args.ckpt != "":
         state_dict = torch.load(args.ckpt)
         model.load_state_dict(state_dict['model'])
         optimizer.load_state_dict(state_dict['optimizer'])
@@ -342,7 +340,9 @@ def train(gpu, args):
                     # configure map_location properly
                     map_location = {'cuda:%d' % 0: 'cuda:%d' % rank}
                     model.load_state_dict(
-                        torch.load(fp, map_location=map_location))
+                        torch.load(fp, map_location=map_location)['model'])
+                    optimizer.load_state_dict(
+                        torch.load(fp, map_location=map_location)['optimizer'])
 
 
 def step(args, data_dict, model, loss, augmentations, optimizer, gpu):
