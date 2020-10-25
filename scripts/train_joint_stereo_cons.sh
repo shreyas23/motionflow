@@ -1,7 +1,7 @@
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --exp_dir="jointnet_stereo" \
                  --exp_name="test" \
-                 --num_examples=16 \
+                 --num_examples=-1 \
                  --model_name="scenenet_joint_stereo" \
                  --start_epoch=1 \
                  --epochs=5 \
@@ -27,7 +27,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --exp_dir="jointnet_stereo" \
                  --exp_name="test" \
-                 --num_examples=16 \
+                 --num_examples=-1 \
                  --model_name="scenenet_joint_stereo" \
                  --start_epoch=6 \
                  --epochs=15 \

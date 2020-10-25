@@ -273,18 +273,20 @@ def train(gpu, args):
     curr_epoch = args.start_epoch
 
     if args.ckpt != "":
-        state_dict = torch.load(args.ckpt)
-        model.load_state_dict(state_dict['model'])
-        optimizer.load_state_dict(state_dict['optimizer'])
-        del state_dict
+        map_location = {'cuda:%d' % 0: 'cuda:%d' % rank}
+        model.load_state_dict(
+            torch.load(args.ckpt_fp, map_location=map_location)['model'])
+        optimizer.load_state_dict(
+            torch.load(args.ckpt_fp, map_location=map_location)['optimizer'])
     elif args.start_epoch > 1:
         load_epoch = args.start_epoch - 1
         ckpt_fp = os.path.join(log_dir, f"{load_epoch}.ckpt")
         print(f"Loading model from {ckpt_fp} onto gpu: {gpu}")
-        state_dict = torch.load(ckpt_fp)
-        model.load_state_dict(state_dict['model'])
-        optimizer.load_state_dict(state_dict['optimizer'])
-        del state_dict
+        map_location = {'cuda:%d' % 0: 'cuda:%d' % rank}
+        model.load_state_dict(
+            torch.load(ckpt_fp, map_location=map_location)['model'])
+        optimizer.load_state_dict(
+            torch.load(ckpt_fp, map_location=map_location)['optimizer'])
 
     model.train()
 
