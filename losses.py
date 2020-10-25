@@ -205,39 +205,56 @@ def mask_lr_loss(mask_l, mask_r, disp_l, disp_r, left_occ, right_occ):
 def pts_lr_loss(disp_l, disp_r, cam_l2r, cam_r2l, k_l_aug, k_r_aug, left_occ, right_occ, aug_size):
 
     b, _, h_dp, w_dp = disp_l.size()
-    disp_l_scale = disp_l * w_dp
-    disp_r_scale = disp_r * w_dp
+    disp_l = disp_l * w_dp
+    disp_r = disp_r * w_dp
 
     # scale
     local_scale = torch.zeros_like(aug_size)
     local_scale[:, 0] = h_dp
     local_scale[:, 1] = w_dp         
 
-    pts_l, _ = pixel2pts_ms(k_l_aug, disp_l_scale, local_scale / aug_size)
-
     # transform points into right cam coord. system
-    pts_l_flat = torch.cat([pts_l.reshape((b, 3, -1)), torch.ones(b, 1, h_dp*w_dp).cuda()], dim=1) # B, 4, H*W
-    pts_l_tform = torch.bmm(cam_l2r, pts_l_flat).reshape((b, 3, h_dp, w_dp))  # B, 3, H, W
-    proj_pts_l = _generate_image_right(pts_l_tform, disp_r)
+    # pts_l, _ = pixel2pts_ms(k_l_aug, disp_l_scale, local_scale / aug_size)
+    # pts_l_flat = torch.cat([pts_l.reshape((b, 3, -1)), torch.ones(b, 1, h_dp*w_dp).cuda()], dim=1) # B, 4, H*W
+    # pts_l_tform = torch.bmm(cam_l2r, pts_l_flat).reshape((b, 3, h_dp, w_dp))  # B, 3, H, W
 
-    pts_r, _ = pixel2pts_ms(k_r_aug, disp_r_scale, local_scale / aug_size)
+    # # transform points into left cam coord. system
+    # pts_r, _ = pixel2pts_ms(k_r_aug, disp_r_scale, local_scale / aug_size)
+    # pts_r_flat = torch.cat([pts_r.reshape((b, 3, -1)), torch.ones(b, 1, h_dp*w_dp).cuda()], dim=1) # B, 4, H*W
+    # pts_r_tform = torch.bmm(cam_r2l, pts_r_flat).reshape((b, 3, h_dp, w_dp))  # B, 3, H, W
 
-    # transform points into left cam coord. system
-    pts_r_flat = torch.cat([pts_r.reshape((b, 3, -1)), torch.ones(b, 1, h_dp*w_dp).cuda()], dim=1) # B, 4, H*W
-    pts_r_tform = torch.bmm(cam_r2l, pts_r_flat).reshape((b, 3, h_dp, w_dp))  # B, 3, H, W
-    proj_pts_r = _generate_image_left(pts_r_tform, disp_l)
+    # proj_pts_l = _generate_image_right(pts_l_tform, disp_r)
+    # proj_pts_r = _generate_image_left(pts_r_tform, disp_l)
+
+    # pts_norm_l = torch.norm(pts_l, p=2, dim=1, keepdim=True)
+    # pts_norm_r = torch.norm(pts_r, p=2, dim=1, keepdim=True)
+
+    # diff_l = _elementwise_epe(proj_pts_r, pts_l).mean(dim=1, keepdim=True) / (pts_norm_l + 1e-8)
+    # diff_r = _elementwise_epe(proj_pts_l, pts_r).mean(dim=1, keepdim=True) / (pts_norm_r + 1e-8)
+    # loss_lr = diff_l[left_occ].mean() + diff_r[right_occ].mean()
+    # diff_l[~left_occ].detach_()
+    # diff_r[~right_occ].detach_()
+
+    pts_l, k1_scale = pixel2pts_ms(k_l_aug, disp_l, local_scale / aug_size)
+    pts_r, k2_scale = pixel2pts_ms(k_r_aug, disp_r, local_scale / aug_size)
+
+    pts_l_tf, coord1 = pts2pixel_pose_ms(k1_scale, pts_l, None, [h_dp, w_dp], cam_l2r)
+    pts_r_tf, coord2 = pts2pixel_pose_ms(k2_scale, pts_r, None, [h_dp, w_dp], cam_r2l) 
+
+    pts_r_warp = reconstructPts(coord1, pts_r)
+    pts_l_warp = reconstructPts(coord2, pts_l) 
 
     pts_norm_l = torch.norm(pts_l, p=2, dim=1, keepdim=True)
     pts_norm_r = torch.norm(pts_r, p=2, dim=1, keepdim=True)
+    pts_diff_l = _elementwise_epe(pts_l_tf, pts_r_warp).mean(dim=1, keepdim=True) / (pts_norm_l + 1e-8)
+    pts_diff_r = _elementwise_epe(pts_r_tf, pts_l_warp).mean(dim=1, keepdim=True) / (pts_norm_r + 1e-8)
+    loss_pts_l = pts_diff_l[left_occ].mean()
+    loss_pts_r = pts_diff_r[right_occ].mean()
+    pts_diff_l[~left_occ].detach_()
+    pts_diff_r[~right_occ].detach_()
+    loss_pts = loss_pts_l + loss_pts_r
 
-    diff_l = _elementwise_epe(proj_pts_r, pts_l).mean(dim=1, keepdim=True) / (pts_norm_l + 1e-8)
-    diff_r = _elementwise_epe(proj_pts_l, pts_r).mean(dim=1, keepdim=True) / (pts_norm_r + 1e-8)
-
-    loss_lr = diff_l[left_occ].mean() + diff_r[right_occ].mean()
-    diff_l[~left_occ].detach_()
-    diff_r[~right_occ].detach_()
-
-    return loss_lr
+    return loss_pts
 
 def flow_lr_loss(flow_l, flow_r, disp_l, disp_r, left_occ, right_occ):
     flow_warp_l = _generate_image_left(flow_r, disp_l)
@@ -519,7 +536,6 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
         loss_mask_sm_sum = 0
         loss_mask_consensus_sum = 0
         loss_static_cons_sum = 0
-        # loss_lr_sf_sum = 0
         # loss_lr_pose_sum = 0
         loss_lr_pts_sum = 0
         loss_lr_mask_sum = 0
@@ -546,8 +562,6 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
         out_masks_l2 = []
         out_masks_l1 = []
 
-        sf_fr = output_dict['output_dict_r']['flow_f']
-        sf_br = output_dict['output_dict_r']['flow_b']
         pose_fr = output_dict['output_dict_r']['pose_f']
         pose_br = output_dict['output_dict_r']['pose_b']
         disps_r1 = output_dict['output_dict_r']['disp_l1']
