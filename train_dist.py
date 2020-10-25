@@ -331,7 +331,6 @@ def train(gpu, args):
 
                 if args.save_freq > 0:
                     if epoch % args.save_freq == 0 or epoch == args.epochs:
-                        
                         torch.save({'model': model.state_dict(), 'optimizer': optimizer.state_dict()}, fp)
 
 
@@ -453,7 +452,8 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     writer.add_images('input_l2', img_l2_aug, epoch)
     writer.add_images('input_r2', img_r2_aug, epoch)
 
-    if args.model_name in ['scenenet', 'scenenet_stereo', 'scenenet_joint']:
+    # if args.model_name in ['scenenet', 'scenenet_stereo', 'scenenet_joint']:
+    if 'scenenet' in args.model_name:
         sf_b = output_dict['flow_b'][0].detach()
         if args.model_name == 'scenenet_stereo':
             pose = output_dict['pose_b'].detach()
@@ -486,7 +486,8 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
         writer.add_images('img_l1_warp', img_l1_warp, epoch)
 
         # camera pose
-        if args.model_name == 'scenenet_joint':
+        # if args.model_name == 'scenenet_joint':
+        if 'joint' in args.model_name:
             _, coord2 = pts2pixel_pose_ms(k2_scale, pts2, None, [h_dp, w_dp], pose_mat=pose)
         else:
             _, coord2 = pts2pixel_pose_ms(k2_scale, pts2, pose, [h_dp, w_dp])
