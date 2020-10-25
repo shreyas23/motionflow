@@ -225,13 +225,12 @@ def train(gpu, args):
         val_dataloader = DataLoader(val_dataset, 4, shuffle=False, num_workers=args.num_workers, pin_memory=True) if val_dataset else None
 
         # define augmentations
-        if args.resize_only:
-            augmentations = Augmentation_Resize_Only(args)
-        else:
-            augmentations = Augmentation_SceneFlow(args)
+        train_augmentations = Augmentation_SceneFlow(args)
+        val_augmentations = Augmentation_Resize_Only(args)
 
         if args.cuda:
-            augmentations = augmentations.cuda(device=gpu)
+            train_augmentations = train_augmentations.cuda(device=gpu)
+            val_augmentations = val_augmentations.cuda(device=gpu)
     else:
         raise NotImplementedError
 
@@ -250,7 +249,7 @@ def train(gpu, args):
             optimizer, factor=args.lr_gamma, verbose=True, mode='min', patience=10)
     elif args.lr_sched_type == 'step':
         print("Using step lr schedule")
-        milestones = [10, 12]
+        milestones = [10, 13]
         lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
             optimizer, milestones=milestones, gamma=args.lr_gamma)
     elif args.lr_sched_type == 'none':
@@ -302,7 +301,7 @@ def train(gpu, args):
         if gpu == 0:
             print(f"Training epoch: {epoch}...\n")
         train_loss_avg_dict, output_dict, input_dict = train_one_epoch(
-            args, model, loss, train_dataloader, optimizer, augmentations, lr_scheduler, gpu)
+            args, model, loss, train_dataloader, optimizer, train_augmentations, lr_scheduler, gpu)
 
         if gpu == 0:
             print(f"\t Epoch {epoch} train loss avg:")
@@ -310,8 +309,8 @@ def train(gpu, args):
 
             if val_dataset is not None:
                 print(f"Validation epoch: {epoch}...\n")
-                val_loss_avg = eval(args, model, loss, val_dataloader, augmentations)
-                print(f"\t Epoch {epoch} val loss avg: {val_loss_avg}\n")
+                val_loss_avg_dict = eval(args, model, loss, val_dataloader, val_augmentations)
+                print(f"\t Epoch {epoch} val loss avg: {val_loss_avg_dict}\n")
 
         if args.lr_sched_type == 'plateau':
             lr_scheduler.step(train_loss_avg_dict['total_loss'])
@@ -323,6 +322,9 @@ def train(gpu, args):
             if gpu == 0:
                 for k, v in train_loss_avg_dict.items():
                     writer.add_scalar(f'loss/train/{k}', v.item(), epoch)
+                if val_dataset is not None:
+                    for k, v in val_loss_avg_dict.items():
+                        writer.add_scalar(f'loss/val/{k}', v.item(), epoch)
                 if epoch % args.log_freq == 0:
                     visualize_output(args, input_dict, output_dict, epoch, writer)
 
