@@ -1,5 +1,5 @@
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
-                 --exp_dir="baseline_stereo" \
+                 --exp_dir="pose_mono" \
                  --exp_name="v1" \
                  --num_examples=-1 \
                  --model_name="scenenet_pose_mono" \

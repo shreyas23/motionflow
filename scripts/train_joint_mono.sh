@@ -1,5 +1,5 @@
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
-                 --exp_dir="baseline_joint" \
+                 --exp_dir="joint_mono" \
                  --exp_name="v1" \
                  --num_examples=-1 \
                  --model_name="scenenet_joint_mono" \

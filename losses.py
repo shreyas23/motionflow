@@ -169,11 +169,10 @@ def static_cons_loss(mask, sf, pose, disp, disp_occ, intrinsics, aug_size, pose_
     local_scale = torch.zeros_like(aug_size)
     local_scale[:, 0] = h_dp
     local_scale[:, 1] = w_dp         
-    _, intrinsics_scaled, depth = pixel2pts_ms_depth(intrinsics, disp, local_scale / aug_size)
 
+    _, intrinsics_scaled, depth = pixel2pts_ms_depth(intrinsics, disp, local_scale / aug_size)
     pose_flow = pose2flow(depth.squeeze(dim=1), pose, intrinsics, torch.inverse(intrinsics_scaled), pose_mat=pose_mat)
     flow = projectSceneFlow2Flow(intrinsics_scaled, sf, disp)
-
     flow_diff = (pose_flow - flow).abs().mean(dim=1, keepdim=True)
 
     # static consistency loss
@@ -185,8 +184,8 @@ def static_cons_loss(mask, sf, pose, disp, disp_occ, intrinsics, aug_size, pose_
 
 def mask_consensus_loss(mask, flow_diff, pose_err, sf_err, flow_diff_thresh):
     # mask consensus loss
-    target_mask = (pose_err <= sf_err).float()
-    flow_similar = (flow_diff < flow_diff_thresh).float()
+    target_mask = (pose_err <= sf_err).float().detach()
+    flow_similar = (flow_diff < flow_diff_thresh).float().detach()
     census_target_mask = logical_or(target_mask, flow_similar).detach()
     loss = tf.binary_cross_entropy(mask, census_target_mask)
     return loss, census_target_mask
@@ -426,13 +425,9 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
 
     def sceneflow_loss(self, 
                        sf_f, sf_b, 
-                       sf_fr, sf_br, 
                        disp_l1, disp_l2,
-                       disp_r1, disp_r2,
                        disp_occ_l1, disp_occ_l2,
-                       disp_occ_r1, disp_occ_r2,
                        k_l1_aug, k_l2_aug,
-                       k_r1_aug, k_r2_aug,
                        img_l1_aug, img_l2_aug,
                        aug_size, ii,
                        mask_f=None, mask_b=None):
@@ -459,10 +454,6 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
         flow_b = projectSceneFlow2Flow(k2_scale, sf_b, disp_l2)
         occ_map_b = _adaptive_disocc_detection(flow_f).detach() * disp_occ_l2
         occ_map_f = _adaptive_disocc_detection(flow_b).detach() * disp_occ_l1
-
-        # loss_lr1 = flow_lr_loss(sf_f, sf_fr, disp_l1, disp_r1, disp_occ_l1, disp_occ_r1) 
-        # loss_lr2 = flow_lr_loss(sf_b, sf_br, disp_l2, disp_r2, disp_occ_l2, disp_occ_r2)
-        # loss_lr = loss_lr1 + loss_lr2
 
         ## Image reconstruction loss
         img_l2_warp = reconstructImg(coord1, img_l2_aug)
@@ -499,10 +490,8 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
         loss_3d_s = ( (_smoothness_motion_2nd(sf_f, img_l1_aug, beta=10.0) / (pts_norm1 + 1e-8)).mean() + (_smoothness_motion_2nd(sf_b, img_l2_aug, beta=10.0) / (pts_norm2 + 1e-8)).mean() ) / (2 ** ii)
 
         ## Loss Summnation
-        sceneflow_loss = loss_im + self._sf_3d_pts * loss_pts + self._sf_3d_sm * loss_3d_s # + loss_lr * self._sf_lr_w
-        # sceneflow_loss = loss_im + self._sf_3d_pts * loss_pts + self._sf_3d_sm * loss_3d_s + loss_lr * self._sf_lr_w
+        sceneflow_loss = loss_im + self._sf_3d_pts * loss_pts + self._sf_3d_sm * loss_3d_s
         
-        # return sceneflow_loss, loss_im, loss_pts, loss_3d_s, loss_lr, [img_diff1, img_diff2]
         return sceneflow_loss, loss_im, loss_pts, loss_3d_s, [img_diff1, img_diff2]
 
     def detaching_grad_of_outputs(self, output_dict):
@@ -605,18 +594,13 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
             flow_mask_l2 = None
 
             ## Sceneflow Loss
-            # loss_sceneflow, loss_im, loss_pts, loss_3d_s, loss_sf_lr, sf_diffs = self.sceneflow_loss(sf_f, sf_b,
             loss_sceneflow, loss_im, loss_pts, loss_3d_s, sf_diffs = self.sceneflow_loss(sf_f, sf_b,
-                                                                                                     sf_fr[ii], sf_br[ii],
-                                                                                                     disp_l1, disp_l2,
-                                                                                                     disp_r1, disp_r2,
-                                                                                                     disp_occ_l1, disp_occ_l2,
-                                                                                                     disp_occ_r1, disp_occ_r2,
-                                                                                                     k_l1_aug, k_l2_aug,
-                                                                                                     k_r1_aug, k_r2_aug,
-                                                                                                     img_l1_aug, img_l2_aug, 
-                                                                                                     aug_size, ii,
-                                                                                                     flow_mask_l1, flow_mask_l2)
+                                                                                        disp_l1, disp_l2,
+                                                                                        disp_occ_l1, disp_occ_l2,
+                                                                                        k_l1_aug, k_l2_aug,
+                                                                                        img_l1_aug, img_l2_aug, 
+                                                                                        aug_size, ii,
+                                                                                        flow_mask_l1, flow_mask_l2)
 
             loss_sf_sum = loss_sf_sum + loss_sceneflow * self._weights[ii]
             loss_sf_2d = loss_sf_2d + loss_im
