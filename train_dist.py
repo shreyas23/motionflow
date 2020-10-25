@@ -391,7 +391,7 @@ def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_
         optimizer.zero_grad()
         total_loss = loss_dict['total_loss']
         total_loss.backward()
-        if args.grad_clip > 0:
+        if args.grad_clip > 0.0:
             torch.nn.utils.clip_grad_value_(model.parameters(), args.grad_clip)
         optimizer.step()
 
@@ -406,6 +406,7 @@ def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_
 
 
 def eval(args, model, loss, dataloader, augmentations):
+    model.eval()
     loss_dict_avg = None
 
     for data_dict in tqdm(dataloader):
