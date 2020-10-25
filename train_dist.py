@@ -216,7 +216,8 @@ def train(gpu, args):
         train_dataloader = DataLoader(train_dataset, args.batch_size,
                                     shuffle=(train_sampler is None), num_workers=args.num_workers, pin_memory=True, sampler=train_sampler)
         val_dataset = KITTI_Raw_KittiSplit_Valid(args, DATA_ROOT)
-        val_dataloader = DataLoader(val_dataset, 4, shuffle=False, num_workers=args.num_workers, pin_memory=True) if val_dataset else None
+        val_sampler = DistributedSampler(val_dataset, num_replicas=args.world_size, rank=rank, shuffle=False)
+        val_dataloader = DataLoader(val_dataset, args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True, sampler=val_sampler) if val_dataset else None
 
         # define augmentations
         train_augmentations = Augmentation_SceneFlow(args)
