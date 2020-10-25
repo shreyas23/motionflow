@@ -273,6 +273,7 @@ def train(gpu, args):
     curr_epoch = args.start_epoch
 
     if args.ckpt != "":
+        print(f"Loading model from {args.ckpt_fp} onto gpu: {gpu}")
         map_location = {'cuda:%d' % 0: 'cuda:%d' % rank}
         model.load_state_dict(
             torch.load(args.ckpt_fp, map_location=map_location)['model'])
