@@ -1,6 +1,6 @@
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --exp_dir="jointnet_stereo" \
-                 --exp_name="test" \
+                 --exp_name="v1" \
                  --num_examples=-1 \
                  --model_name="scenenet_joint_stereo" \
                  --start_epoch=1 \
@@ -26,7 +26,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --flow_diff_thresh=1e-3 &&
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --exp_dir="jointnet_stereo" \
-                 --exp_name="test" \
+                 --exp_name="v1" \
                  --num_examples=-1 \
                  --model_name="scenenet_joint_stereo" \
                  --start_epoch=6 \
