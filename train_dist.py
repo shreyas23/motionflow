@@ -94,7 +94,6 @@ parser.add_argument('--resize_only', type=bool, default=False,
 # weight params
 parser.add_argument('--pose_sm_w', type=float, default=200, help='mask consensus weight')
 parser.add_argument('--pose_lr_w', type=float, default=0.0, help='mask consensus weight')
-parser.add_argument('--sf_lr_w', type=float, default=0.0, help='mask consensus weight')
 parser.add_argument('--mask_lr_w', type=float, default=1.0, help='mask consensus weight')
 parser.add_argument('--pts_lr_w', type=float, default=1.0, help='mask consensus weight')
 parser.add_argument('--disp_lr_w', type=float, default=1.0, help='mask consensus weight')
@@ -244,7 +243,7 @@ def train(gpu, args):
     if args.lr_sched_type == 'plateau':
         print("Using plateau lr schedule")
         lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, factor=args.lr_gamma, verbose=True, mode='min', patience=10)
+            optimizer, factor=args.lr_gamma, verbose=True, mode='min', patience=1)
     elif args.lr_sched_type == 'step':
         print("Using step lr schedule")
         milestones = [10, 13]

@@ -283,7 +283,6 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
 
         # consistency weights 
         self._mask_lr_w = args.mask_lr_w
-        self._sf_lr_w = args.sf_lr_w
         self._pose_lr_w = args.pose_lr_w
         self._pts_lr_w = args.pose_lr_w
         self._disp_lr_w = args.disp_lr_w
@@ -497,9 +496,8 @@ class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
     def detaching_grad_of_outputs(self, output_dict):
         
         for ii in range(0, len(output_dict['flow_f'])):
-            if self._sf_lr_w == 0.0:
-                output_dict['flow_f'][ii].detach_()
-                output_dict['flow_b'][ii].detach_()
+            output_dict['flow_f'][ii].detach_()
+            output_dict['flow_b'][ii].detach_()
             if self._pose_lr_w == 0.0:
                 output_dict['pose_f'][ii].detach_()
                 output_dict['pose_b'][ii].detach_()
@@ -729,7 +727,6 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
 
         # consistency weights 
         self._mask_lr_w = args.mask_lr_w
-        self._sf_lr_w = args.sf_lr_w
         self._pose_lr_w = args.pose_lr_w
         self._pts_lr_w = args.pose_lr_w
         self._disp_lr_w = args.disp_lr_w
@@ -861,11 +858,9 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
         ## 3D motion smoothness loss
         loss_3d_s = ( (_smoothness_motion_2nd(sf_f, img_l1_aug, beta=10.0) / (pts_norm1 + 1e-8)).mean() + (_smoothness_motion_2nd(sf_b, img_l2_aug, beta=10.0) / (pts_norm2 + 1e-8)).mean() ) / (2 ** ii)
 
-        ## Loss Summnation
+        ## Loss Summation
         sceneflow_loss = loss_im + self._sf_3d_pts * loss_pts + self._sf_3d_sm * loss_3d_s
-        # sceneflow_loss = loss_im + self._sf_3d_pts * loss_pts + self._sf_3d_sm * loss_3d_s + loss_lr * self._pose_lr_w
         
-        # return sceneflow_loss, loss_im, loss_pts, loss_3d_s, loss_lr, [img_diff1, img_diff2]
         return sceneflow_loss, loss_im, loss_pts, loss_3d_s, [img_diff1, img_diff2]
 
 
@@ -944,8 +939,7 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
         loss_3d_s = ( (_smoothness_motion_2nd(sf_f, img_l1_aug, beta=10.0) / (pts_norm1 + 1e-8)).mean() + (_smoothness_motion_2nd(sf_b, img_l2_aug, beta=10.0) / (pts_norm2 + 1e-8)).mean() ) / (2 ** ii)
 
         ## Loss Summnation
-        sceneflow_loss = loss_im + self._sf_3d_pts * loss_pts + self._sf_3d_sm * loss_3d_s # + loss_lr * self._sf_lr_w
-        # sceneflow_loss = loss_im + self._sf_3d_pts * loss_pts + self._sf_3d_sm * loss_3d_s + loss_lr * self._sf_lr_w
+        sceneflow_loss = loss_im + self._sf_3d_pts * loss_pts + self._sf_3d_sm * loss_3d_s
         
         # return sceneflow_loss, loss_im, loss_pts, loss_3d_s, loss_lr, [img_diff1, img_diff2]
         return sceneflow_loss, loss_im, loss_pts, loss_3d_s, [img_diff1, img_diff2]
@@ -953,9 +947,8 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
     def detaching_grad_of_outputs(self, output_dict):
         
         for ii in range(0, len(output_dict['flow_f'])):
-            if self._sf_lr_w == 0.0:
-                output_dict['flow_f'][ii].detach_()
-                output_dict['flow_b'][ii].detach_()
+            output_dict['flow_f'][ii].detach_()
+            output_dict['flow_b'][ii].detach_()
         if self._pose_lr_w == 0.0:
             output_dict['pose_f'].detach_()
             output_dict['pose_b'].detach_()

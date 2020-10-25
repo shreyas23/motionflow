@@ -89,7 +89,6 @@ parser.add_argument('--resize_only', type=bool, default=False,
 # weight params
 parser.add_argument('--pose_sm_w', type=float, default=200, help='mask consensus weight')
 parser.add_argument('--pose_lr_w', type=float, default=1.0, help='mask consensus weight')
-parser.add_argument('--sf_lr_w', type=float, default=1.0, help='mask consensus weight')
 parser.add_argument('--pts_lr_w', type=float, default=1.0, help='mask consensus weight')
 parser.add_argument('--mask_lr_w', type=float, default=1.0, help='mask consensus weight')
 parser.add_argument('--disp_lr_w', type=float, default=1.0, help='mask consensus weight')
