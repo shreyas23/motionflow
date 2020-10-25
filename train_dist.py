@@ -146,7 +146,6 @@ args = parser.parse_args()
 
 
 def main():
-
     for arg in vars(args):
         print(f"{arg}: {getattr(args, arg)}")
 
@@ -160,10 +159,13 @@ def main():
     mp.spawn(train, nprocs=args.num_gpus, args=(args,))
 
 
+def cleanup_env():
+    dist.destroy_process_group()
+
+
 def train(gpu, args):
 
     rank = args.nr * args.num_gpus + gpu
-
     dist.init_process_group(backend="nccl", world_size=args.world_size, rank=rank)
 
     if args.batch_size == 1 and args.use_bn is True:
@@ -171,7 +173,6 @@ def train(gpu, args):
 
     torch.manual_seed(args.torch_seed)
     torch.cuda.manual_seed(args.cuda_seed)
-
     torch.cuda.set_device(gpu)
 
     DATASET_NAME = args.dataset_name
@@ -267,11 +268,7 @@ def train(gpu, args):
             exp_name = args.exp_name
 
         log_dir = os.path.join(log_dir, exp_name)
-
-        if gpu == 0:
-            writer = SummaryWriter(log_dir)
-        else:
-            writer = None
+        writer = SummaryWriter(log_dir) if gpu == 0 else None
 
     curr_epoch = args.start_epoch
 
@@ -345,6 +342,7 @@ def train(gpu, args):
                         torch.load(fp, map_location=map_location)['model'])
                     optimizer.load_state_dict(
                         torch.load(fp, map_location=map_location)['optimizer'])
+    cleanup_env()
 
 
 def step(args, data_dict, model, loss, augmentations, optimizer, gpu):
