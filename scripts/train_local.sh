@@ -1,7 +1,7 @@
 python3 train.py --data_root="/external/datasets/kitti_data_jpg/" \
                  --exp_dir="scenenet_joint" \
                  --exp_name="" \
-                 --num_examples=20 \
+                 --num_examples=1500 \
                  --resize_only=True \
                  --model_name="scenenet_joint" \
                  --epochs=100 \

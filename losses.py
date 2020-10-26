@@ -213,44 +213,26 @@ def pts_lr_loss(disp_l, disp_r, cam_l2r, cam_r2l, k_l_aug, k_r_aug, left_occ, ri
     local_scale[:, 0] = h_dp
     local_scale[:, 1] = w_dp         
 
-    # transform points into right cam coord. system
-    # pts_l, _ = pixel2pts_ms(k_l_aug, disp_l_scale, local_scale / aug_size)
-    # pts_l_flat = torch.cat([pts_l.reshape((b, 3, -1)), torch.ones(b, 1, h_dp*w_dp).cuda()], dim=1) # B, 4, H*W
-    # pts_l_tform = torch.bmm(cam_l2r, pts_l_flat).reshape((b, 3, h_dp, w_dp))  # B, 3, H, W
-
-    # # transform points into left cam coord. system
-    # pts_r, _ = pixel2pts_ms(k_r_aug, disp_r_scale, local_scale / aug_size)
-    # pts_r_flat = torch.cat([pts_r.reshape((b, 3, -1)), torch.ones(b, 1, h_dp*w_dp).cuda()], dim=1) # B, 4, H*W
-    # pts_r_tform = torch.bmm(cam_r2l, pts_r_flat).reshape((b, 3, h_dp, w_dp))  # B, 3, H, W
-
-    # proj_pts_l = _generate_image_right(pts_l_tform, disp_r)
-    # proj_pts_r = _generate_image_left(pts_r_tform, disp_l)
-
-    # pts_norm_l = torch.norm(pts_l, p=2, dim=1, keepdim=True)
-    # pts_norm_r = torch.norm(pts_r, p=2, dim=1, keepdim=True)
-
-    # diff_l = _elementwise_epe(proj_pts_r, pts_l).mean(dim=1, keepdim=True) / (pts_norm_l + 1e-8)
-    # diff_r = _elementwise_epe(proj_pts_l, pts_r).mean(dim=1, keepdim=True) / (pts_norm_r + 1e-8)
-    # loss_lr = diff_l[left_occ].mean() + diff_r[right_occ].mean()
-    # diff_l[~left_occ].detach_()
-    # diff_r[~right_occ].detach_()
-
     pts_l, k_l_scale = pixel2pts_ms(k_l_aug, disp_l, local_scale / aug_size)
     pts_r, k_r_scale = pixel2pts_ms(k_r_aug, disp_r, local_scale / aug_size)
-    pts_l_tf, coord1 = pts2pixel_pose_ms(k_l_scale, pts_l, None, [h_dp, w_dp], pose_mat=cam_l2r)
-    pts_r_tf, coord2 = pts2pixel_pose_ms(k_r_scale, pts_r, None, [h_dp, w_dp], pose_mat=cam_r2l) 
 
-    pts_r_warp = reconstructPts(coord1, pts_r)
-    pts_l_warp = reconstructPts(coord2, pts_l) 
+    pts_l_tf, coord_l = pts2pixel_pose_ms(k_l_scale, pts_l, None, [h_dp, w_dp], pose_mat=cam_l2r)
+    pts_r_tf, coord_r = pts2pixel_pose_ms(k_r_scale, pts_r, None, [h_dp, w_dp], pose_mat=cam_r2l) 
+    pts_r_warp = reconstructPts(coord_l, pts_r)
+    pts_l_warp = reconstructPts(coord_r, pts_l) 
 
     pts_norm_l = torch.norm(pts_l, p=2, dim=1, keepdim=True)
     pts_norm_r = torch.norm(pts_r, p=2, dim=1, keepdim=True)
+
     pts_diff_l = _elementwise_epe(pts_l_tf, pts_r_warp).mean(dim=1, keepdim=True) / (pts_norm_l + 1e-8)
     pts_diff_r = _elementwise_epe(pts_r_tf, pts_l_warp).mean(dim=1, keepdim=True) / (pts_norm_r + 1e-8)
+
     loss_pts_l = pts_diff_l[left_occ].mean()
     loss_pts_r = pts_diff_r[right_occ].mean()
+
     pts_diff_l[~left_occ].detach_()
     pts_diff_r[~right_occ].detach_()
+
     loss_pts = loss_pts_l + loss_pts_r
 
     return loss_pts
