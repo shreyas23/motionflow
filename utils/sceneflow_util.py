@@ -18,6 +18,11 @@ def add_pose(pose_mat, pose_res):
     return pose_mat 
 
 
+def pose_process_flow(pose_sf, sf, pose_err, sf_err):
+    out_sf = torch.where(pose_err <= sf_err, pose_sf, sf)
+    return out_sf
+
+
 def post_processing(l_disp, r_disp):
     
     b, _, h, w = l_disp.shape

@@ -221,7 +221,6 @@ def train(gpu, args):
             val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True) if val_dataset else None
         else:
             val_dataset = None
-            val_sampler = None
             val_dataloader = None
 
         # define augmentations
@@ -494,7 +493,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
         img_l1_warp_cam = reconstructImg(coord2, img_l1_aug)
         writer.add_images('img_l1_warp_cam', img_l1_warp_cam, epoch)
 
-    if args.model_name in ['posedepth']:
+    elif args.model_name in ['depth']:
         pose = output_dict['pose_b'].detach()
         _, _, h_dp, w_dp = disp_l2.size()
         disp_l2 = disp_l2 * w_dp

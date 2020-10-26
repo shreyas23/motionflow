@@ -64,6 +64,7 @@ class KITTI_Raw(data.Dataset):
         ## loading calibration matrix
         self.intrinsic_dict_l = {}
         self.intrinsic_dict_r = {}        
+        self.cam_l2r = {}
         self.cam_r2l = {}
         self.intrinsic_dict_l, self.intrinsic_dict_r, self.cam_l2r, self.cam_r2l = read_calib_into_dict(path_dir)
 

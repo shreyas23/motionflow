@@ -274,6 +274,8 @@ class FlowDispPoseDecoder(nn.Module):
 
         if self.use_mask:
             mask = self.convs_mask(x_out)
+        else:
+            mask = None
 
         return x_out, sf, disp1, mask, pred_pose, pose_out
 
@@ -323,5 +325,7 @@ class JointContextNetwork(nn.Module):
 
         if self.use_mask:
             mask = self.convs_mask(x_out)
+        else:
+            mask = None
 
         return sf, disp1, mask, pred_pose
