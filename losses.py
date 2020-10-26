@@ -235,11 +235,10 @@ def pts_lr_loss(disp_l, disp_r, cam_l2r, cam_r2l, k_l_aug, k_r_aug, left_occ, ri
     # diff_l[~left_occ].detach_()
     # diff_r[~right_occ].detach_()
 
-    pts_l, k1_scale = pixel2pts_ms(k_l_aug, disp_l, local_scale / aug_size)
-    pts_r, k2_scale = pixel2pts_ms(k_r_aug, disp_r, local_scale / aug_size)
-
-    pts_l_tf, coord1 = pts2pixel_pose_ms(k1_scale, pts_l, None, [h_dp, w_dp], pose_mat=cam_l2r)
-    pts_r_tf, coord2 = pts2pixel_pose_ms(k2_scale, pts_r, None, [h_dp, w_dp], pose_mat=cam_r2l) 
+    pts_l, k_l_scale = pixel2pts_ms(k_l_aug, disp_l, local_scale / aug_size)
+    pts_r, k_r_scale = pixel2pts_ms(k_r_aug, disp_r, local_scale / aug_size)
+    pts_l_tf, coord1 = pts2pixel_pose_ms(k_l_scale, pts_l, None, [h_dp, w_dp], pose_mat=cam_l2r)
+    pts_r_tf, coord2 = pts2pixel_pose_ms(k_r_scale, pts_r, None, [h_dp, w_dp], pose_mat=cam_r2l) 
 
     pts_r_warp = reconstructPts(coord1, pts_r)
     pts_l_warp = reconstructPts(coord2, pts_l) 
@@ -751,7 +750,6 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
     def mask_loss(self, mask):
         reg_loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
         sm_loss = (_gradient_x_2nd(mask).abs() + _gradient_y_2nd(mask).abs()).mean()
-
         loss = reg_loss * self._mask_reg_w + sm_loss * self._mask_sm_w
 
         return loss, reg_loss, sm_loss
@@ -1111,8 +1109,7 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
                      loss_pose_sum * p_weight + \
                      loss_mask_sum * p_weight + \
                      loss_mask_consensus_sum * p_weight + \
-                     loss_lr_mask_sum + loss_lr_pts_sum + \
-                     loss_static_cons_sum
+                     loss_lr_mask_sum + loss_static_cons_sum
 
         loss_dict = {}
         loss_dict["dp"] = loss_dp_sum
@@ -1128,8 +1125,6 @@ class Loss_SceneFlow_SelfSup_Pose(nn.Module):
         loss_dict["mask_reg"] = loss_mask_reg_sum
         loss_dict["mask_smooth"] = loss_mask_sm_sum
         loss_dict["mask_consensus"] = loss_mask_consensus_sum
-        # loss_dict["sf_lr"] = loss_lr_sf_sum
-        # loss_dict["pose_lr"] = loss_lr_pose_sum
         loss_dict["pts_lr"] = loss_lr_pts_sum
         loss_dict["mask_lr"] = loss_lr_mask_sum
         loss_dict["static_cons"] = loss_static_cons_sum
