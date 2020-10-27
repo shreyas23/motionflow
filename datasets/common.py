@@ -119,18 +119,25 @@ def read_calib_into_dict(path_dir):
         file_data = read_raw_calib_file(file_name_full)
         P_rect_02 = np.reshape(file_data['P_rect_02'], (3, 4))
         P_rect_03 = np.reshape(file_data['P_rect_03'], (3, 4))
-        intrinsic_dict_l[date] = P_rect_02[:3, :3]
-        intrinsic_dict_r[date] = P_rect_03[:3, :3]
+        intrinsic_dict_l[date] = P_rect_02[:3, :3] # projects points from rectified cam 2 coord. system
+        intrinsic_dict_r[date] = P_rect_03[:3, :3] # projects points from rectified cam 3 coord. system
 
-        # load trans. from 00 to 0X
+        R_rect_0 = file_data['R_rect_00'].reshape((3, 3))
+        R_rect_0_inv = file_data['R_rect_00'].reshape((3, 3)).T
+
+        # X_rect_cam3 = R_rect * T_03 * T_20 * R_rect_inv * X_rect_cam2
+
+        # load trans. from 00 to 02
         R_02 = file_data['R_02'].reshape(3, 3)
         t_02 = file_data['T_02'].reshape(3, 1)
         T_02 = np.concatenate([np.concatenate([R_02, t_02], axis=1), np.zeros((1, 4))], axis=0)
 
+        # load trans. from 00 to 03
         R_03 = file_data['R_03'].reshape(3, 3)
         t_03 = file_data['T_03'].reshape(3, 1)
         T_03 = np.concatenate([np.concatenate([R_03, t_03], axis=1), np.zeros((1, 4))], axis=0)
 
+        # load trans. from 00 to 02
         T_30 = np.eye(4)
         T_30[:3, :3] = R_03.T
         T_30[:3, -1:] = np.dot(R_03.T, -t_03)
@@ -139,7 +146,14 @@ def read_calib_into_dict(path_dir):
         T_20[:3, :3] = R_02.T
         T_20[:3, -1:] = np.dot(R_02.T, -t_02)
 
-        cam_l2r[date] = np.dot(T_03, T_20)[:-1].astype(np.float32)
-        cam_r2l[date] = np.dot(T_02, T_30)[:-1].astype(np.float32)
+        T_20_unrect = np.dot(T_20, R_rect_0_inv)
+        T_03_rect = np.dot(R_rect_0, T_03)
+        T_30_unrect = np.dot(T_30, R_rect_0_inv)
+        T_02_rect = np.dot(R_rect_0, T_02)
+
+        cam_l2r[date] = np.dot(T_03_rect, T_20_unrect)[:-1].astype(np.float32)
+        cam_r2l[date] = np.dot(T_02_rect, T_30_unrect)[:-1].astype(np.float32)
+        # cam_l2r[date] = np.dot(T_03, T_20)[:-1].astype(np.float32)
+        # cam_r2l[date] = np.dot(T_02, T_30)[:-1].astype(np.float32)
 
     return intrinsic_dict_l, intrinsic_dict_r, cam_l2r, cam_r2l
