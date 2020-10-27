@@ -23,6 +23,7 @@ from datasets.kitti_raw_monosf import KITTI_Raw_KittiSplit_Train, KITTI_Raw_Kitt
 from models.SceneNet import SceneNet
 from models.SceneNetStereo import SceneNetStereo
 from models.SceneNetStereoJoint import SceneNetStereoJoint
+from models.SceneNetStereoJointIter import SceneNetStereoJointIter
 from models.model_monosceneflow import MonoSceneFlow
 from models.PoseDepthNet import PoseDispNet
 
@@ -87,12 +88,15 @@ parser.add_argument('--resize_only', type=bool, default=False,
                     help='only do resize augmentation on input data')
 
 # weight params
+parser.add_argument('--sf_pts_w', type=float, default=0.2, help='mask consensus weight')
+parser.add_argument('--sf_sm_w', type=float, default=0.2, help='mask consensus weight')
 parser.add_argument('--pose_sm_w', type=float, default=200, help='mask consensus weight')
+parser.add_argument('--pose_pts_w', type=float, default=0.2, help='mask consensus weight')
 parser.add_argument('--pose_lr_w', type=float, default=1.0, help='mask consensus weight')
-parser.add_argument('--pts_lr_w', type=float, default=1.0, help='mask consensus weight')
 parser.add_argument('--mask_lr_w', type=float, default=1.0, help='mask consensus weight')
 parser.add_argument('--disp_lr_w', type=float, default=1.0, help='mask consensus weight')
-parser.add_argument('--disp_smooth_w', type=float, default=0.1, help='mask consensus weight')
+parser.add_argument('--disp_sm_w', type=float, default=0.1, help='mask consensus weight')
+parser.add_argument('--disp_pts_w', type=float, default=0.2, help='mask consensus weight')
 parser.add_argument('--mask_reg_w', type=float, default=0.2, help='mask consensus weight')
 parser.add_argument('--mask_sm_w', type=float, default=0.1, help='mask consensus weight')
 parser.add_argument('--static_cons_w', type=float, default=0.0, help='mask consensus weight')
@@ -165,8 +169,8 @@ def main():
     elif args.model_name == 'scenenet_stereo':
       model = SceneNetStereo(args)
       loss = Loss_SceneFlow_SelfSup_Pose(args)
-    elif args.model_name == 'scenenet_joint':
-      model = SceneNetStereoJoint(args)
+    elif args.model_name == 'scenenet_joint_iter':
+      model = SceneNetStereoJointIter(args)
       loss = Loss_SceneFlow_SelfSup_JointStereo(args)
     elif args.model_name == 'monoflow':
       model = MonoSceneFlow(args)
@@ -405,7 +409,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     writer.add_images('input_l2', img_l2_aug, epoch)
     writer.add_images('input_r2', img_r2_aug, epoch)
 
-    if args.model_name in ['scenenet', 'scenenet_stereo', 'scenenet_joint']:
+    if 'scenenet' in args.model_name:
         sf_b = output_dict['flow_b'][0].detach()
         if args.model_name == 'scenenet_stereo':
             pose = output_dict['pose_b'].detach()
@@ -438,7 +442,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
         writer.add_images('img_l1_warp', img_l1_warp, epoch)
 
         # camera pose
-        if args.model_name == 'scenenet_joint':
+        if args.model_name == 'scenenet_joint_iter':
             _, coord2 = pts2pixel_pose_ms(k2_scale, pts2, None, [h_dp, w_dp], pose_mat=pose)
         else:
             _, coord2 = pts2pixel_pose_ms(k2_scale, pts2, pose, [h_dp, w_dp])

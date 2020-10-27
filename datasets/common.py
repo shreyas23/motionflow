@@ -131,18 +131,13 @@ def read_calib_into_dict(path_dir):
         t_03 = file_data['T_03'].reshape(3, 1)
         T_03 = np.concatenate([np.concatenate([R_03, t_03], axis=1), np.zeros((1, 4))], axis=0)
 
-        # load trans. from 0X to 00
-        R_03 = np.eye(4)
-        R_03[:3, :3] = file_data['R_03'].reshape(3, 3)
-        t_03 = np.eye(4)
-        t_03[:3, -1] = -file_data['T_03']
-        T_30 = np.dot(R_03.T, t_03)
+        T_30 = np.eye(4)
+        T_30[:3, :3] = R_03.T
+        T_30[:3, -1:] = np.dot(R_03.T, -t_03)
 
-        R_02 = np.eye(4)
-        R_02[:3, :3] = file_data['R_02'].reshape(3, 3)
-        t_02 = np.eye(4)
-        t_02[:3, -1] = -file_data['T_02']
-        T_20 = np.dot(R_02.T, t_02)
+        T_20 = np.eye(4)
+        T_20[:3, :3] = R_02.T
+        T_20[:3, -1:] = np.dot(R_02.T, -t_02)
 
         cam_l2r[date] = np.dot(T_03, T_20)[:-1].astype(np.float32)
         cam_r2l[date] = np.dot(T_02, T_30)[:-1].astype(np.float32)
