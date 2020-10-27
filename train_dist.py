@@ -8,6 +8,7 @@ from tqdm import tqdm
 from pprint import pprint
 import matplotlib.pyplot as plt
 from collections import OrderedDict
+import json
 
 import torch
 import torch.nn as nn
@@ -202,6 +203,10 @@ def train(gpu, args):
         model = SceneNetStereoJointIter(args).cuda(device=gpu)
         model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
         loss = Loss_SceneFlow_SelfSup_JointStereo(args)
+    elif args.model_name == 'scenenet_joint_mono_iter':
+        model = SceneNetStereoJointIter(args).cuda(device=gpu)
+        model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
+        loss = Loss_SceneFlow_SelfSup_JointStereo(args)
     elif args.model_name == 'monoflow':
         model = MonoSceneFlow(args).cuda(device=gpu)
         model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
@@ -287,6 +292,11 @@ def train(gpu, args):
 
         log_dir = os.path.join(log_dir, exp_name)
         writer = SummaryWriter(log_dir) if gpu == 0 else None
+    
+    if gpu == 0:
+        with open(os.path.join(log_dir, 'args.txt'), 'w') as f:
+            json.dump(args.__dict__, f, indent=2)
+
 
     curr_epoch = args.start_epoch
 
