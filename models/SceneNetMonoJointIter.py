@@ -42,6 +42,8 @@ class SceneNetMonoJointIter(nn.Module):
         self.flow_estimators = nn.ModuleList()
         self.upconv_layers = nn.ModuleList()
 
+        self.dim_corr = (self.search_range * 2 + 1) ** 2
+
         for l, ch in enumerate(self.num_chs[::-1]):
             if l > self.output_level:
                 break
