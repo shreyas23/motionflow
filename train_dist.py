@@ -328,6 +328,7 @@ def train(gpu, args):
 
         if gpu == 0:
             print(f"Training epoch: {epoch}...\n")
+
         train_loss_avg_dict, output_dict, input_dict = train_one_epoch(
             args, model, loss, train_dataloader, optimizer, train_augmentations, lr_scheduler, gpu)
 
