@@ -29,6 +29,7 @@ from models.SceneNet import SceneNet
 from models.SceneNetStereo import SceneNetStereo
 from models.SceneNetStereoJoint import SceneNetStereoJoint
 from models.SceneNetStereoJointIter import SceneNetStereoJointIter
+from models.SceneNetMonoJointIter import SceneNetMonoJointIter
 from models.SceneNetMonoJoint import SceneNetMonoJoint
 from models.model_monosceneflow import MonoSceneFlow
 from models.PoseDepthNet import PoseDispNet
@@ -204,7 +205,7 @@ def train(gpu, args):
         model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
         loss = Loss_SceneFlow_SelfSup_JointStereo(args)
     elif args.model_name == 'scenenet_joint_mono_iter':
-        model = SceneNetStereoJointIter(args).cuda(device=gpu)
+        model = SceneNetMonoJointIter(args).cuda(device=gpu)
         model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
         loss = Loss_SceneFlow_SelfSup_JointStereo(args)
     elif args.model_name == 'monoflow':
