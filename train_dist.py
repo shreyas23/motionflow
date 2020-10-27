@@ -91,6 +91,8 @@ parser.add_argument('--shuffle', type=bool,
                     default=False, help='shuffle the dataset?')
 parser.add_argument('--resize_only', type=bool, default=False,
                     help='only do resize augmentation on input data')
+parser.add_argument('--no_flip_augs', type=bool, default=False,
+                    help='only do resize augmentation on input data')
 
 # weight params
 parser.add_argument('--pose_pts_w', type=float, default=0.5, help='mask consensus weight')
@@ -132,8 +134,6 @@ parser.add_argument('--use_mask', type=bool, default=False,
                     help="whether to use consensus mask in training procedure")
 
 # etc.
-# parser.add_argument('--num_gpus', type=int,
-#                     default=1, help='number of gpus used for training')
 parser.add_argument('--debugging', type=bool,
                     default=False, help='are you debugging?')
 parser.add_argument('--finetuning', type=bool, default=False,
@@ -219,7 +219,7 @@ def train(gpu, args):
     print(f"Loading dataset and dataloaders onto gpu: {gpu}...")
     if DATASET_NAME == 'KITTI':
         train_dataset = KITTI_Raw_KittiSplit_Train(
-            args, DATA_ROOT, num_examples=args.num_examples)
+            args, DATA_ROOT, num_examples=args.num_examples, flip_augmentations=(not args.no_flip_augs))
         train_sampler = DistributedSampler(train_dataset, num_replicas=args.world_size, rank=rank, shuffle=True)
         train_dataloader = DataLoader(train_dataset, args.batch_size,
                                     shuffle=(train_sampler is None), num_workers=args.num_workers, pin_memory=True, sampler=train_sampler)
@@ -229,16 +229,28 @@ def train(gpu, args):
         else:
             val_dataset = None
             val_dataloader = None
+    elif DATASET_NAME == 'KITTI_EIGEN':
+        train_dataset = KITTI_Raw_EigenSplit_Train(
+            args, DATA_ROOT, num_examples=args.num_examples, flip_augmentations=(not args.no_flip_augs))
+        train_sampler = DistributedSampler(train_dataset, num_replicas=args.world_size, rank=rank, shuffle=True)
+        train_dataloader = DataLoader(train_dataset, args.batch_size,
+                                    shuffle=(train_sampler is None), num_workers=args.num_workers, pin_memory=True, sampler=train_sampler)
+        if args.validate and gpu ==0:
+            val_dataset = KITTI_Raw_EigenSplit_Valid(args, DATA_ROOT)
+            val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True) if val_dataset else None
+        else:
+            val_dataset = None
+            val_dataloader = None
 
-        # define augmentations
-        train_augmentations = Augmentation_SceneFlow(args)
-        val_augmentations = Augmentation_Resize_Only(args)
-
-        if args.cuda:
-            train_augmentations = train_augmentations.cuda(device=gpu)
-            val_augmentations = val_augmentations.cuda(device=gpu)
     else:
         raise NotImplementedError
+
+    # define augmentations
+    train_augmentations = Augmentation_SceneFlow(args)
+    val_augmentations = Augmentation_Resize_Only(args)
+    if args.cuda:
+        train_augmentations = train_augmentations.cuda(device=gpu)
+        val_augmentations = val_augmentations.cuda(device=gpu)
 
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
