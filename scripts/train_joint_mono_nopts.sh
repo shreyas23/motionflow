@@ -1,5 +1,5 @@
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
-                 --exp_dir="jointnet_mono_iter_nopts" \
+                 --exp_dir="jointnet_mono_iter_nopts_eigen" \
                  --exp_name="" \
                  --dataset_name="KITTI_EIGEN"
                  --num_examples=-1 \
