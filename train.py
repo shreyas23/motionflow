@@ -89,7 +89,7 @@ parser.add_argument('--resize_only', type=bool, default=False,
 
 # weight params
 parser.add_argument('--sf_pts_w', type=float, default=0.2, help='mask consensus weight')
-parser.add_argument('--sf_sm_w', type=float, default=0.2, help='mask consensus weight')
+parser.add_argument('--sf_sm_w', type=float, default=200, help='mask consensus weight')
 parser.add_argument('--pose_sm_w', type=float, default=200, help='mask consensus weight')
 parser.add_argument('--pose_pts_w', type=float, default=0.2, help='mask consensus weight')
 parser.add_argument('--pose_lr_w', type=float, default=1.0, help='mask consensus weight')
@@ -234,7 +234,7 @@ def main():
         optimizer, factor=args.lr_gamma, verbose=True, mode='min', patience=10)
   elif args.lr_sched_type == 'step':
     print("Using step lr schedule")
-    milestones = [20]
+    milestones = [13]
     lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
         optimizer, milestones=milestones, gamma=args.lr_gamma)
   elif args.lr_sched_type == 'none':

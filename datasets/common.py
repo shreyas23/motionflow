@@ -122,10 +122,6 @@ def read_calib_into_dict(path_dir):
         intrinsic_dict_l[date] = P_rect_02[:3, :3] # projects points from rectified cam 2 coord. system
         intrinsic_dict_r[date] = P_rect_03[:3, :3] # projects points from rectified cam 3 coord. system
 
-        R_rect_0 = file_data['R_rect_00'].reshape((3, 3))
-        R_rect_0_inv = file_data['R_rect_00'].reshape((3, 3)).T
-
-        # X_rect_cam3 = R_rect * T_03 * T_20 * R_rect_inv * X_rect_cam2
 
         # load trans. from 00 to 02
         R_02 = file_data['R_02'].reshape(3, 3)
@@ -146,14 +142,7 @@ def read_calib_into_dict(path_dir):
         T_20[:3, :3] = R_02.T
         T_20[:3, -1:] = np.dot(R_02.T, -t_02)
 
-        T_20_unrect = np.dot(T_20, R_rect_0_inv)
-        T_03_rect = np.dot(R_rect_0, T_03)
-        T_30_unrect = np.dot(T_30, R_rect_0_inv)
-        T_02_rect = np.dot(R_rect_0, T_02)
-
-        cam_l2r[date] = np.dot(T_03_rect, T_20_unrect)[:-1].astype(np.float32)
-        cam_r2l[date] = np.dot(T_02_rect, T_30_unrect)[:-1].astype(np.float32)
-        # cam_l2r[date] = np.dot(T_03, T_20)[:-1].astype(np.float32)
-        # cam_r2l[date] = np.dot(T_02, T_30)[:-1].astype(np.float32)
+        cam_l2r[date] = np.dot(T_03, T_20)[:-1].astype(np.float32)
+        cam_r2l[date] = np.dot(T_02, T_30)[:-1].astype(np.float32)
 
     return intrinsic_dict_l, intrinsic_dict_r, cam_l2r, cam_r2l
