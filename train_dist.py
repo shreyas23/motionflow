@@ -80,7 +80,7 @@ parser.add_argument('--encoder_name', type=str, default="pwc",
                     help="which encoder to use for Scene Net")
 
 # dataset params
-parser.add_argument('--dataset_name', default='KITTI', help='KITTI or Carla')
+parser.add_argument('--dataset_name', default='KITTI', help='KITTI or Eigen')
 parser.add_argument('--batch_size', type=int, default=4, help='batch size')
 parser.add_argument('--num_views', type=int, default=2,
                     help="number of views present in training data")
@@ -131,7 +131,7 @@ parser.add_argument('--train_consistency', type=bool, default=False,
                     help="whether to use consistency losses in training procedure")
 parser.add_argument('--use_bn', type=bool, default=False,
                     help="whether to use batch-norm in training procedure")
-parser.add_argument('--use_mask', type=bool, default=False,
+parser.add_argument('--use_mask', type=bool, default=True,
                     help="whether to use consensus mask in training procedure")
 parser.add_argument('--use_ppm', type=bool, default=False,
                     help="whether to use consensus mask in training procedure")
@@ -187,10 +187,10 @@ def train(gpu, args):
     print(f"Loading model onto gpu: {gpu}")
     if args.model_name == 'scenenet_pose_mono':
         model = SceneNet(args).cuda(device=gpu)
-        loss = Loss_SceneFlow_SelfSup_Pose(args)
+        loss = Loss_SceneFlow_SelfSup_Joint(args)
     elif args.model_name == 'scenenet_pose_stereo':
         model = SceneNetStereo(args).cuda(device=gpu)
-        loss = Loss_SceneFlow_SelfSup_Pose(args)
+        loss = Loss_SceneFlow_SelfSup_Joint(args)
     elif args.model_name == 'scenenet_joint_mono':
         model = SceneNetStereoJoint(args).cuda(device=gpu)
         loss = Loss_SceneFlow_SelfSup_JointIter(args)
@@ -268,7 +268,7 @@ def train(gpu, args):
             optimizer, factor=args.lr_gamma, verbose=True, mode='min', patience=1)
     elif args.lr_sched_type == 'step':
         print("Using step lr schedule")
-        milestones = [15, 20, 30]
+        milestones = [20, 30]
         lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
             optimizer, milestones=milestones, gamma=args.lr_gamma)
     elif args.lr_sched_type == 'none':
@@ -368,6 +368,7 @@ def train(gpu, args):
                         torch.load(fp, map_location=map_location)['model'])
                     optimizer.load_state_dict(
                         torch.load(fp, map_location=map_location)['optimizer'])
+
     cleanup_env()
 
 
