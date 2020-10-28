@@ -287,8 +287,7 @@ def flow_lr_loss(flow_l, flow_r, disp_l, disp_r, left_occ, right_occ):
 ## Loss function
 ###############################################
 
-
-class Loss_SceneFlow_SelfSup_JointStereo(nn.Module):
+class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
     def __init__(self, args):
         super(Loss_SceneFlow_SelfSup_JointStereo, self).__init__()
         self._args = args

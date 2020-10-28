@@ -62,7 +62,6 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --exp_dir="jointnet_mono_iter_nopts" \
                  --exp_name="v1" \
                  --num_examples=-1 \
-                 --no_flip_augs=True \
                  --model_name="scenenet_joint_mono_iter" \
                  --start_epoch=26 \
                  --epochs=10 \
