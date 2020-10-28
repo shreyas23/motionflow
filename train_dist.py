@@ -38,7 +38,7 @@ from utils.inverse_warp import flow_warp, pose2flow, inverse_warp, pose_vec2mat
 from utils.sceneflow_util import projectSceneFlow2Flow, disp2depth_kitti, reconstructImg
 from utils.sceneflow_util import pixel2pts_ms, pts2pixel_ms, pts2pixel_pose_ms, pixel2pts_ms_depth
 
-from losses import Loss_SceneFlow_SelfSup_Pose, Loss_SceneFlow_SelfSup_JointStereo
+from losses import Loss_SceneFlow_SelfSup_Pose, Loss_SceneFlow_SelfSup_JointIter
 # from losses import Loss_SceneFlow_SelfSup, Loss_SceneFlow_SelfSup_Pose, Loss_SceneFlow_SelfSup_PoseStereo, Loss_SceneFlow_SelfSup_JointStereo
 from losses import _generate_image_left, _adaptive_disocc_detection
 from losses import Loss_PoseDepth
@@ -195,19 +195,19 @@ def train(gpu, args):
     elif args.model_name == 'scenenet_joint_mono':
         model = SceneNetStereoJoint(args).cuda(device=gpu)
         model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
-        loss = Loss_SceneFlow_SelfSup_JointStereo(args)
+        loss = Loss_SceneFlow_SelfSup_JointIter(args)
     elif args.model_name == 'scenenet_joint_stereo':
         model = SceneNetStereoJoint(args).cuda(device=gpu)
         model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
-        loss = Loss_SceneFlow_SelfSup_JointStereo(args)
+        loss = Loss_SceneFlow_SelfSup_JointIter(args)
     elif args.model_name == 'scenenet_joint_stereo_iter':
         model = SceneNetStereoJointIter(args).cuda(device=gpu)
         model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
-        loss = Loss_SceneFlow_SelfSup_JointStereo(args)
+        loss = Loss_SceneFlow_SelfSup_JointIter(args)
     elif args.model_name == 'scenenet_joint_mono_iter':
         model = SceneNetMonoJointIter(args).cuda(device=gpu)
         model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
-        loss = Loss_SceneFlow_SelfSup_JointStereo(args)
+        loss = Loss_SceneFlow_SelfSup_JointIter(args)
     elif args.model_name == 'monoflow':
         model = MonoSceneFlow(args).cuda(device=gpu)
         model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])

@@ -289,7 +289,7 @@ def flow_lr_loss(flow_l, flow_r, disp_l, disp_r, left_occ, right_occ):
 
 class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
     def __init__(self, args):
-        super(Loss_SceneFlow_SelfSup_JointStereo, self).__init__()
+        super(Loss_SceneFlow_SelfSup_JointIter, self).__init__()
         self._args = args
         self._weights = [4.0, 2.0, 1.0, 1.0, 1.0]
 
