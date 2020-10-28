@@ -38,7 +38,7 @@ from utils.inverse_warp import flow_warp, pose2flow, inverse_warp, pose_vec2mat
 from utils.sceneflow_util import projectSceneFlow2Flow, disp2depth_kitti, reconstructImg
 from utils.sceneflow_util import pixel2pts_ms, pts2pixel_ms, pts2pixel_pose_ms, pixel2pts_ms_depth
 
-from losses import Loss_SceneFlow_SelfSup_Pose, Loss_SceneFlow_SelfSup_JointIter
+from losses import Loss_SceneFlow_SelfSup_Joint, Loss_SceneFlow_SelfSup_JointIter
 from losses import _generate_image_left, _adaptive_disocc_detection
 from losses import Loss_PoseDepth
 

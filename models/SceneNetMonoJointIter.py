@@ -34,11 +34,11 @@ class SceneNetMonoJointIter(nn.Module):
         self.leakyRELU = nn.LeakyReLU(0.1, inplace=True)
 
         if args.encoder_name == 'pwc':
-            self.feature_pyramid_extractor = FeatureExtractor(self.num_chs, use_bn=args.use_bn)
             self.num_chs = [3, 32, 64, 96, 128, 192, 256]
+            self.feature_pyramid_extractor = FeatureExtractor(self.num_chs, use_bn=args.use_bn)
         elif args.encoder_name == 'resnet':
-            self.feature_pyramid_extractor = ResNetEncoder(args, in_chs=3, conv_chs=[32, 32, 64, 128, 128], use_bn=args.use_bn)
             self.num_chs = [3, 32, 32, 64, 128, 128]
+            self.feature_pyramid_extractor = ResNetEncoder(args, in_chs=3, conv_chs=[32, 32, 64, 128, 128], use_bn=args.use_bn)
         else:
             raise NotImplementedError
 
