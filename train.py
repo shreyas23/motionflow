@@ -24,6 +24,7 @@ from models.SceneNet import SceneNet
 from models.SceneNetStereo import SceneNetStereo
 from models.SceneNetStereoJoint import SceneNetStereoJoint
 from models.SceneNetStereoJointIter import SceneNetStereoJointIter
+from models.SceneNetMonoJointIter import SceneNetMonoJointIter
 from models.model_monosceneflow import MonoSceneFlow
 from models.PoseDepthNet import PoseDispNet
 
@@ -31,7 +32,8 @@ from utils.inverse_warp import flow_warp, pose2flow, inverse_warp, pose_vec2mat
 from utils.sceneflow_util import projectSceneFlow2Flow, disp2depth_kitti, reconstructImg
 from utils.sceneflow_util import pixel2pts_ms, pts2pixel_ms, pts2pixel_pose_ms, pixel2pts_ms_depth
 
-from losses import Loss_SceneFlow_SelfSup_Pose, Loss_SceneFlow_SelfSup_JointStereo
+from losses import Loss_SceneFlow_SelfSup_JointIter
+# from losses import Loss_SceneFlow_SelfSup_Pose, Loss_SceneFlow_SelfSup_JointIter
 # from losses import Loss_SceneFlow_SelfSup, Loss_SceneFlow_SelfSup_Pose, Loss_SceneFlow_SelfSup_PoseStereo, Loss_SceneFlow_SelfSup_JointStereo
 from losses import _generate_image_left, _adaptive_disocc_detection
 from losses import Loss_PoseDepth
@@ -128,6 +130,8 @@ parser.add_argument('--use_bn', type=bool, default=False,
                     help="whether to use batch-norm in training procedure")
 parser.add_argument('--use_mask', type=bool, default=False,
                     help="whether to use consensus mask in training procedure")
+parser.add_argument('--use_ppm', type=bool, default=False,
+                    help="whether to use ppm")
 
 # etc.
 parser.add_argument('--num_gpus', type=int,
@@ -170,8 +174,8 @@ def main():
       model = SceneNetStereo(args)
       loss = Loss_SceneFlow_SelfSup_Pose(args)
     elif args.model_name == 'scenenet_joint_iter':
-      model = SceneNetStereoJointIter(args)
-      loss = Loss_SceneFlow_SelfSup_JointStereo(args)
+      model = SceneNetMonoJointIter(args)
+      loss = Loss_SceneFlow_SelfSup_JointIter(args)
     elif args.model_name == 'monoflow':
       model = MonoSceneFlow(args)
     #   loss = Loss_SceneFlow_SelfSup(args)

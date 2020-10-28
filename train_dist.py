@@ -39,7 +39,6 @@ from utils.sceneflow_util import projectSceneFlow2Flow, disp2depth_kitti, recons
 from utils.sceneflow_util import pixel2pts_ms, pts2pixel_ms, pts2pixel_pose_ms, pixel2pts_ms_depth
 
 from losses import Loss_SceneFlow_SelfSup_Pose, Loss_SceneFlow_SelfSup_JointIter
-# from losses import Loss_SceneFlow_SelfSup, Loss_SceneFlow_SelfSup_Pose, Loss_SceneFlow_SelfSup_PoseStereo, Loss_SceneFlow_SelfSup_JointStereo
 from losses import _generate_image_left, _adaptive_disocc_detection
 from losses import Loss_PoseDepth
 
@@ -134,6 +133,8 @@ parser.add_argument('--use_bn', type=bool, default=False,
                     help="whether to use batch-norm in training procedure")
 parser.add_argument('--use_mask', type=bool, default=False,
                     help="whether to use consensus mask in training procedure")
+parser.add_argument('--use_ppm', type=bool, default=False,
+                    help="whether to use consensus mask in training procedure")
 
 # etc.
 parser.add_argument('--debugging', type=bool,
@@ -186,38 +187,32 @@ def train(gpu, args):
     print(f"Loading model onto gpu: {gpu}")
     if args.model_name == 'scenenet_pose_mono':
         model = SceneNet(args).cuda(device=gpu)
-        model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
         loss = Loss_SceneFlow_SelfSup_Pose(args)
     elif args.model_name == 'scenenet_pose_stereo':
         model = SceneNetStereo(args).cuda(device=gpu)
-        model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
         loss = Loss_SceneFlow_SelfSup_Pose(args)
     elif args.model_name == 'scenenet_joint_mono':
         model = SceneNetStereoJoint(args).cuda(device=gpu)
-        model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
         loss = Loss_SceneFlow_SelfSup_JointIter(args)
     elif args.model_name == 'scenenet_joint_stereo':
         model = SceneNetStereoJoint(args).cuda(device=gpu)
-        model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
         loss = Loss_SceneFlow_SelfSup_JointIter(args)
     elif args.model_name == 'scenenet_joint_stereo_iter':
         model = SceneNetStereoJointIter(args).cuda(device=gpu)
-        model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
         loss = Loss_SceneFlow_SelfSup_JointIter(args)
     elif args.model_name == 'scenenet_joint_mono_iter':
         model = SceneNetMonoJointIter(args).cuda(device=gpu)
-        model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
         loss = Loss_SceneFlow_SelfSup_JointIter(args)
-    elif args.model_name == 'monoflow':
-        model = MonoSceneFlow(args).cuda(device=gpu)
-        model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
-        loss = Loss_SceneFlow_SelfSup(args)
     elif args.model_name == 'posedepth':
         model = PoseDispNet(args).cuda(device=gpu)
-        model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
         loss = Loss_PoseDepth()
     else:
         raise NotImplementedError
+
+    if args.use_bn:
+        model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+
+    model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu])
 
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"The model has {num_params} learnable parameters")
@@ -235,6 +230,7 @@ def train(gpu, args):
         else:
             val_dataset = None
             val_dataloader = None
+
     elif DATASET_NAME == 'KITTI_EIGEN':
         train_dataset = KITTI_Raw_EigenSplit_Train(
             args, DATA_ROOT, num_examples=args.num_examples, flip_augmentations=(not args.no_flip_augs))
@@ -296,7 +292,6 @@ def train(gpu, args):
     if gpu == 0:
         with open(os.path.join(log_dir, 'args.txt'), 'w') as f:
             json.dump(args.__dict__, f, indent=2)
-
 
     curr_epoch = args.start_epoch
 

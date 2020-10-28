@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as tf
 import logging
 
-from .common import conv
+from .common import conv, PyramidPoolingModule
 
 
 class BasicBlock(nn.Module):
@@ -32,8 +32,11 @@ class BasicBlock(nn.Module):
 
 
 class ResNetEncoder(nn.Module):
-    def __init__(self, in_chs, conv_chs=None, with_ppm=False, use_bn=False):
+    def __init__(self, args, in_chs, conv_chs=None, use_bn=False):
         super(ResNetEncoder, self).__init__()
+
+        self.args = args
+
         if conv_chs is None:
           self.conv_chs = [32, 32, 64, 128, 128]
         else:
@@ -50,14 +53,10 @@ class ResNetEncoder(nn.Module):
         for conv_ch in self.conv_chs[1:]:
             self.res_layers.append(self._make_layer(BasicBlock, conv_ch, 3, 2, 1, 1, use_bn=use_bn))
 
-        # if with_ppm:
-        #   self.ppm = PPM(
-        #     [32, 32, 64, 128, 128],
-        #     ppm_last_conv_chs=128,
-        #     ppm_inter_conv_chs=128,
-        #     bn_type=bn_type)
-        # else:
-        #   self.ppm = None
+        if args.use_ppm:
+          self.ppm = PyramidPoolingModule(args=args, encoder_planes=[32, 32, 64, 128, 128], ppm_last_conv_planes=128, ppm_inter_conv_planes=128) 
+        else:
+          self.ppm = None
 
     def _make_layer(self, block, chs, blocks, stride, pad, dilation, use_bn=True):
       downsample = None
@@ -84,13 +83,10 @@ class ResNetEncoder(nn.Module):
 
       for res_layer in self.res_layers:
         outs.append(res_layer(outs[-1]))
-      # if self.ppm is not None:
-      #   outs.append(self.ppm(outs[-1]))
-      # else:
-      #   outs.append(None)
+      if self.args.use_ppm:
+        outs.append(self.ppm(outs[-1]))
 
       return outs[::-1]
-
 
 class PWCEncoder(nn.Module):
   def __init__(self, conv_chs=None, use_bn=False):

@@ -12,9 +12,8 @@ from .correlation_package.correlation import Correlation
 from .modules_sceneflow import get_grid, WarpingLayer_SF
 from .modules_sceneflow import initialize_msra, upsample_outputs_as
 from .modules_sceneflow import upconv
-# from .modules_sceneflow import FeatureExtractor, MonoSceneFlowDecoder
 
-from .encoders import FeatureExtractor
+from .encoders import FeatureExtractor, ResNetEncoder
 from .decoders import PoseNet, PoseExpNet, MotionNet, FlowDispPoseDecoder, JointContextNetwork
 
 from .common import WarpingLayer_Pose
@@ -28,14 +27,21 @@ class SceneNetMonoJointIter(nn.Module):
         super(SceneNetMonoJointIter, self).__init__()
 
         self._args = args
-        self.num_chs = [3, 32, 64, 96, 128, 192, 256]
         self.search_range = 4
         self.output_level = 4
         self.num_levels = 7
         
         self.leakyRELU = nn.LeakyReLU(0.1, inplace=True)
 
-        self.feature_pyramid_extractor = FeatureExtractor(self.num_chs, use_bn=args.use_bn)
+        if args.encoder_name == 'pwc':
+            self.feature_pyramid_extractor = FeatureExtractor(self.num_chs, use_bn=args.use_bn)
+            self.num_chs = [3, 32, 64, 96, 128, 192, 256]
+        elif args.encoder_name == 'resnet':
+            self.feature_pyramid_extractor = ResNetEncoder(args, in_chs=3, conv_chs=[32, 32, 64, 128, 128], use_bn=args.use_bn)
+            self.num_chs = [3, 32, 32, 64, 128, 128]
+        else:
+            raise NotImplementedError
+
         self.warping_layer_sf = WarpingLayer_SF()
         self.warping_layer_pose = WarpingLayer_Pose()
         

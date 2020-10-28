@@ -4,6 +4,7 @@ python3 train.py --data_root="/external/datasets/kitti_data_jpg/" \
                  --num_examples=10 \
                  --resize_only=True \
                  --model_name="scenenet_joint_iter" \
+                 --encoder_name="resnet" \
                  --epochs=100 \
                  --num_gpus=1 \
                  --batch_size=2 \

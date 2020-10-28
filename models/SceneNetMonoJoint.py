@@ -8,19 +8,20 @@ import logging
 from sys import exit
 
 from .correlation_package.correlation import Correlation
+from spatial_correlation_sampler import SpatialCorrelationSampler
 
 from .modules_sceneflow import get_grid, WarpingLayer_SF
 from .modules_sceneflow import initialize_msra, upsample_outputs_as
 from .modules_sceneflow import upconv
 # from .modules_sceneflow import FeatureExtractor, MonoSceneFlowDecoder
 
-from .encoders import FeatureExtractor
+from .encoders import FeatureExtractor, ResNetEncoder
 from .decoders import PoseNet, PoseExpNet, MotionNet, FlowDispPoseDecoder, JointContextNetwork
 
 from .common import WarpingLayer_Pose
 from utils.inverse_warp import pose_vec2mat
 from utils.interpolation import interpolate2d_as
-from utils.sceneflow_util import flow_horizontal_flip, intrinsic_scale, get_pixelgrid, post_processing, add_pose
+from utils.sceneflow_util import flow_horizontal_flip, intrinsic_scale, get_pixelgrid, post_processing
 
 
 class SceneNetMonoJoint(nn.Module):
@@ -35,20 +36,26 @@ class SceneNetMonoJoint(nn.Module):
         
         self.leakyRELU = nn.LeakyReLU(0.1, inplace=True)
 
-        self.feature_pyramid_extractor = FeatureExtractor(self.num_chs, use_bn=args.use_bn)
+        if args.encoder_name == 'pwc':
+            self.feature_pyramid_extractor = FeatureExtractor(self.num_chs, use_bn=args.use_bn)
+        elif args.encoder_name == 'res':
+            self.feature_pyramid_extractor = ResNetEncoder(args, in_chs=3, conv_chs=[32, 32, 64, 128, 128], use_bn=args.use_bn)
+
         self.warping_layer_sf = WarpingLayer_SF()
         self.warping_layer_pose = WarpingLayer_Pose()
         
         self.flow_estimators = nn.ModuleList()
         self.upconv_layers = nn.ModuleList()
 
+        self.dim_corr = (self.search_range * 2 + 1) ** 2
+
         for l, ch in enumerate(self.num_chs[::-1]):
             if l > self.output_level:
                 break
             if l == 0:
-                num_ch_in = self.dim_corr + self.dim_corr + ch + ch
+                num_ch_in = self.dim_corr + ch + ch
             else:
-                num_ch_in = self.dim_corr + self.dim_corr + ch + ch + 32 + 3 + 1 + 6 + 1
+                num_ch_in = self.dim_corr + ch + ch + 32 + 3 + 1 + 6 + 1
                 self.upconv_layers.append(upconv(32, 32, 3, 2))
 
             layer_sf = FlowDispPoseDecoder(num_ch_in, use_bn=args.use_bn)
@@ -59,7 +66,6 @@ class SceneNetMonoJoint(nn.Module):
         self.context_networks = JointContextNetwork(32 + 3 + 1 + 6 + 1, use_bn=args.use_bn)
         self.sigmoid = torch.nn.Sigmoid()
 
-        # initialize_msra(self.modules())
         self.initialize_weights()
 
 
@@ -109,10 +115,6 @@ class SceneNetMonoJoint(nn.Module):
             if l == 0:
                 x2_warp = x2
                 x1_warp = x1
-
-                x2_warp_pose = x2
-                x1_warp_pose = x1
-
             else:
                 flow_f = interpolate2d_as(flow_f, x1, mode="bilinear")
                 flow_b = interpolate2d_as(flow_b, x1, mode="bilinear")
@@ -127,8 +129,6 @@ class SceneNetMonoJoint(nn.Module):
 
                 x2_warp = self.warping_layer_sf(x2, flow_f, disp_l1, k1, input_dict['aug_size'])
                 x1_warp = self.warping_layer_sf(x1, flow_b, disp_l2, k2, input_dict['aug_size'])
-                x2_warp_pose = self.warping_layer_pose(x2, pose_mat_f, disp_l1, k1, input_dict['aug_size'])
-                x1_warp_pose = self.warping_layer_pose(x1, pose_mat_b, disp_l2, k2, input_dict['aug_size'])
 
             # correlation
             out_corr_f = Correlation.apply(x1, x2_warp, self.corr_params)
@@ -136,29 +136,18 @@ class SceneNetMonoJoint(nn.Module):
             out_corr_relu_f = self.leakyRELU(out_corr_f)
             out_corr_relu_b = self.leakyRELU(out_corr_b)
 
-            out_corr_pose_f = Correlation.apply(x1, x2_warp_pose, self.corr_params)
-            out_corr_pose_b = Correlation.apply(x2, x1_warp_pose, self.corr_params)
-            out_corr_pose_relu_f = self.leakyRELU(out_corr_pose_f)
-            out_corr_pose_relu_b = self.leakyRELU(out_corr_pose_b)
-
-
             # monosf estimator
             if l == 0:
-                x1_out, flow_f, disp_l1, mask_l1, pose_f, pose_f_out = self.flow_estimators[l](torch.cat([out_corr_relu_f, out_corr_pose_relu_f, x1], dim=1))
-                x2_out, flow_b, disp_l2, mask_l2, pose_b, pose_b_out = self.flow_estimators[l](torch.cat([out_corr_relu_b, out_corr_pose_relu_b, x2], dim=1))
-                pose_mat_f = pose_vec2mat(pose_f)
-                pose_mat_b = pose_vec2mat(pose_b)
+                x1_out, flow_f, disp_l1, mask_l1, pose_f, pose_f_out = self.flow_estimators[l](torch.cat([out_corr_relu_f, x2, x1], dim=1))
+                x2_out, flow_b, disp_l2, mask_l2, pose_b, pose_b_out = self.flow_estimators[l](torch.cat([out_corr_relu_b, x1, x2], dim=1))
             else:
-                x1_out, flow_f_res, disp_l1, mask_l1, pose_f_res, pose_f_out = self.flow_estimators[l](torch.cat([
-                    out_corr_relu_f, out_corr_pose_relu_f, x1, x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
-                x2_out, flow_b_res, disp_l2, mask_l2, pose_b_res, pose_b_out = self.flow_estimators[l](torch.cat([
-                    out_corr_relu_b, out_corr_pose_relu_b, x2, x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
+                x1_out, flow_f_res, disp_l1, mask_l1, pose_f, pose_f_out = self.flow_estimators[l](torch.cat([
+                    out_corr_relu_f, x2, x1, x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
+                x2_out, flow_b_res, disp_l2, mask_l2, pose_b, pose_b_out = self.flow_estimators[l](torch.cat([
+                    out_corr_relu_b, x1, x2, x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
 
                 flow_f = flow_f + flow_f_res
                 flow_b = flow_b + flow_b_res
-
-                pose_mat_f = add_pose(pose_mat_f, pose_f_res)
-                pose_mat_b = add_pose(pose_mat_b, pose_b_res)
 
             # upsampling or post-processing
             if l != self.output_level:
@@ -172,16 +161,14 @@ class SceneNetMonoJoint(nn.Module):
                 disps_2.append(disp_l2)
                 masks_1.append(mask_l1)
                 masks_2.append(mask_l2)
-                poses_f.append(pose_mat_f)
-                poses_b.append(pose_mat_b)
+                poses_f.append(pose_f)
+                poses_b.append(pose_b)
 
             else:
-                flow_res_f, disp_l1, mask_l1, pose_f_res = self.context_networks(torch.cat([x1_out, flow_f, disp_l1, pose_f_out, mask_l1], dim=1))
-                flow_res_b, disp_l2, mask_l2, pose_b_res = self.context_networks(torch.cat([x2_out, flow_b, disp_l2, pose_b_out, mask_l2], dim=1))
+                flow_res_f, disp_l1, mask_l1, pose_f = self.context_networks(torch.cat([x1_out, flow_f, disp_l1, pose_f_out, mask_l1], dim=1))
+                flow_res_b, disp_l2, mask_l2, pose_b = self.context_networks(torch.cat([x2_out, flow_b, disp_l2, pose_b_out, mask_l2], dim=1))
                 flow_f = flow_f + flow_res_f
                 flow_b = flow_b + flow_res_b
-                pose_mat_f = add_pose(pose_mat_f, pose_f_res)
-                pose_mat_b = add_pose(pose_mat_b, pose_b_res)
 
                 sceneflows_f.append(flow_f)
                 sceneflows_b.append(flow_b)
@@ -189,8 +176,8 @@ class SceneNetMonoJoint(nn.Module):
                 disps_2.append(disp_l2)
                 masks_1.append(mask_l1)
                 masks_2.append(mask_l2)
-                poses_f.append(pose_mat_f)
-                poses_b.append(pose_mat_b)
+                poses_f.append(pose_f)
+                poses_b.append(pose_b)
 
                 break
 
@@ -213,12 +200,12 @@ class SceneNetMonoJoint(nn.Module):
         output_dict = {}
 
         ## Left
-        output_dict = self.run_pwc(input_dict, input_dict['input_l1_aug'], input_dict['input_l2_aug'], input_dict['input_r1_aug'], input_dict['input_r2_aug'], input_dict['input_k_l1_aug'], input_dict['input_k_l2_aug'])
+        output_dict = self.run_pwc(input_dict, input_dict['input_l1_aug'], input_dict['input_l2_aug'], input_dict['input_k_l1_aug'], input_dict['input_k_l2_aug'])
 
         ## Right
         ## ss: train val 
         ## ft: train 
-        if self.training or (not self._args.finetuning and not self._args.evaluation):
+        if self.training or not self._args.evaluation:
             input_r1_flip = torch.flip(input_dict['input_r1_aug'], [3])
             input_r2_flip = torch.flip(input_dict['input_r2_aug'], [3])
             input_l1_flip = torch.flip(input_dict['input_l1_aug'], [3])
@@ -226,7 +213,7 @@ class SceneNetMonoJoint(nn.Module):
             k_r1_flip = input_dict["input_k_r1_flip_aug"]
             k_r2_flip = input_dict["input_k_r2_flip_aug"]
 
-            output_dict_r = self.run_pwc(input_dict, input_r1_flip, input_r2_flip, input_l1_flip, input_l2_flip, k_r1_flip, k_r2_flip)
+            output_dict_r = self.run_pwc(input_dict, input_r1_flip, input_r2_flip, k_r1_flip, k_r2_flip)
 
             for ii in range(0, len(output_dict_r['flow_f'])):
                 output_dict_r['flow_f'][ii] = flow_horizontal_flip(output_dict_r['flow_f'][ii])
@@ -241,19 +228,14 @@ class SceneNetMonoJoint(nn.Module):
         ## Post Processing 
         ## ss:           eval
         ## ft: train val eval
-        if self._args.evaluation or self._args.finetuning:
+        if self._args.evaluation:
 
             input_l1_flip = torch.flip(input_dict['input_l1_aug'], [3])
             input_l2_flip = torch.flip(input_dict['input_l2_aug'], [3])
-            input_r1_flip = torch.flip(input_dict['input_r1_aug'], [3])
-            input_r2_flip = torch.flip(input_dict['input_r2_aug'], [3])
             k_l1_flip = input_dict["input_k_l1_flip_aug"]
             k_l2_flip = input_dict["input_k_l2_flip_aug"]
-            k_r1_flip = input_dict["input_k_r1_flip_aug"]
-            k_r2_flip = input_dict["input_k_r2_flip_aug"]
 
-            # output_dict_flip = self.run_pwc(input_dict, input_l1_flip, input_l2_flip, k_l1_flip, k_l2_flip)
-            output_dict_flip = self.run_pwc(input_dict, input_l1_flip, input_l2_flip, input_r1_flip, input_r2_flip, k_l1_flip, k_l2_flip)
+            output_dict_flip = self.run_pwc(input_dict, input_l1_flip, input_l2_flip, k_l1_flip, k_l2_flip)
 
             flow_f_pp = []
             flow_b_pp = []
