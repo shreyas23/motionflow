@@ -213,7 +213,7 @@ class SceneNetMonoJointIter(nn.Module):
         output_dict = {}
 
         ## Left
-        output_dict = self.run_pwc(input_dict, input_dict['input_l1_aug'], input_dict['input_l2_aug'], input_dict['input_r1_aug'], input_dict['input_r2_aug'], input_dict['input_k_l1_aug'], input_dict['input_k_l2_aug'])
+        output_dict = self.run_pwc(input_dict, input_dict['input_l1_aug'], input_dict['input_l2_aug'], input_dict['input_k_l1_aug'], input_dict['input_k_l2_aug'])
 
         ## Right
         ## ss: train val 
@@ -221,12 +221,10 @@ class SceneNetMonoJointIter(nn.Module):
         if self.training or (not self._args.finetuning and not self._args.evaluation):
             input_r1_flip = torch.flip(input_dict['input_r1_aug'], [3])
             input_r2_flip = torch.flip(input_dict['input_r2_aug'], [3])
-            input_l1_flip = torch.flip(input_dict['input_l1_aug'], [3])
-            input_l2_flip = torch.flip(input_dict['input_l2_aug'], [3])
             k_r1_flip = input_dict["input_k_r1_flip_aug"]
             k_r2_flip = input_dict["input_k_r2_flip_aug"]
 
-            output_dict_r = self.run_pwc(input_dict, input_r1_flip, input_r2_flip, input_l1_flip, input_l2_flip, k_r1_flip, k_r2_flip)
+            output_dict_r = self.run_pwc(input_dict, input_r1_flip, input_r2_flip, k_r1_flip, k_r2_flip)
 
             for ii in range(0, len(output_dict_r['flow_f'])):
                 output_dict_r['flow_f'][ii] = flow_horizontal_flip(output_dict_r['flow_f'][ii])
@@ -245,15 +243,11 @@ class SceneNetMonoJointIter(nn.Module):
 
             input_l1_flip = torch.flip(input_dict['input_l1_aug'], [3])
             input_l2_flip = torch.flip(input_dict['input_l2_aug'], [3])
-            input_r1_flip = torch.flip(input_dict['input_r1_aug'], [3])
-            input_r2_flip = torch.flip(input_dict['input_r2_aug'], [3])
             k_l1_flip = input_dict["input_k_l1_flip_aug"]
             k_l2_flip = input_dict["input_k_l2_flip_aug"]
-            k_r1_flip = input_dict["input_k_r1_flip_aug"]
-            k_r2_flip = input_dict["input_k_r2_flip_aug"]
 
             # output_dict_flip = self.run_pwc(input_dict, input_l1_flip, input_l2_flip, k_l1_flip, k_l2_flip)
-            output_dict_flip = self.run_pwc(input_dict, input_l1_flip, input_l2_flip, input_r1_flip, input_r2_flip, k_l1_flip, k_l2_flip)
+            output_dict_flip = self.run_pwc(input_dict, input_l1_flip, input_l2_flip, k_l1_flip, k_l2_flip)
 
             flow_f_pp = []
             flow_b_pp = []

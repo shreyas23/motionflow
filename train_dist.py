@@ -247,7 +247,6 @@ def train(gpu, args):
         else:
             val_dataset = None
             val_dataloader = None
-
     else:
         raise NotImplementedError
 
