@@ -63,7 +63,6 @@ class SceneNetMonoJointIter(nn.Module):
 
         self.initialize_weights()
 
-
     def initialize_weights(self):
         logging.info("Initializing weights")
         for layer in self.modules():
@@ -144,15 +143,15 @@ class SceneNetMonoJointIter(nn.Module):
 
             # monosf estimator
             if l == 0:
-                x1_out, flow_f, disp_l1, mask_l1, pose_f, pose_f_out = self.flow_estimators[l](torch.cat([out_corr_relu_f, out_corr_pose_relu_f, x1], dim=1))
-                x2_out, flow_b, disp_l2, mask_l2, pose_b, pose_b_out = self.flow_estimators[l](torch.cat([out_corr_relu_b, out_corr_pose_relu_b, x2], dim=1))
+                x1_out, flow_f, disp_l1, mask_l1, pose_f, pose_f_out = self.flow_estimators[l](torch.cat([out_corr_relu_f, out_corr_pose_relu_f, x1, x2], dim=1))
+                x2_out, flow_b, disp_l2, mask_l2, pose_b, pose_b_out = self.flow_estimators[l](torch.cat([out_corr_relu_b, out_corr_pose_relu_b, x2, x1], dim=1))
                 pose_mat_f = pose_vec2mat(pose_f)
                 pose_mat_b = pose_vec2mat(pose_b)
             else:
                 x1_out, flow_f_res, disp_l1, mask_l1, pose_f_res, pose_f_out = self.flow_estimators[l](torch.cat([
-                    out_corr_relu_f, out_corr_pose_relu_f, x1, x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
+                    out_corr_relu_f, out_corr_pose_relu_f, x1, x2, x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
                 x2_out, flow_b_res, disp_l2, mask_l2, pose_b_res, pose_b_out = self.flow_estimators[l](torch.cat([
-                    out_corr_relu_b, out_corr_pose_relu_b, x2, x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
+                    out_corr_relu_b, out_corr_pose_relu_b, x2, x1, x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
 
                 flow_f = flow_f + flow_f_res
                 flow_b = flow_b + flow_b_res
