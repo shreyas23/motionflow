@@ -251,8 +251,8 @@ def disp_pts_loss(disp_l, disp_r, cam_l2r, cam_r2l, k_l_aug, k_r_aug, left_occ, 
 
     flow_f = pose2flow(depth1.squeeze(dim=1), None, k1_scale, torch.inverse(k1_scale), pose_mat=cam_l2r)
     flow_b = pose2flow(depth2.squeeze(dim=1), None, k2_scale, torch.inverse(k2_scale), pose_mat=cam_r2l)
-    occ_map_l = _adaptive_disocc_detection(flow_f).detach() * left_occ * right_occ
-    occ_map_r = _adaptive_disocc_detection(flow_b).detach() * right_occ * right_occ
+    occ_map_l = _adaptive_disocc_detection(flow_f).detach() * left_occ
+    occ_map_r = _adaptive_disocc_detection(flow_b).detach() * right_occ
 
     pts1_tf, coord1 = pts2pixel_pose_ms(k1_scale, pts1, None, [h_dp, w_dp], pose_mat=cam_l2r)
     pts2_tf, coord2 = pts2pixel_pose_ms(k2_scale, pts2, None, [h_dp, w_dp], pose_mat=cam_r2l) 
