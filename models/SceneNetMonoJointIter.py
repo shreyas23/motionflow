@@ -96,8 +96,12 @@ class SceneNetMonoJointIter(nn.Module):
         output_dict = {}
 
         # on the bottom level are original images
-        x1_pyramid = self.feature_pyramid_extractor(x1_raw) + [x1_raw]
-        x2_pyramid = self.feature_pyramid_extractor(x2_raw) + [x2_raw]
+        x1_pyramid = self.feature_pyramid_extractor(x1_raw)
+        x2_pyramid = self.feature_pyramid_extractor(x2_raw)
+
+        if self._args.encoder_name == 'pwc':
+            x1_pyramid.append(x1_raw)
+            x2_pyramid.append(x2_raw)
 
         # outputs
         sceneflows_f = []
