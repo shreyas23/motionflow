@@ -510,8 +510,8 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
 
             loss_disp_l2, loss_disp_im2, loss_lr_cons2, disp_occ_l2, disp_occ_r2 = self.depth_loss_left_img(disp_l2, disp_r2, img_l2_aug, img_r2_aug, ii)
             loss_dp_sum = loss_dp_sum + (loss_disp_l1 + loss_disp_l2) * self._weights[ii]
-            loss_disp_im_sum += loss_disp_im1 + loss_disp_im2
-            loss_lr_disp_sum += loss_lr_cons1 + loss_lr_cons2
+            loss_disp_im_sum = loss_disp_im_sum + loss_disp_im1 + loss_disp_im2
+            loss_lr_disp_sum = loss_lr_disp_sum + loss_lr_cons1 + loss_lr_cons2
 
             flow_mask_l1 = None
             flow_mask_l2 = None
@@ -538,32 +538,32 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
                                                                                                                 aug_size, ii,
                                                                                                                 mask_l1, mask_l2)
 
-            loss_pose_sum += loss_pose * self._weights[ii]
-            loss_pose_im_sum += loss_pose_im
-            loss_pose_pts_sum += loss_pose_pts
-            loss_pose_sm_sum += loss_pose_3d_s
+            loss_pose_sum = loss_pose_sum + loss_pose * self._weights[ii]
+            loss_pose_im_sum = loss_pose_im_sum + loss_pose_im
+            loss_pose_pts_sum = loss_pose_pts_sum + loss_pose_pts
+            loss_pose_sm_sum = loss_pose_sm_sum + loss_pose_3d_s
 
             # mask loss
             loss_mask_b, loss_mask_reg_b, loss_mask_sm_b = self.mask_loss(mask_l2)
             loss_mask_f, loss_mask_reg_f, loss_mask_sm_f = self.mask_loss(mask_l1)
-            loss_mask_sum += (loss_mask_b + loss_mask_f) * self._weights[ii]
-            loss_mask_reg_sum += (loss_mask_reg_b + loss_mask_reg_f)
-            loss_mask_sm_sum += (loss_mask_sm_b + loss_mask_sm_f)
+            loss_mask_sum = loss_mask_sum + (loss_mask_b + loss_mask_f) * self._weights[ii]
+            loss_mask_reg_sum = loss_mask_reg_sum + (loss_mask_reg_b + loss_mask_reg_f)
+            loss_mask_sm_sum = loss_mask_sm_sum + (loss_mask_sm_b + loss_mask_sm_f)
 
             # mask lr consensus loss
             loss_mask_lr1 = mask_lr_loss(mask_l1, mask_r1, disp_l1, disp_r1, disp_occ_l1, disp_occ_r1)
             loss_mask_lr2 = mask_lr_loss(mask_l2, mask_r2, disp_l2, disp_r2, disp_occ_l2, disp_occ_r2)
-            loss_lr_mask_sum += (loss_mask_lr1 + loss_mask_lr2) * self._weights[ii]
+            loss_lr_mask_sum = loss_lr_mask_sum + (loss_mask_lr1 + loss_mask_lr2) * self._weights[ii]
 
             # static consistency sum
             loss_static_cons_f, flow_diff_f = static_cons_loss(mask_l1, sf_f, None, disp_l1, flow_occ_f, pose_occ_f, disp_occ_l1, k_l1_aug, aug_size, pose_mat=pose_f)
             loss_static_cons_b, flow_diff_b = static_cons_loss(mask_l2, sf_b, None, disp_l2, flow_occ_b, pose_occ_b, disp_occ_l2, k_l2_aug, aug_size, pose_mat=pose_b)
-            loss_static_cons_sum += (loss_static_cons_b + loss_static_cons_f) * self._weights[ii]
+            loss_static_cons_sum = loss_static_cons_sum + (loss_static_cons_b + loss_static_cons_f) * self._weights[ii]
 
             # mask consensus sum
             loss_mask_consensus_l2, census_mask_l2 = mask_consensus_loss(mask_l2, flow_diff_b, pose_diffs[1], sf_diffs[1], self._flow_diff_thresh)
             loss_mask_consensus_l1, census_mask_l1 = mask_consensus_loss(mask_l1, flow_diff_f, pose_diffs[0], sf_diffs[0], self._flow_diff_thresh)
-            loss_mask_consensus_sum += (loss_mask_consensus_l2 + loss_mask_consensus_l1) * self._weights[ii]
+            loss_mask_consensus_sum = loss_mask_consensus_sum + (loss_mask_consensus_l2 + loss_mask_consensus_l1) * self._weights[ii]
 
             out_masks_l2.append(census_mask_l2)
             out_masks_l1.append(census_mask_l1)
@@ -906,8 +906,8 @@ class Loss_SceneFlow_SelfSup_Joint(nn.Module):
                                                                                                            img_l2_aug, img_r2_aug, 
                                                                                                            ii)
             loss_dp_sum = loss_dp_sum + (loss_disp_l1 + loss_disp_l2) * self._weights[ii]
-            loss_disp_im_sum += loss_disp_im1 + loss_disp_im2
-            loss_lr_disp_sum += loss_lr_cons1 + loss_lr_cons2
+            loss_disp_im_sum = loss_disp_im_sum + (loss_disp_im1 + loss_disp_im2)
+            loss_lr_disp_sum = loss_lr_disp_sum + (loss_lr_cons1 + loss_lr_cons2)
 
             flow_mask_l1 = None
             flow_mask_l2 = None
@@ -934,32 +934,32 @@ class Loss_SceneFlow_SelfSup_Joint(nn.Module):
                                                                                                                 aug_size, ii,
                                                                                                                 mask_l1, mask_l2)
 
-            loss_pose_sum += loss_pose * self._weights[ii]
-            loss_pose_im_sum += loss_pose_im
-            loss_pose_pts_sum += loss_pose_pts
-            loss_pose_sm_sum += loss_pose_3d_s
+            loss_pose_sum = loss_pose_sum + loss_pose * self._weights[ii]
+            loss_pose_im_sum = loss_pose_im_sum + loss_pose_im
+            loss_pose_pts_sum = loss_pose_pts_sum + loss_pose_pts
+            loss_pose_sm_sum = loss_pose_sm_sum + loss_pose_3d_s
 
             # mask loss
             loss_mask_b, loss_mask_reg_b, loss_mask_sm_b = self.mask_loss(mask_l2)
             loss_mask_f, loss_mask_reg_f, loss_mask_sm_f = self.mask_loss(mask_l1)
-            loss_mask_sum += (loss_mask_b + loss_mask_f) * self._weights[ii]
-            loss_mask_reg_sum += (loss_mask_reg_b + loss_mask_reg_f)
-            loss_mask_sm_sum += (loss_mask_sm_b + loss_mask_sm_f)
+            loss_mask_sum = loss_mask_sum + (loss_mask_b + loss_mask_f) * self._weights[ii]
+            loss_mask_reg_sum = loss_mask_reg_sum + (loss_mask_reg_b + loss_mask_reg_f)
+            loss_mask_sm_sum = loss_mask_sm_sum + (loss_mask_sm_b + loss_mask_sm_f)
 
             # mask lr consensus loss
             loss_mask_lr1 = mask_lr_loss(mask_l1, mask_r1, disp_l1, disp_r1, disp_occ_l1, disp_occ_r1)
             loss_mask_lr2 = mask_lr_loss(mask_l2, mask_r2, disp_l2, disp_r2, disp_occ_l2, disp_occ_r2)
-            loss_lr_mask_sum += (loss_mask_lr1 + loss_mask_lr2) * self._weights[ii]
+            loss_lr_mask_sum = loss_lr_mask_sum + (loss_mask_lr1 + loss_mask_lr2) * self._weights[ii]
 
             # static consistency sum
             loss_static_cons_f, flow_diff_f = static_cons_loss(mask_l1, sf_f, pose_f, disp_l1, flow_occ_f, pose_occ_f, disp_occ_l1, k_l1_aug, aug_size, None)
             loss_static_cons_b, flow_diff_b = static_cons_loss(mask_l2, sf_b, pose_b, disp_l2, flow_occ_b, pose_occ_b, disp_occ_l2, k_l2_aug, aug_size, None)
-            loss_static_cons_sum += (loss_static_cons_b + loss_static_cons_f) * self._weights[ii]
+            loss_static_cons_sum = loss_static_cons_sum + (loss_static_cons_b + loss_static_cons_f) * self._weights[ii]
 
             # mask consensus sum
             loss_mask_consensus_l2, census_mask_l2 = mask_consensus_loss(mask_l2, flow_diff_b, pose_diffs[1], sf_diffs[1], self._flow_diff_thresh)
             loss_mask_consensus_l1, census_mask_l1 = mask_consensus_loss(mask_l1, flow_diff_f, pose_diffs[0], sf_diffs[0], self._flow_diff_thresh)
-            loss_mask_consensus_sum += (loss_mask_consensus_l2 + loss_mask_consensus_l1) * self._weights[ii]
+            loss_mask_consensus_sum = loss_mask_consensus_sum + (loss_mask_consensus_l2 + loss_mask_consensus_l1) * self._weights[ii]
 
             out_masks_l2.append(census_mask_l2)
             out_masks_l1.append(census_mask_l1)
