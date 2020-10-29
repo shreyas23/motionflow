@@ -8,13 +8,54 @@ import logging
 from .common import conv, PyramidPoolingModule
 
 
+class PWCEncoder(nn.Module):
+  def __init__(self, conv_chs=None, use_bn=False):
+    super(PWCEncoder, self).__init__()
+
+    self.conv_chs = conv_chs
+    self.convs = nn.ModuleList()
+      
+    for in_ch, out_ch in zip(self.conv_chs[:-1], self.conv_chs[1:]):
+      layers = nn.Sequential(
+        conv(in_ch, out_ch, stride=2, use_bn=use_bn),
+        conv(out_ch, out_ch, use_bn=use_bn))
+      self.convs.append(layers)
+          
+  def forward(self, x):
+    fp = [x]
+    for conv in self.convs:
+        fp.append(conv(fp[-1]))
+
+    return fp[::-1]
+
+class FeatureExtractor(nn.Module):
+    def __init__(self, num_chs, use_bn=False):
+        super(FeatureExtractor, self).__init__()
+        self.num_chs = num_chs
+        self.convs = nn.ModuleList()
+
+        for l, (ch_in, ch_out) in enumerate(zip(num_chs[:-1], num_chs[1:])):
+            layer = nn.Sequential(
+                conv(ch_in, ch_out, stride=2, use_bn=use_bn),
+                conv(ch_out, ch_out, use_bn=use_bn)
+            )
+            self.convs.append(layer)
+
+    def forward(self, x):
+        feature_pyramid = []
+        for conv in self.convs:
+            x = conv(x)
+            feature_pyramid.append(x)
+
+        return feature_pyramid[::-1]
+
 class BasicBlock(nn.Module):
     expansion = 1
     def __init__(self, in_ch, out_ch, stride, downsample, pad, dilation, use_bn=True):
       super(BasicBlock, self).__init__()
 
-      self.conv1 = conv(in_ch, out_ch, 3, stride, pad, dilation, use_bn=use_bn)
-      self.conv2 = conv(out_ch, out_ch, 3, 1, pad, dilation, use_relu=False, use_bn=use_bn)
+      self.conv1 = conv(in_ch, out_ch, 3, stride, dilation, use_bn=use_bn)
+      self.conv2 = conv(out_ch, out_ch, 3, 1, dilation, use_relu=False, use_bn=use_bn)
 
       self.downsample = downsample
       self.stride = stride
@@ -29,7 +70,6 @@ class BasicBlock(nn.Module):
       out += x
 
       return out
-
 
 class ResNetEncoder(nn.Module):
     def __init__(self, args, in_chs, conv_chs=None, use_bn=False):
@@ -71,7 +111,7 @@ class ResNetEncoder(nn.Module):
         layers = []
         layers.append(block(self.in_chs, chs, stride, downsample, pad, dilation, use_bn=use_bn))
         self.in_chs = chs * block.expansion
-        for i in range(1, blocks):
+        for _ in range(1, blocks):
           layers.append(block(self.in_chs, chs, 1, None, pad, dilation, use_bn=use_bn))
 
         return nn.Sequential(*layers)
@@ -87,44 +127,3 @@ class ResNetEncoder(nn.Module):
         outs.append(self.ppm(outs[-1]))
 
       return outs[::-1]
-
-class PWCEncoder(nn.Module):
-  def __init__(self, conv_chs=None, use_bn=False):
-    super(PWCEncoder, self).__init__()
-
-    self.conv_chs = conv_chs
-    self.convs = nn.ModuleList()
-      
-    for in_ch, out_ch in zip(self.conv_chs[:-1], self.conv_chs[1:]):
-      layers = nn.Sequential(
-        conv(in_ch, out_ch, stride=2, use_bn=use_bn),
-        conv(out_ch, out_ch, use_bn=use_bn))
-      self.convs.append(layers)
-          
-  def forward(self, x):
-    fp = [x]
-    for conv in self.convs:
-        fp.append(conv(fp[-1]))
-
-    return fp[::-1]
-
-class FeatureExtractor(nn.Module):
-    def __init__(self, num_chs, use_bn=False):
-        super(FeatureExtractor, self).__init__()
-        self.num_chs = num_chs
-        self.convs = nn.ModuleList()
-
-        for l, (ch_in, ch_out) in enumerate(zip(num_chs[:-1], num_chs[1:])):
-            layer = nn.Sequential(
-                conv(ch_in, ch_out, stride=2, use_bn=use_bn),
-                conv(ch_out, ch_out, use_bn=use_bn)
-            )
-            self.convs.append(layer)
-
-    def forward(self, x):
-        feature_pyramid = []
-        for conv in self.convs:
-            x = conv(x)
-            feature_pyramid.append(x)
-
-        return feature_pyramid[::-1]

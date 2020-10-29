@@ -241,8 +241,8 @@ class SceneNetMonoJoint(nn.Module):
             flow_b_pp = []
             disp_l1_pp = []
             disp_l2_pp = []
-            flow_pose_f_pp = []
-            flow_pose_b_pp = []
+            # flow_pose_f_pp = []
+            # flow_pose_b_pp = []
 
             for ii in range(0, len(output_dict_flip['flow_f'])):
 
