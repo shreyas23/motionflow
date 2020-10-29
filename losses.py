@@ -205,71 +205,6 @@ def mask_lr_loss(mask_l, mask_r, disp_l, disp_r, left_occ, right_occ):
 
     return loss_lr
 
-def pts_lr_loss(disp_l, disp_r, cam_l2r, cam_r2l, k_l_aug, k_r_aug, left_occ, right_occ, aug_size):
-
-    b, _, h_dp, w_dp = disp_l.size()
-    disp_l = disp_l * w_dp
-    disp_r = disp_r * w_dp
-
-    # scale
-    local_scale = torch.zeros_like(aug_size)
-    local_scale[:, 0] = h_dp
-    local_scale[:, 1] = w_dp
-
-    pts_l, k_l_scale = pixel2pts_ms(k_l_aug, disp_l, local_scale / aug_size)
-    pts_r, k_r_scale = pixel2pts_ms(k_r_aug, disp_r, local_scale / aug_size)
-    pts_l_tf, coord_l = pts2pixel_pose_ms(k_l_scale, pts_l, None, [h_dp, w_dp], pose_mat=cam_l2r)
-    pts_r_tf, coord_r = pts2pixel_pose_ms(k_r_scale, pts_r, None, [h_dp, w_dp], pose_mat=cam_r2l)
-    pts_r_warp = reconstructPts(coord_l, pts_r)
-    pts_l_warp = reconstructPts(coord_r, pts_l) 
-    pts_norm_l = torch.norm(pts_l, p=2, dim=1, keepdim=True)
-    pts_norm_r = torch.norm(pts_r, p=2, dim=1, keepdim=True)
-    pts_diff_l = _elementwise_epe(pts_l_tf, pts_r_warp).mean(dim=1, keepdim=True) / (pts_norm_l + 1e-8)
-    pts_diff_r = _elementwise_epe(pts_r_tf, pts_l_warp).mean(dim=1, keepdim=True) / (pts_norm_r + 1e-8)
-    loss_pts_l = pts_diff_l[left_occ].mean()
-    loss_pts_r = pts_diff_r[right_occ].mean()
-    pts_diff_l[~left_occ].detach_()
-    pts_diff_r[~right_occ].detach_()
-    loss_pts = loss_pts_l + loss_pts_r
-
-    return loss_pts
-
-def disp_pts_loss(disp_l, disp_r, cam_l2r, cam_r2l, k_l_aug, k_r_aug, left_occ, right_occ, aug_size):
-
-    _, _, h_dp, w_dp = disp_l.size()
-    disp_l = disp_l * w_dp
-    disp_r = disp_r * w_dp
-
-    ## scale
-    local_scale = torch.zeros_like(aug_size)
-    local_scale[:, 0] = h_dp
-    local_scale[:, 1] = w_dp         
-
-    # pts in cam rect coords
-    pts1, k1_scale, depth1 = pixel2pts_ms_depth(k_l_aug, disp_l, local_scale / aug_size)
-    pts2, k2_scale, depth2 = pixel2pts_ms_depth(k_r_aug, disp_r, local_scale / aug_size)
-
-    flow_f = pose2flow(depth1.squeeze(dim=1), None, k1_scale, torch.inverse(k1_scale), pose_mat=cam_l2r)
-    flow_b = pose2flow(depth2.squeeze(dim=1), None, k2_scale, torch.inverse(k2_scale), pose_mat=cam_r2l)
-    occ_map_l = _adaptive_disocc_detection(flow_f).detach() * left_occ
-    occ_map_r = _adaptive_disocc_detection(flow_b).detach() * right_occ
-
-    pts1_tf, coord1 = pts2pixel_pose_ms(k1_scale, pts1, None, [h_dp, w_dp], pose_mat=cam_l2r)
-    pts2_tf, coord2 = pts2pixel_pose_ms(k2_scale, pts2, None, [h_dp, w_dp], pose_mat=cam_r2l) 
-    pts2_warp = reconstructPts(coord1, pts2)
-    pts1_warp = reconstructPts(coord2, pts1) 
-    pts_norm1 = torch.norm(pts1, p=2, dim=1, keepdim=True)
-    pts_norm2 = torch.norm(pts2, p=2, dim=1, keepdim=True)
-    pts_diff1 = _elementwise_epe(pts1_tf, pts2_warp).mean(dim=1, keepdim=True) / (pts_norm1 + 1e-8)
-    pts_diff2 = _elementwise_epe(pts2_tf, pts1_warp).mean(dim=1, keepdim=True) / (pts_norm2 + 1e-8)
-    loss_pts1 = pts_diff1[occ_map_l].mean()
-    loss_pts2 = pts_diff2[occ_map_r].mean()
-    pts_diff1[~occ_map_l].detach_()
-    pts_diff2[~occ_map_r].detach_()
-    loss_pts = loss_pts1 + loss_pts2
-
-    return loss_pts
-
 def flow_lr_loss(flow_l, flow_r, disp_l, disp_r, left_occ, right_occ):
     flow_warp_l = _generate_image_left(flow_r, disp_l)
     flow_warp_r = _generate_image_right(flow_l, disp_r)
@@ -296,7 +231,6 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
         self._ssim_w = 0.85
 
         # disp weights
-        self._disp_pts_w = args.disp_pts_w
         self._disp_sm_w = args.disp_sm_w
 
         #sf weights
@@ -340,15 +274,12 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
         lr_disp_diff_l[~left_occ].detach_()
         lr_disp_diff_r[~right_occ].detach_()
 
-        # 3D L-R Consistency Loss
-        loss_lr_pts = disp_pts_loss(disp_l, disp_r, cam_l2r, cam_r2l, k_l_aug, k_r_aug, left_occ, right_occ, aug_size)
-
         ## Disparities smoothness
         loss_smooth = _smoothness_motion_2nd(disp_l, img_l_aug, beta=10.0).mean() / (2 ** ii)
 
-        loss = loss_img + self._disp_sm_w * loss_smooth + self._disp_lr_w * loss_lr * self._disp_lr_w + loss_lr_pts * self._disp_pts_w
+        loss = loss_img + self._disp_sm_w * loss_smooth + self._disp_lr_w * loss_lr * self._disp_lr_w
 
-        return loss, loss_img, loss_lr, loss_lr_pts, left_occ, right_occ
+        return loss, loss_img, loss_lr, left_occ, right_occ
 
     def mask_loss(self, mask):
         reg_loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
@@ -533,18 +464,12 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
         loss_mask_sm_sum = 0
         loss_mask_consensus_sum = 0
         loss_static_cons_sum = 0
-        loss_lr_pts_sum = 0
         loss_lr_mask_sum = 0
         loss_lr_disp_sum = 0
         loss_mask_sum = 0
         
         k_l1_aug = target_dict['input_k_l1_aug']
         k_l2_aug = target_dict['input_k_l2_aug']
-        k_r1_aug = target_dict['input_k_r1_aug']
-        k_r2_aug = target_dict['input_k_r2_aug']
-
-        cam_l2r = target_dict['input_cam_l2r']
-        cam_r2l = target_dict['input_cam_r2l']
 
         aug_size = target_dict['aug_size']
 
@@ -581,21 +506,16 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
             img_r2_aug = interpolate2d_as(target_dict["input_r2_aug"], sf_b)
 
             ## Disp Loss
-            loss_disp_l1, loss_disp_im1, loss_lr_cons1, loss_lr_pts1, disp_occ_l1, disp_occ_r1 = self.depth_loss_left_img(disp_l1, disp_r1, 
+            loss_disp_l1, loss_disp_im1, loss_lr_cons1, disp_occ_l1, disp_occ_r1 = self.depth_loss_left_img(disp_l1, disp_r1, 
                                                                                                            img_l1_aug, img_r1_aug, 
-                                                                                                           cam_l2r, cam_r2l, 
-                                                                                                           k_l1_aug, k_r1_aug, 
                                                                                                            aug_size, ii)
 
-            loss_disp_l2, loss_disp_im2, loss_lr_cons2, loss_lr_pts2, disp_occ_l2, disp_occ_r2 = self.depth_loss_left_img(disp_l2, disp_r2, 
+            loss_disp_l2, loss_disp_im2, loss_lr_cons2, disp_occ_l2, disp_occ_r2 = self.depth_loss_left_img(disp_l2, disp_r2, 
                                                                                                            img_l2_aug, img_r2_aug, 
-                                                                                                           cam_l2r, cam_r2l, 
-                                                                                                           k_l2_aug, k_r2_aug, 
                                                                                                            aug_size, ii)
             loss_dp_sum = loss_dp_sum + (loss_disp_l1 + loss_disp_l2) * self._weights[ii]
             loss_disp_im_sum += loss_disp_im1 + loss_disp_im2
             loss_lr_disp_sum += loss_lr_cons1 + loss_lr_cons2
-            loss_lr_pts_sum += loss_lr_pts1 + loss_lr_pts2
 
             flow_mask_l1 = None
             flow_mask_l2 = None
@@ -674,7 +594,6 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
         loss_dict["disp"] = loss_dp_sum
         loss_dict["disp_im"] = loss_disp_im_sum
         loss_dict["disp_lr"] = loss_lr_disp_sum
-        loss_dict["disp_pts"] = loss_lr_pts_sum
         loss_dict["sf"] = loss_sf_sum
         loss_dict["s_2"] = loss_sf_2d
         loss_dict["s_3"] = loss_sf_3d
@@ -708,7 +627,6 @@ class Loss_SceneFlow_SelfSup_Joint(nn.Module):
         self._ssim_w = 0.85
 
         # disp weights
-        self._disp_pts_w = args.disp_pts_w
         self._disp_sm_w = args.disp_sm_w
 
         #sf weights
@@ -731,7 +649,7 @@ class Loss_SceneFlow_SelfSup_Joint(nn.Module):
         self._static_cons_w = args.static_cons_w
 
 
-    def depth_loss_left_img(self, disp_l, disp_r, img_l_aug, img_r_aug, cam_l2r, cam_r2l, k_l_aug, k_r_aug, aug_size, ii):
+    def depth_loss_left_img(self, disp_l, disp_r, img_l_aug, img_r_aug, ii):
 
         img_r_warp = _generate_image_left(img_r_aug, disp_l)
         left_occ = _adaptive_disocc_detection_disp(disp_r).detach()
@@ -752,14 +670,12 @@ class Loss_SceneFlow_SelfSup_Joint(nn.Module):
         lr_disp_diff_l[~left_occ].detach_()
         lr_disp_diff_r[~right_occ].detach_()
 
-        loss_lr_pts = disp_pts_loss(disp_l, disp_r, cam_l2r, cam_r2l, k_l_aug, k_r_aug, left_occ, right_occ, aug_size)
-
         ## Disparities smoothness
         loss_smooth = _smoothness_motion_2nd(disp_l, img_l_aug, beta=10.0).mean() / (2 ** ii)
 
-        loss = loss_img + self._disp_sm_w * loss_smooth + self._disp_lr_w * loss_lr * self._disp_lr_w + loss_lr_pts * self._disp_pts_w
+        loss = loss_img + self._disp_sm_w * loss_smooth + self._disp_lr_w * loss_lr * self._disp_lr_w
 
-        return loss, loss_img, loss_lr, loss_lr_pts, left_occ, right_occ
+        return loss, loss_img, loss_lr, left_occ, right_occ
 
     def mask_loss(self, mask):
         reg_loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
@@ -944,18 +860,12 @@ class Loss_SceneFlow_SelfSup_Joint(nn.Module):
         loss_mask_sm_sum = 0
         loss_mask_consensus_sum = 0
         loss_static_cons_sum = 0
-        loss_lr_pts_sum = 0
         loss_lr_mask_sum = 0
         loss_lr_disp_sum = 0
         loss_mask_sum = 0
         
         k_l1_aug = target_dict['input_k_l1_aug']
         k_l2_aug = target_dict['input_k_l2_aug']
-        k_r1_aug = target_dict['input_k_r1_aug']
-        k_r2_aug = target_dict['input_k_r2_aug']
-
-        cam_l2r = target_dict['input_cam_l2r']
-        cam_r2l = target_dict['input_cam_r2l']
 
         aug_size = target_dict['aug_size']
 
@@ -992,21 +902,16 @@ class Loss_SceneFlow_SelfSup_Joint(nn.Module):
             img_r2_aug = interpolate2d_as(target_dict["input_r2_aug"], sf_b)
 
             ## Disp Loss
-            loss_disp_l1, loss_disp_im1, loss_lr_cons1, loss_lr_pts1, disp_occ_l1, disp_occ_r1 = self.depth_loss_left_img(disp_l1, disp_r1, 
+            loss_disp_l1, loss_disp_im1, loss_lr_cons1, disp_occ_l1, disp_occ_r1 = self.depth_loss_left_img(disp_l1, disp_r1, 
                                                                                                            img_l1_aug, img_r1_aug, 
-                                                                                                           cam_l2r, cam_r2l, 
-                                                                                                           k_l1_aug, k_r1_aug, 
-                                                                                                           aug_size, ii)
+                                                                                                           ii)
 
-            loss_disp_l2, loss_disp_im2, loss_lr_cons2, loss_lr_pts2, disp_occ_l2, disp_occ_r2 = self.depth_loss_left_img(disp_l2, disp_r2, 
+            loss_disp_l2, loss_disp_im2, loss_lr_cons2, disp_occ_l2, disp_occ_r2 = self.depth_loss_left_img(disp_l2, disp_r2, 
                                                                                                            img_l2_aug, img_r2_aug, 
-                                                                                                           cam_l2r, cam_r2l, 
-                                                                                                           k_l2_aug, k_r2_aug, 
                                                                                                            aug_size, ii)
             loss_dp_sum = loss_dp_sum + (loss_disp_l1 + loss_disp_l2) * self._weights[ii]
             loss_disp_im_sum += loss_disp_im1 + loss_disp_im2
             loss_lr_disp_sum += loss_lr_cons1 + loss_lr_cons2
-            loss_lr_pts_sum += loss_lr_pts1 + loss_lr_pts2
 
             flow_mask_l1 = None
             flow_mask_l2 = None
@@ -1085,7 +990,6 @@ class Loss_SceneFlow_SelfSup_Joint(nn.Module):
         loss_dict["disp"] = loss_dp_sum
         loss_dict["disp_im"] = loss_disp_im_sum
         loss_dict["disp_lr"] = loss_lr_disp_sum
-        loss_dict["disp_pts"] = loss_lr_pts_sum
         loss_dict["sf"] = loss_sf_sum
         loss_dict["s_2"] = loss_sf_2d
         loss_dict["s_3"] = loss_sf_3d
