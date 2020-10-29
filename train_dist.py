@@ -1,4 +1,5 @@
 import os
+import gc
 import argparse
 import datetime
 import numpy as np
@@ -365,6 +366,7 @@ def train(gpu, args):
                         torch.load(fp, map_location=map_location)['model'])
                     optimizer.load_state_dict(
                         torch.load(fp, map_location=map_location)['optimizer'])
+        gc.collect()
 
     cleanup_env()
 
@@ -417,7 +419,7 @@ def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_
         optimizer.step()
 
         for key in loss_dict.keys():
-            loss_dict_avg[key] += loss_dict[key].item()
+            loss_dict_avg[key] += loss_dict[key].detach().item()
 
     n = len(dataloader)
     for key in loss_dict_avg.keys():
