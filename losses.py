@@ -234,7 +234,6 @@ def pts_lr_loss(disp_l, disp_r, cam_l2r, cam_r2l, k_l_aug, k_r_aug, left_occ, ri
 
     return loss_pts
 
-
 def disp_pts_loss(disp_l, disp_r, cam_l2r, cam_r2l, k_l_aug, k_r_aug, left_occ, right_occ, aug_size):
 
     _, _, h_dp, w_dp = disp_l.size()
@@ -700,7 +699,6 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
 
         return loss_dict
 
-
 class Loss_SceneFlow_SelfSup_Joint(nn.Module):
     def __init__(self, args):
         super(Loss_SceneFlow_SelfSup_Joint, self).__init__()
@@ -791,16 +789,16 @@ class Loss_SceneFlow_SelfSup_Joint(nn.Module):
         pts1, k1_scale, depth_l1 = pixel2pts_ms_depth(k_l1_aug, disp_l1, local_scale / aug_size)
         pts2, k2_scale, depth_l2 = pixel2pts_ms_depth(k_l2_aug, disp_l2, local_scale / aug_size)
 
-        pts1_tf, coord1 = pts2pixel_pose_ms(k1_scale, pts1, None, [h_dp, w_dp], pose_f)
-        pts2_tf, coord2 = pts2pixel_pose_ms(k2_scale, pts2, None, [h_dp, w_dp], pose_b) 
+        pts1_tf, coord1 = pts2pixel_pose_ms(k1_scale, pts1, pose_f, [h_dp, w_dp])
+        pts2_tf, coord2 = pts2pixel_pose_ms(k2_scale, pts2, pose_b, [h_dp, w_dp])
 
         pts2_warp = reconstructPts(coord1, pts2)
         pts1_warp = reconstructPts(coord2, pts1) 
 
-        flow_f = pose2flow(depth_l1.squeeze(dim=1), None, k1_scale, torch.inverse(k1_scale), pose_mat=pose_f)
-        flow_b = pose2flow(depth_l2.squeeze(dim=1), None, k2_scale, torch.inverse(k2_scale), pose_mat=pose_b)
-        sf_f = pose2sceneflow(depth_l1.squeeze(dim=1), None, torch.inverse(k1_scale), pose_mat=pose_f)
-        sf_b = pose2sceneflow(depth_l2.squeeze(dim=1), None, torch.inverse(k2_scale), pose_mat=pose_b)
+        flow_f = pose2flow(depth_l1.squeeze(dim=1), pose_f, k1_scale, torch.inverse(k1_scale))
+        flow_b = pose2flow(depth_l2.squeeze(dim=1), pose_b, k2_scale, torch.inverse(k2_scale))
+        sf_f = pose2sceneflow(depth_l1.squeeze(dim=1), pose_f, torch.inverse(k1_scale))
+        sf_b = pose2sceneflow(depth_l2.squeeze(dim=1), pose_b, torch.inverse(k2_scale))
         occ_map_b = _adaptive_disocc_detection(flow_f).detach() * disp_occ_l2
         occ_map_f = _adaptive_disocc_detection(flow_b).detach() * disp_occ_l1
 
@@ -1053,8 +1051,8 @@ class Loss_SceneFlow_SelfSup_Joint(nn.Module):
             loss_lr_mask_sum += (loss_mask_lr1 + loss_mask_lr2) * self._weights[ii]
 
             # static consistency sum
-            loss_static_cons_f, flow_diff_f = static_cons_loss(mask_l1, sf_f, None, disp_l1, flow_occ_f, pose_occ_f, disp_occ_l1, k_l1_aug, aug_size, pose_mat=pose_f)
-            loss_static_cons_b, flow_diff_b = static_cons_loss(mask_l2, sf_b, None, disp_l2, flow_occ_b, pose_occ_b, disp_occ_l2, k_l2_aug, aug_size, pose_mat=pose_b)
+            loss_static_cons_f, flow_diff_f = static_cons_loss(mask_l1, sf_f, pose_f, disp_l1, flow_occ_f, pose_occ_f, disp_occ_l1, k_l1_aug, aug_size, None)
+            loss_static_cons_b, flow_diff_b = static_cons_loss(mask_l2, sf_b, pose_b, disp_l2, flow_occ_b, pose_occ_b, disp_occ_l2, k_l2_aug, aug_size, None)
             loss_static_cons_sum += (loss_static_cons_b + loss_static_cons_f) * self._weights[ii]
 
             # mask consensus sum

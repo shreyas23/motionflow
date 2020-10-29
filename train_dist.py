@@ -219,8 +219,7 @@ def train(gpu, args):
 
     print(f"Loading dataset and dataloaders onto gpu: {gpu}...")
     if DATASET_NAME == 'KITTI':
-        train_dataset = KITTI_Raw_KittiSplit_Train(
-            args, DATA_ROOT, num_examples=args.num_examples, flip_augmentations=(not args.no_flip_augs))
+        train_dataset = KITTI_Raw_KittiSplit_Train(args, DATA_ROOT, num_examples=args.num_examples)
         train_sampler = DistributedSampler(train_dataset, num_replicas=args.world_size, rank=rank, shuffle=True)
         train_dataloader = DataLoader(train_dataset, args.batch_size,
                                     shuffle=(train_sampler is None), num_workers=args.num_workers, pin_memory=True, sampler=train_sampler)
@@ -232,8 +231,7 @@ def train(gpu, args):
             val_dataloader = None
 
     elif DATASET_NAME == 'KITTI_EIGEN':
-        train_dataset = KITTI_Raw_EigenSplit_Train(
-            args, DATA_ROOT, num_examples=args.num_examples, flip_augmentations=(not args.no_flip_augs))
+        train_dataset = KITTI_Raw_EigenSplit_Train(args, DATA_ROOT, num_examples=args.num_examples)
         train_sampler = DistributedSampler(train_dataset, num_replicas=args.world_size, rank=rank, shuffle=True)
         train_dataloader = DataLoader(train_dataset, args.batch_size,
                                     shuffle=(train_sampler is None), num_workers=args.num_workers, pin_memory=True, sampler=train_sampler)
@@ -282,7 +280,7 @@ def train(gpu, args):
             os.makedirs(log_dir, exist_ok=True)
 
         if args.exp_name == "":
-            exp_name = datetime.datetime.now().strftime("%H%M%S-%Y%m%d")
+            exp_name = datetime.datetime.now().strftime("%d%m%y-%I%M%S")
         else:
             exp_name = args.exp_name
 
