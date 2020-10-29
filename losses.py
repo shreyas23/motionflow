@@ -170,9 +170,10 @@ def static_cons_loss(mask, sf, pose, disp, flow_occ, pose_occ, disp_occ, intrins
     local_scale[:, 0] = h_dp
     local_scale[:, 1] = w_dp         
 
-    _, intrinsics_scaled, depth = pixel2pts_ms_depth(intrinsics, disp, local_scale / aug_size)
-    pose_flow = pose2flow(depth.squeeze(dim=1), pose, intrinsics, torch.inverse(intrinsics_scaled), pose_mat=pose_mat)
-    flow = projectSceneFlow2Flow(intrinsics_scaled, sf, disp)
+    _, kscale, depth = pixel2pts_ms_depth(intrinsics, disp, local_scale / aug_size)
+
+    pose_flow = pose2flow(depth.squeeze(dim=1), pose, kscale, torch.inverse(kscale), pose_mat=pose_mat)
+    flow = projectSceneFlow2Flow(kscale, sf, disp)
     flow_diff = (pose_flow - flow).abs().mean(dim=1, keepdim=True)
 
     occ_map = flow_occ * pose_occ * disp_occ
