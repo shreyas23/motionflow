@@ -192,11 +192,11 @@ def train(gpu, args):
         model = SceneNetStereo(args).cuda(device=gpu)
         loss = Loss_SceneFlow_SelfSup_Joint(args)
     elif args.model_name == 'scenenet_joint_mono':
-        model = SceneNetStereoJoint(args).cuda(device=gpu)
-        loss = Loss_SceneFlow_SelfSup_JointIter(args)
+        model = SceneNetMonoJoint(args).cuda(device=gpu)
+        loss = Loss_SceneFlow_SelfSup_Joint(args)
     elif args.model_name == 'scenenet_joint_stereo':
         model = SceneNetStereoJoint(args).cuda(device=gpu)
-        loss = Loss_SceneFlow_SelfSup_JointIter(args)
+        loss = Loss_SceneFlow_SelfSup_Joint(args)
     elif args.model_name == 'scenenet_joint_stereo_iter':
         model = SceneNetStereoJointIter(args).cuda(device=gpu)
         loss = Loss_SceneFlow_SelfSup_JointIter(args)
