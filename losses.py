@@ -253,7 +253,7 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
         self._static_cons_w = args.static_cons_w
 
 
-    def depth_loss_left_img(self, disp_l, disp_r, img_l_aug, img_r_aug, cam_l2r, cam_r2l, k_l_aug, k_r_aug, aug_size, ii):
+    def depth_loss_left_img(self, disp_l, disp_r, img_l_aug, img_r_aug, ii):
 
         img_r_warp = _generate_image_left(img_r_aug, disp_l)
         left_occ = _adaptive_disocc_detection_disp(disp_r).detach()
@@ -506,13 +506,9 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
             img_r2_aug = interpolate2d_as(target_dict["input_r2_aug"], sf_b)
 
             ## Disp Loss
-            loss_disp_l1, loss_disp_im1, loss_lr_cons1, disp_occ_l1, disp_occ_r1 = self.depth_loss_left_img(disp_l1, disp_r1, 
-                                                                                                           img_l1_aug, img_r1_aug, 
-                                                                                                           aug_size, ii)
+            loss_disp_l1, loss_disp_im1, loss_lr_cons1, disp_occ_l1, disp_occ_r1 = self.depth_loss_left_img(disp_l1, disp_r1, img_l1_aug, img_r1_aug, ii)
 
-            loss_disp_l2, loss_disp_im2, loss_lr_cons2, disp_occ_l2, disp_occ_r2 = self.depth_loss_left_img(disp_l2, disp_r2, 
-                                                                                                           img_l2_aug, img_r2_aug, 
-                                                                                                           aug_size, ii)
+            loss_disp_l2, loss_disp_im2, loss_lr_cons2, disp_occ_l2, disp_occ_r2 = self.depth_loss_left_img(disp_l2, disp_r2, img_l2_aug, img_r2_aug, ii)
             loss_dp_sum = loss_dp_sum + (loss_disp_l1 + loss_disp_l2) * self._weights[ii]
             loss_disp_im_sum += loss_disp_im1 + loss_disp_im2
             loss_lr_disp_sum += loss_lr_cons1 + loss_lr_cons2
