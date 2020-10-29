@@ -904,7 +904,7 @@ class Loss_SceneFlow_SelfSup_Joint(nn.Module):
 
             loss_disp_l2, loss_disp_im2, loss_lr_cons2, disp_occ_l2, disp_occ_r2 = self.depth_loss_left_img(disp_l2, disp_r2, 
                                                                                                            img_l2_aug, img_r2_aug, 
-                                                                                                           aug_size, ii)
+                                                                                                           ii)
             loss_dp_sum = loss_dp_sum + (loss_disp_l1 + loss_disp_l2) * self._weights[ii]
             loss_disp_im_sum += loss_disp_im1 + loss_disp_im2
             loss_lr_disp_sum += loss_lr_cons1 + loss_lr_cons2
