@@ -23,7 +23,6 @@ python3 train.py --data_root="/external/datasets/kitti_data_jpg/" \
                  --pose_sm_w=200 \
                  --pose_pts_w=0.2 \
                  --pose_lr_w=0.0 \
-                 --disp_pts_w=0.0 \
                  --disp_sm_w=0.1 \
                  --disp_lr_w=1.0 \
                  --mask_lr_w=1.0 \
