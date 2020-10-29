@@ -249,6 +249,8 @@ class SceneNetStereoJoint(nn.Module):
             flow_b_pp = []
             disp_l1_pp = []
             disp_l2_pp = []
+            mask_l1_pp = []
+            mask_l2_pp = []
 
             for ii in range(0, len(output_dict_flip['flow_f'])):
 
@@ -256,13 +258,15 @@ class SceneNetStereoJoint(nn.Module):
                 flow_b_pp.append(post_processing(output_dict['flow_b'][ii], flow_horizontal_flip(output_dict_flip['flow_b'][ii])))
                 disp_l1_pp.append(post_processing(output_dict['disp_l1'][ii], torch.flip(output_dict_flip['disp_l1'][ii], [3])))
                 disp_l2_pp.append(post_processing(output_dict['disp_l2'][ii], torch.flip(output_dict_flip['disp_l2'][ii], [3])))
-                disp_l1_pp.append(post_processing(output_dict['mask_l1'][ii], torch.flip(output_dict_flip['mask_l1'][ii], [3])))
-                disp_l2_pp.append(post_processing(output_dict['mask_l2'][ii], torch.flip(output_dict_flip['mask_l2'][ii], [3])))
+                mask_l1_pp.append(post_processing(output_dict['mask_l1'][ii], torch.flip(output_dict_flip['mask_l1'][ii], [3])))
+                mask_l2_pp.append(post_processing(output_dict['mask_l2'][ii], torch.flip(output_dict_flip['mask_l2'][ii], [3])))
 
             output_dict['flow_f_pp'] = flow_f_pp
             output_dict['flow_b_pp'] = flow_b_pp
             output_dict['disp_l1_pp'] = disp_l1_pp
             output_dict['disp_l2_pp'] = disp_l2_pp
+            output_dict['mask_l1_pp'] = mask_l1_pp
+            output_dict['mask_l2_pp'] = mask_l2_pp
             # output_dict['flow_pose_f_pp'] = flow_pose_f_pp
             # output_dict['flow_pose_b_pp'] = flow_pose_b_pp
 
