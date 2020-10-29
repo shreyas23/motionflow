@@ -96,14 +96,14 @@ parser.add_argument('--no_flip_augs', type=bool, default=False,
                     help='only do resize augmentation on input data')
 
 # weight params
-parser.add_argument('--pose_pts_w', type=float, default=0.5, help='mask consensus weight')
-parser.add_argument('--sf_pts_w', type=float, default=0.5, help='mask consensus weight')
-parser.add_argument('--disp_pts_w', type=float, default=1.0, help='mask consensus weight')
+parser.add_argument('--pose_pts_w', type=float, default=0.2, help='mask consensus weight')
+parser.add_argument('--sf_pts_w', type=float, default=0.2, help='mask consensus weight')
+parser.add_argument('--disp_pts_w', type=float, default=0.0, help='mask consensus weight')
 parser.add_argument('--pose_sm_w', type=float, default=200, help='mask consensus weight')
 parser.add_argument('--sf_sm_w', type=float, default=200, help='mask consensus weight')
 parser.add_argument('--disp_sm_w', type=float, default=0.1, help='mask consensus weight')
-parser.add_argument('--mask_sm_w', type=float, default=0.1, help='mask consensus weight')
-parser.add_argument('--mask_lr_w', type=float, default=1.0, help='mask consensus weight')
+parser.add_argument('--mask_sm_w', type=float, default=0.0, help='mask consensus weight')
+parser.add_argument('--mask_lr_w', type=float, default=0.0, help='mask consensus weight')
 parser.add_argument('--disp_lr_w', type=float, default=1.0, help='mask consensus weight')
 parser.add_argument('--mask_reg_w', type=float, default=0.2, help='mask consensus weight')
 parser.add_argument('--static_cons_w', type=float, default=0.0, help='mask consensus weight')
@@ -268,7 +268,7 @@ def train(gpu, args):
             optimizer, factor=args.lr_gamma, verbose=True, mode='min', patience=1)
     elif args.lr_sched_type == 'step':
         print("Using step lr schedule")
-        milestones = [20, 30]
+        milestones = [20, 25]
         lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
             optimizer, milestones=milestones, gamma=args.lr_gamma)
     elif args.lr_sched_type == 'none':
