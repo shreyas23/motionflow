@@ -417,7 +417,7 @@ def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_
         optimizer.step()
 
         for key in loss_dict.keys():
-            loss_dict_avg[key] += loss_dict[key].detach()
+            loss_dict_avg[key] += loss_dict[key].item()
 
     n = len(dataloader)
     for key in loss_dict_avg.keys():
