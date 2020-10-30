@@ -579,9 +579,8 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
 
         f_weight = max_val / f_loss
         p_weight = max_val / p_loss
-
         d_weight = min_val / d_loss
-        d_weight = torch.clamp(min_val, min=1.0)
+
         # f_weight = max_val / f_loss
         # d_weight = max_val / d_loss
         # p_weight = max_val / p_loss
