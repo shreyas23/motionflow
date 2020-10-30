@@ -575,7 +575,6 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
 
         # max_val = torch.max(torch.max(f_loss, d_loss), p_loss)
         max_val = torch.max(f_loss, p_loss)
-        min_val = torch.min(f_loss, p_loss)
 
         f_weight = max_val / f_loss
         p_weight = max_val / p_loss
@@ -589,7 +588,7 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
         total_loss = loss_sf_sum * f_weight + \
                      loss_dp_sum + \
                      loss_pose_sum * p_weight + \
-                     loss_mask_sum * p_weight + \
+                     loss_mask_sum + \
                      loss_mask_consensus_sum * self._mask_cons_w + \
                      loss_lr_mask_sum * self._mask_lr_w + loss_static_cons_sum * self._static_cons_w 
 
