@@ -174,12 +174,17 @@ def train(gpu, args):
     rank = args.nr * args.num_gpus + gpu
     dist.init_process_group(backend="nccl", world_size=args.world_size, rank=rank)
 
+    # set device for process
+    torch.cuda.set_device(gpu)
+
     if args.batch_size == 1 and args.use_bn is True:
         raise Exception
 
+    # set some torch params
     torch.manual_seed(args.torch_seed)
     torch.cuda.manual_seed(args.cuda_seed)
-    torch.cuda.set_device(gpu)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
     DATASET_NAME = args.dataset_name
     DATA_ROOT = args.data_root
@@ -250,9 +255,6 @@ def train(gpu, args):
     if args.cuda:
         train_augmentations = train_augmentations.cuda(device=gpu)
         val_augmentations = val_augmentations.cuda(device=gpu)
-
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
 
     # load optimizer and lr scheduler
     optimizer = Adam(model.parameters(), 
