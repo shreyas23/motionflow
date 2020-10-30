@@ -1,5 +1,5 @@
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
-                 --exp_dir="jointnet_mono_iter_eigen_test" \
+                 --exp_dir="weights_test" \
                  --exp_name="" \
                  --dataset_name="KITTI_EIGEN" \
                  --num_examples=1000 \
@@ -28,7 +28,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --static_cons_w=0.0 \
                  --flow_diff_thresh=1e-3 &&
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
-                 --exp_dir="jointnet_mono_iter_eigen_test" \
+                 --exp_dir="weights_test" \
                  --exp_name="" \
                  --dataset_name="KITTI_EIGEN" \
                  --num_examples=1000 \

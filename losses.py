@@ -584,7 +584,6 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
         # d_weight = max_val / d_loss
         # p_weight = max_val / p_loss
 
-                    #  loss_dp_sum * d_weight + \
         total_loss = loss_sf_sum * f_weight + \
                      loss_dp_sum + \
                      loss_pose_sum * p_weight + \
