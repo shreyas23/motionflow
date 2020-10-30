@@ -136,11 +136,7 @@ def pts2pixel_pose_ms(intrinsic, pts, pose, disp_size, pose_mat=None):
     R = pose_mat[:, :, :3]
     t = pose_mat[:, :, -1:]
 
-    # pts_tform = torch.matmul(pose_mat, torch.cat([pts.reshape((b, 3, -1)), torch.ones((b, 1, h*w)).cuda()], dim=1))
-    pts_flat = pts.view(b, 3, -1)
-    pts_tform = torch.bmm(R, pts_flat) + t
-    pts_tform = pts_tform.reshape((b, 3, h, w))
-
+    pts_tform = torch.matmul(pose_mat, torch.cat([pts.reshape((b, 3, -1)), torch.ones((b, 1, h*w)).cuda()], dim=1))
     coord = pts2pixel(pts_tform, intrinsic)
     norm_coord_w = coord[:, 0:1, :, :] / (disp_size[1] - 1) * 2 - 1
     norm_coord_h = coord[:, 1:2, :, :] / (disp_size[0] - 1) * 2 - 1
