@@ -8,6 +8,7 @@ import numpy as np
 from torchvision import transforms as vision_transforms
 from .common import read_image_as_byte, read_calib_into_dict
 from .common import kitti_crop_image_list, kitti_adjust_intrinsic
+from .common import dump_xyz, compute_ate
 
 
 class KITTI_Raw(data.Dataset):
@@ -18,7 +19,8 @@ class KITTI_Raw(data.Dataset):
                  preprocessing_crop=True,
                  crop_size=[370, 1224],
                  num_examples=-1,
-                 index_file=None):
+                 index_file=None,
+                 seq=None):
 
         self._args = args
         self._seq_len = 1
@@ -72,6 +74,16 @@ class KITTI_Raw(data.Dataset):
             vision_transforms.ToPILImage(),
             vision_transforms.transforms.ToTensor()
         ])
+
+        if seq is not None:
+            assert (seq in ["09", "10"])
+            pose_index = os.path.join(images_root, 'poses', f"{seq}.txt")
+            filename_list_pose = [line.rstrip().split(' ') for line in pose_index.readlines()]
+            gt_global_poses = np.loadtxt(fp).reshape(-1, 3, 4)
+            gt_global_poses = np.concatenate(
+                (gt_global_poses, np.zeros((gt_global_poses.shape[0], 1, 4))), 1)
+            gt_global_poses[:, 3, 3] = 1
+            
 
     def __getitem__(self, index):
         index = index % self._size
@@ -276,3 +288,29 @@ class KITTI_Raw_EigenSplit_Full(KITTI_Raw):
             crop_size=crop_size,
             num_examples=num_examples,
             index_file="index_txt/eigen_full.txt")
+
+
+class KITTI_Odom_Test(KITTI_Raw):
+    def __init__(self,
+                 args,
+                 root,
+                 seq,
+                 flip_augmentations=False,
+                 preprocessing_crop=False,
+                 crop_size=False,
+                 num_examples=-1):
+        
+        seq_dict = {"09":"index_txt/kitti_odom_09.txt", "10":"index_txt/kitti_odom_10.txt"}
+        assert (seq in seq_dict), "Sequence must be 9 or 10"
+        index_file = seq_dict[seq]
+
+        super(KITTI_Odom_Test, self).__init__(
+            args,
+            images_root=root,
+            flip_augmentations=flip_augmentations,
+            preprocessing_crop=preprocessing_crop,
+            crop_size=crop_size,
+            num_examples=num_examples,
+            index_file=index_file,
+            seq=seq
+        )
