@@ -90,7 +90,7 @@ class ResNetEncoder(nn.Module):
           conv(self.in_chs, self.in_chs, 3, 1, 1, 1, use_bn=use_bn))
 
         self.res_layers = nn.ModuleList()
-        for conv_ch in self.conv_chs[1:]:
+        for conv_ch in self.conv_chs:
             self.res_layers.append(self._make_layer(BasicBlock, conv_ch, 3, 2, 1, 1, use_bn=use_bn))
 
         if args.use_ppm:
