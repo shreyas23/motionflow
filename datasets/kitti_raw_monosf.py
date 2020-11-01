@@ -74,15 +74,21 @@ class KITTI_Raw(data.Dataset):
             vision_transforms.transforms.ToTensor()
         ])
 
-        # if seq is not None:
-        #     assert (seq in ["09", "10"])
-        #     pose_index = os.path.join(images_root, 'poses', f"{seq}.txt")
-        #     filename_list_pose = [line.rstrip().split(' ') for line in pose_index.readlines()]
-        #     gt_global_poses = np.loadtxt(fp).reshape(-1, 3, 4)
-        #     gt_global_poses = np.concatenate(
-        #         (gt_global_poses, np.zeros((gt_global_poses.shape[0], 1, 4))), 1)
-        #     gt_global_poses[:, 3, 3] = 1
-            
+        self.gt_pose_list = []
+
+        if seq is not None:
+            assert (seq in ["09", "10"])
+            pose_file_list = os.path.join(images_root, 'poses', f"{seq}.txt")
+            gt_global_poses = np.loadtxt(pose_file_list).reshape(-1, 3, 4)
+            gt_global_poses = np.concatenate(
+                (gt_global_poses, np.zeros((gt_global_poses.shape[0], 1, 4))), 1)
+            gt_global_poses[:, 3, 3] = 1
+
+            # gt_local_poses = []
+            for i in range(len(gt_global_poses)-1):
+                pose = np.linalg.inv(np.dot(np.linalg.inv(gt_global_poses[i + 1]), gt_global_poses[i]))
+                pose = pose[:3]
+                self.gt_pose_list.append(pose)
 
     def __getitem__(self, index):
         index = index % self._size
@@ -100,6 +106,8 @@ class KITTI_Raw(data.Dataset):
         k_r1 = torch.from_numpy(self.intrinsic_dict_r[datename]).float()
         cam_l2r = torch.from_numpy(self.cam_l2r[datename]).float()
         cam_r2l = torch.from_numpy(self.cam_r2l[datename]).float()
+
+        tgt_pose = self.gt_pose_list[index]
         
         # input size
         h_orig, w_orig, _ = img_list_np[0].shape
@@ -155,7 +163,8 @@ class KITTI_Raw(data.Dataset):
                 "input_k_l2": k_r1,
                 "input_k_r2": k_l1,
                 "input_cam_l2r": cam_l2r,
-                "input_cam_r2l": cam_r2l
+                "input_cam_r2l": cam_r2l,
+                "target_pose": tgt_pose
             }
             example_dict.update(common_dict)
 
@@ -170,7 +179,8 @@ class KITTI_Raw(data.Dataset):
                 "input_k_l2": k_l1,
                 "input_k_r2": k_r1,
                 "input_cam_l2r": cam_l2r,
-                "input_cam_r2l": cam_r2l
+                "input_cam_r2l": cam_r2l,
+                "target_pose": tgt_pose
             }
             example_dict.update(common_dict)
 
