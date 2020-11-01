@@ -26,6 +26,7 @@ class KITTI_Raw(data.Dataset):
         self._flip_augmentations = flip_augmentations
         self._preprocessing_crop = preprocessing_crop
         self._crop_size = crop_size
+        self.seq = seq
 
         path_dir = os.path.dirname(os.path.realpath(__file__))
         path_index_file = os.path.join(path_dir, index_file)
@@ -76,7 +77,7 @@ class KITTI_Raw(data.Dataset):
 
         self.gt_pose_list = []
 
-        if seq is not None:
+        if self.seq is not None:
             assert (seq in ["09", "10"])
             pose_file_list = os.path.join(images_root, 'poses', f"{seq}.txt")
             gt_global_poses = np.loadtxt(pose_file_list).reshape(-1, 3, 4)
@@ -107,8 +108,11 @@ class KITTI_Raw(data.Dataset):
         cam_l2r = torch.from_numpy(self.cam_l2r[datename]).float()
         cam_r2l = torch.from_numpy(self.cam_r2l[datename]).float()
 
-        tgt_pose = self.gt_pose_list[index]
-        
+        if self.seq is not None:
+            tgt_pose = self.gt_pose_list[index]
+        else:
+            tgt_pose = torch.cat([torch.eye(3), torch.zeros(3, 1)], dim=-1)
+
         # input size
         h_orig, w_orig, _ = img_list_np[0].shape
         input_im_size = torch.from_numpy(np.array([h_orig, w_orig])).float()
