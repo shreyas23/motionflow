@@ -588,7 +588,7 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
                      loss_dp_sum + \
                      loss_pose_sum * p_weight + \
                      loss_mask_sum * p_weight + \
-                     loss_mask_consensus_sum * self._mask_cons_w + \
+                     loss_mask_consensus_sum * p_weight * self._mask_cons_w + \
                      loss_lr_mask_sum * self._mask_lr_w + loss_static_cons_sum * self._static_cons_w 
 
         loss_dict = {}
