@@ -269,7 +269,7 @@ def train(gpu, args):
     elif args.lr_sched_type == 'step':
         print("Using step lr schedule")
         # milestones = [20, 25]
-        milestones = [5, 10, 12, 25]
+        milestones = [10, 20, 30]
         lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
             optimizer, milestones=milestones, gamma=args.lr_gamma)
     elif args.lr_sched_type == 'none':
