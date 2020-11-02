@@ -1,6 +1,6 @@
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --exp_dir="jointnet_mono_iter_eigen_test" \
-                 --exp_name="test_weight6" \
+                 --exp_name="test_weight7" \
                  --dataset_name="KITTI_EIGEN" \
                  --num_examples=-1 \
                  --model_name="scenenet_joint_mono_iter" \
@@ -29,7 +29,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --flow_diff_thresh=1e-3 &&
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --exp_dir="jointnet_mono_iter_eigen_test" \
-                 --exp_name="test_weight6" \
+                 --exp_name="test_weight7" \
                  --dataset_name="KITTI_EIGEN" \
                  --num_examples=-1 \
                  --model_name="scenenet_joint_mono_iter" \

@@ -246,6 +246,7 @@ class FlowDispPoseDecoder(nn.Module):
             conv(256, 128, use_bn=use_bn),
             conv(128, 128, use_bn=use_bn),
             conv(128, 96, use_bn=use_bn),
+            conv(96, 96, use_bn=use_bn),
             conv(96, 64, use_bn=use_bn),
             conv(64, 32, use_bn=use_bn)
         )
