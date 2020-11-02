@@ -244,25 +244,26 @@ class FlowDispPoseDecoder(nn.Module):
             conv(ch_in, 256, use_bn=use_bn),
             conv(256, 128, use_bn=use_bn),
             conv(128, 128, use_bn=use_bn),
+            conv(128, 128, use_bn=use_bn),
             conv(128, 96, use_bn=use_bn),
             conv(96, 64, use_bn=use_bn),
             conv(64, 32, use_bn=use_bn)
         )
 
-        self.conv_sf = conv(32, 3, use_relu=False)
-        self.conv_d1 = conv(32, 1, use_relu=False)
+        self.conv_sf = conv(32, 3, use_relu=False, use_bn=use_bn)
+        self.conv_d1 = conv(32, 1, use_relu=False, use_bn=use_bn)
 
         self.convs_pose = nn.Sequential(
             conv(32, 64, use_bn=use_bn),
             conv(64, 64, use_bn=use_bn),
-            conv(64, num_refs * 6, kernel_size=1, use_relu=False)
+            conv(64, num_refs * 6, kernel_size=1, use_relu=False, use_bn=use_bn)
         )
 
         if use_mask:
             self.convs_mask = nn.Sequential(
                 conv(32, 32, use_bn=use_bn),
                 conv(32, 16, use_bn=use_bn),
-                conv(16, 1, use_relu=False),
+                conv(16, 1, use_relu=False, use_bn=use_bn),
             )
 
     def forward(self, x):
