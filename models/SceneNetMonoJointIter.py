@@ -37,7 +37,7 @@ class SceneNetMonoJointIter(nn.Module):
             self.num_chs = [3, 32, 64, 96, 128, 192, 256]
             self.feature_pyramid_extractor = FeatureExtractor(self.num_chs, use_bn=args.use_bn)
         elif args.encoder_name == 'resnet':
-            self.num_chs = [3, 32, 32, 64, 128, 128]
+            self.num_chs = [3, 32, 64, 96, 128, 256]
             self.feature_pyramid_extractor = ResNetEncoder(args, in_chs=3, conv_chs=self.num_chs[1:], use_bn=args.use_bn)
         else:
             raise NotImplementedError
