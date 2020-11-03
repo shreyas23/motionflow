@@ -296,12 +296,12 @@ def train(gpu, args):
     curr_epoch = args.start_epoch
 
     if args.ckpt != "":
-        print(f"Loading model from {args.ckpt_fp} onto gpu: {gpu}")
+        print(f"Loading model from {args.ckpt} onto gpu: {gpu}")
         map_location = {'cuda:%d' % 0: 'cuda:%d' % rank}
         model.load_state_dict(
-            torch.load(args.ckpt_fp, map_location=map_location)['model'])
+            torch.load(args.ckpt, map_location=map_location)['model'])
         optimizer.load_state_dict(
-            torch.load(args.ckpt_fp, map_location=map_location)['optimizer'])
+            torch.load(args.ckpt, map_location=map_location)['optimizer'])
     elif args.start_epoch > 1:
         load_epoch = args.start_epoch - 1
         ckpt_fp = os.path.join(log_dir, f"{load_epoch}.ckpt")
