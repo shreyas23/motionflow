@@ -92,6 +92,7 @@ parser.add_argument('--resize_only', type=bool, default=False,
                     help='only do resize augmentation on input data')
 
 # weight params
+parser.add_argument('--fb_w', type=float, default=0.2, help='mask consensus weight')
 parser.add_argument('--sf_pts_w', type=float, default=0.2, help='mask consensus weight')
 parser.add_argument('--sf_sm_w', type=float, default=200, help='mask consensus weight')
 parser.add_argument('--pose_sm_w', type=float, default=200, help='mask consensus weight')
@@ -418,7 +419,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
             pose = output_dict['pose_b'].detach()
         else:
             pose = output_dict['pose_b'][0].detach()
-        print(f"Transformation matrices for epoch: {epoch}, {pose}")
+        print(f"Transformation matrices for epoch: {epoch}, {pose[0]}")
         if args.use_mask:
             mask = output_dict['mask_l2'][0].detach()
             census_mask = output_dict['census_masks_l2'][0].detach()
