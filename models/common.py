@@ -4,7 +4,8 @@ import torch.nn.functional as tf
 import math
 
 from utils.interpolation import interpolate2d_as
-from utils.sceneflow_util import pixel2pts_ms, pts2pixel_pose_ms
+from utils.sceneflow_util import pixel2pts_ms, pts2pixel_pose_ms, intrinsic_scale, disp2depth_kitti
+from utils.inverse_warp import inverse_warp
 
 
 """ some functions borrowed and modified from SENSE
@@ -47,17 +48,23 @@ class WarpingLayer_Pose(nn.Module):
         local_scale[:, 0] = h_x
         local_scale[:, 1] = w_x
 
-        pts1, k1_scale = pixel2pts_ms(k1, disp, local_scale / input_size)
-        _, coord1 = pts2pixel_pose_ms(k1_scale, pts1, None, [h_x, w_x], pose_mat=pose)
+        rel_scale = local_scale / input_size
+        k_scale = intrinsic_scale(k1, rel_scale[:, 0], rel_scale[:, 1])
+        depth = disp2depth_kitti(disp, k_scale[:, 0, 0])
+        x_warp, _, _, _, _ = inverse_warp(x, depth.squeeze(dim=1), None, k_scale, torch.inverse(k_scale), pose_mat=pose)
 
-        grid = coord1.transpose(1, 2).transpose(2, 3)
-        x_warp = tf.grid_sample(x, grid)
+        # pts1, k1_scale = pixel2pts_ms(k1, disp, local_scale / input_size)
+        # _, coord1 = pts2pixel_pose_ms(k1_scale, pts1, None, [h_x, w_x], pose_mat=pose)
 
-        mask = torch.ones_like(x, requires_grad=False)
-        mask = tf.grid_sample(mask, grid)
-        mask = (mask >= 1.0).float()
+        # grid = coord1.transpose(1, 2).transpose(2, 3)
+        # x_warp = tf.grid_sample(x, grid)
 
-        return x_warp * mask
+        # mask = torch.ones_like(x, requires_grad=False)
+        # mask = tf.grid_sample(mask, grid)
+        # mask = (mask >= 1.0).float()
+
+        # return x_warp * mask
+        return x_warp
 
 
 def flow_warp(x, flo):

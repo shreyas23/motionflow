@@ -137,6 +137,7 @@ class SceneNetMonoJointIter(nn.Module):
 
                 x2_warp = self.warping_layer_sf(x2, flow_f, disp_l1, k1, input_dict['aug_size'])
                 x1_warp = self.warping_layer_sf(x1, flow_b, disp_l2, k2, input_dict['aug_size'])
+
                 x2_warp_pose = self.warping_layer_pose(x2, pose_mat_f, disp_l1, k1, input_dict['aug_size'])
                 x1_warp_pose = self.warping_layer_pose(x1, pose_mat_b, disp_l2, k2, input_dict['aug_size'])
 

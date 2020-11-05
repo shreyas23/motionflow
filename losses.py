@@ -10,7 +10,7 @@ from utils.monodepth_eval import compute_errors, compute_d1_all
 from models.modules_sceneflow import WarpingLayer_Flow
 
 from utils.inverse_warp import inverse_warp, pose_vec2mat, flow_warp, pose2flow, pose2sceneflow
-from utils.sceneflow_util import pixel2pts_ms_depth
+from utils.sceneflow_util import pixel2pts_ms_depth, intrinsic_scale, disp2depth_kitti
 
 from pprint import pprint
 
@@ -292,6 +292,82 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
         return loss, reg_loss, sm_loss
 
     def pose_loss(self, 
+                  pose_f, pose_b, 
+                  disp_l1, disp_l2,
+                  disp_occ_l1, disp_occ_l2,
+                  k_l1_aug, k_l2_aug,
+                  img_l1_aug, img_l2_aug,
+                  aug_size, ii,
+                  mask_f=None, mask_b=None):
+
+        _, _, h_dp, w_dp = disp_l1.size()
+        disp_l1 = disp_l1 * w_dp
+        disp_l2 = disp_l2 * w_dp
+
+        ## scale
+        local_scale = torch.zeros_like(aug_size)
+        local_scale[:, 0] = h_dp
+        local_scale[:, 1] = w_dp
+
+        rel_scale = local_scale / aug_size
+        k1_scale = intrinsic_scale(k_l1_aug, rel_scale[:, 0], rel_scale[:, 1])
+        k2_scale = intrinsic_scale(k_l2_aug, rel_scale[:, 0], rel_scale[:, 1])
+
+        depth_l1 = disp2depth_kitti(disp_l1, k1_scale[:, 0, 0])
+        depth_l2 = disp2depth_kitti(disp_l2, k2_scale[:, 0, 0])
+        img_l1_warp, tgt_to_ref, pts2, pts2_tf, valid_points2 = inverse_warp(img_l1_aug, depth_l2.squeeze(dim=1), None, k2_scale, torch.inverse(k2_scale), pose_mat=pose_b)
+        img_l2_warp, ref_to_tgt, pts1, pts1_tf, valid_points1 = inverse_warp(img_l2_aug, depth_l1.squeeze(dim=1), None, k1_scale, torch.inverse(k1_scale), pose_mat=pose_f)
+
+        ref_to_tgt = ref_to_tgt.permute(0, 3, 1, 2)
+        tgt_to_ref = tgt_to_ref.permute(0, 3, 1, 2)
+
+        pts2_warp = reconstructPts(ref_to_tgt, pts2)
+        pts1_warp = reconstructPts(tgt_to_ref, pts1) 
+
+        flow_f = pose2flow(depth_l1.squeeze(dim=1), None, k1_scale, torch.inverse(k1_scale), pose_mat=pose_f)
+        flow_b = pose2flow(depth_l2.squeeze(dim=1), None, k2_scale, torch.inverse(k2_scale), pose_mat=pose_b)
+        occ_map_b = _adaptive_disocc_detection(flow_f).detach() * disp_occ_l2 * valid_points1
+        occ_map_f = _adaptive_disocc_detection(flow_b).detach() * disp_occ_l1 * valid_points2
+
+        img_diff1 = (_elementwise_l1(img_l1_aug, img_l2_warp) * (1.0 - self._ssim_w) + _SSIM(img_l1_aug, img_l2_warp) * self._ssim_w).mean(dim=1, keepdim=True)
+        if mask_f is not None:
+            img_diff1 = img_diff1 * mask_f
+        img_diff2 = (_elementwise_l1(img_l2_aug, img_l1_warp) * (1.0 - self._ssim_w) + _SSIM(img_l2_aug, img_l1_warp) * self._ssim_w).mean(dim=1, keepdim=True)
+        if mask_b is not None:
+            img_diff2 = img_diff2 * mask_b
+        loss_im1 = img_diff1[occ_map_f].mean()
+        loss_im2 = img_diff2[occ_map_b].mean()
+        img_diff1[~occ_map_f].detach_()
+        img_diff2[~occ_map_b].detach_()
+        loss_im = loss_im1 + loss_im2
+
+        ## Point reconstruction Loss
+        pts_norm1 = torch.norm(pts1, p=2, dim=1, keepdim=True)
+        pts_norm2 = torch.norm(pts2, p=2, dim=1, keepdim=True)
+        pts_diff1 = _elementwise_epe(pts1_tf, pts2_warp).mean(dim=1, keepdim=True) / (pts_norm1 + 1e-8)
+        if mask_f is not None:
+            pts_diff1 = pts_diff1 * mask_f
+        pts_diff2 = _elementwise_epe(pts2_tf, pts1_warp).mean(dim=1, keepdim=True) / (pts_norm2 + 1e-8)
+        if mask_b is not None:
+            pts_diff2 = pts_diff2 * mask_b
+        loss_pts1 = pts_diff1[occ_map_f].mean()
+        loss_pts2 = pts_diff2[occ_map_b].mean()
+        pts_diff1[~occ_map_f].detach_()
+        pts_diff2[~occ_map_b].detach_()
+        loss_pts = loss_pts1 + loss_pts2
+
+        ## 3D motion smoothness loss
+        sf_f = pose2sceneflow(depth_l1.squeeze(dim=1), None, torch.inverse(k1_scale), pose_mat=pose_f)
+        sf_b = pose2sceneflow(depth_l2.squeeze(dim=1), None, torch.inverse(k2_scale), pose_mat=pose_b)
+        loss_3d_s = ( (_smoothness_motion_2nd(sf_f, img_l1_aug, beta=10.0) / (pts_norm1 + 1e-8)).mean() + (_smoothness_motion_2nd(sf_b, img_l2_aug, beta=10.0) / (pts_norm2 + 1e-8)).mean() ) / (2 ** ii)
+
+        ## Loss Summnation
+        pose_loss = loss_im + self._pose_pts_w * loss_pts + self._pose_sm_w * loss_3d_s
+        
+        return pose_loss, loss_im, loss_pts, loss_3d_s, [img_diff1, img_diff2], occ_map_f, occ_map_b
+
+
+    def old_pose_loss(self, 
                   pose_f, pose_b, 
                   disp_l1, disp_l2,
                   disp_occ_l1, disp_occ_l2,

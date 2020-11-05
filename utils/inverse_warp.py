@@ -1,6 +1,3 @@
-# Author: Anurag Ranjan
-# Copyright (c) 2019, Anurag Ranjan
-# All rights reserved.
 # based on github.com/ClementPinard/SfMLearner-Pytorch
 
 from __future__ import division
@@ -290,7 +287,7 @@ def occlusion_mask(grid, depth):
     return mask
 
 
-def inverse_warp(img, depth, pose, intrinsics, intrinsics_inv, rotation_mode='euler', padding_mode='zeros'):
+def inverse_warp(img, depth, pose, intrinsics, intrinsics_inv, rotation_mode='euler', padding_mode='zeros', pose_mat=None):
     """
     Inverse warp a source image to the target image plane.
 
@@ -303,23 +300,30 @@ def inverse_warp(img, depth, pose, intrinsics, intrinsics_inv, rotation_mode='eu
     Returns:
         Source image warped to the target image plane
     """
-    check_sizes(img, 'img', 'B3HW')
+    # check_sizes(img, 'img', 'B3HW')
     check_sizes(depth, 'depth', 'BHW')
-    check_sizes(pose, 'pose', 'B6')
+    # check_sizes(pose, 'pose', 'B6')
     check_sizes(intrinsics, 'intrinsics', 'B33')
     check_sizes(intrinsics_inv, 'intrinsics', 'B33')
 
     assert(intrinsics_inv.size() == intrinsics.size())
 
-    batch_size, _, img_height, img_width = img.size()
+    batch_size, _, h, w = img.size()
 
     cam_coords = pixel2cam(depth, intrinsics_inv)  # [B,3,H,W]
-    pose_mat = pose_vec2mat(pose, rotation_mode)  # [B,3,4]
+
+    proj_cam_coords = torch.bmm(pose_mat, torch.cat([cam_coords.view(batch_size, 3, h*w), 
+                                            torch.ones(batch_size, 1, h*w).to(device=cam_coords.device, dtype=cam_coords.dtype)], dim=1))
+    proj_cam_coords = proj_cam_coords.view(batch_size, 3, h, w)
+
+    if pose is not None and pose_mat is None:
+        pose_mat = pose_vec2mat(pose, rotation_mode)  # [B,3,4]
 
     # Get projection matrix for tgt camera frame to source pixel frame
     proj_cam_to_src_pixel = intrinsics.bmm(pose_mat)  # [B, 3, 4]
 
     src_pixel_coords = cam2pixel(cam_coords, proj_cam_to_src_pixel[:,:,:3], proj_cam_to_src_pixel[:,:,-1:], padding_mode)  # [B,H,W,2]
     projected_img = torch.nn.functional.grid_sample(img, src_pixel_coords, padding_mode=padding_mode)
+    valid_points = src_pixel_coords.abs().max(dim=-1)[0] <= 1
 
-    return projected_img
+    return projected_img, src_pixel_coords, cam_coords, proj_cam_coords, valid_points
