@@ -12,7 +12,7 @@ from sys import exit
 def add_pose(pose_mat, pose_res):
     b, _, _ = pose_mat.shape
     pose_mat_res = pose_vec2mat(pose_res)
-    pose_mat_full = torch.cat([pose_mat, torch.zeros(b, 1, 4)], dim=1)
+    pose_mat_full = torch.cat([pose_mat, torch.zeros(b, 1, 4).cuda()], dim=1)
     return torch.bmm(pose_mat_res, pose_mat_full)
 
 
@@ -131,7 +131,7 @@ def pts2pixel_pose_ms(intrinsic, pts, pose, disp_size, pose_mat=None):
     if pose is not None and pose_mat is None:
         pose_mat = pose_vec2mat(pose)
 
-    pts_tform = torch.bmm(pose_mat, torch.cat([pts.view((b, 3, -1)), torch.ones((b, 1, h*w)).cuda()], dim=1))
+    pts_tform = torch.bmm(pose_mat, torch.cat([pts.view((b, 3, -1)), torch.ones((b, 1, h*w)).cuda()], dim=1)) # Bx3x4
     pts_tform = pts_tform.view((b, 3, h, w))
     coord = pts2pixel(pts_tform, intrinsic)
     norm_coord_w = coord[:, 0:1, :, :] / (disp_size[1] - 1) * 2 - 1
