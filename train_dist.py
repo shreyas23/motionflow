@@ -513,12 +513,8 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
         writer.add_images('img_l1_warp', img_l1_warp, epoch)
 
         # camera pose
-        # if args.model_name == 'scenenet_joint':
-        if 'iter' in args.model_name:
-            _, coord2 = pts2pixel_pose_ms(k2_scale, pts2, None, [h_dp, w_dp], pose_mat=pose)
-        else:
-            _, coord2 = pts2pixel_pose_ms(k2_scale, pts2, pose, [h_dp, w_dp])
-        img_l1_warp_cam = reconstructImg(coord2, img_l1_aug)
+        depth_l2 = disp2depth_kitti(disp_l2, k2_scale[:, 0, 0])
+        img_l1_warp_cam, _, _, _, _ = inverse_warp(img_l1_aug, depth_l2.squeeze(dim=1), None, k2_scale, torch.inverse(k2_scale), pose_mat=pose_b)
         writer.add_images('img_l1_warp_cam', img_l1_warp_cam, epoch)
 
     elif args.model_name in ['depth']:
