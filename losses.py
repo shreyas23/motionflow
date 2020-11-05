@@ -326,8 +326,8 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
 
         flow_f = pose2flow(depth_l1.squeeze(dim=1), None, k1_scale, torch.inverse(k1_scale), pose_mat=pose_f)
         flow_b = pose2flow(depth_l2.squeeze(dim=1), None, k2_scale, torch.inverse(k2_scale), pose_mat=pose_b)
-        occ_map_b = _adaptive_disocc_detection(flow_f).detach() * disp_occ_l2 * valid_points1
-        occ_map_f = _adaptive_disocc_detection(flow_b).detach() * disp_occ_l1 * valid_points2
+        occ_map_b = _adaptive_disocc_detection(flow_f).detach() * disp_occ_l2 * valid_points1.unsqueeze(dim=1)
+        occ_map_f = _adaptive_disocc_detection(flow_b).detach() * disp_occ_l1 * valid_points2.unsqueeze(dim=1)
 
         img_diff1 = (_elementwise_l1(img_l1_aug, img_l2_warp) * (1.0 - self._ssim_w) + _SSIM(img_l1_aug, img_l2_warp) * self._ssim_w).mean(dim=1, keepdim=True)
         if mask_f is not None:
