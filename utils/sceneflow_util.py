@@ -10,12 +10,10 @@ from sys import exit
 
 
 def add_pose(pose_mat, pose_res):
+    b, _, _ = pose_mat.shape
     pose_mat_res = pose_vec2mat(pose_res)
-    R = torch.bmm(pose_mat_res[:, :, :-1], pose_mat[:, :, :-1])
-    t = pose_mat_res[:, :, -1:] + pose_mat[:, :, -1:]
-    pose_mat = torch.cat([R, t], dim=-1)
-
-    return pose_mat 
+    pose_mat_full = torch.cat([pose_mat, torch.zeros(b, 1, 4)], dim=1)
+    return torch.bmm(pose_mat_res, pose_mat_full)
 
 
 def pose_process_flow(pose_sf, sf, pose_err, sf_err):
