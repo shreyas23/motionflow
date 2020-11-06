@@ -73,7 +73,7 @@ class SceneNetMonoJointIter(nn.Module):
         logging.info("Initializing weights")
         for layer in self.modules():
             if isinstance(layer, nn.Conv2d) or isinstance(layer, nn.ConvTranspose2d):
-                nn.init.kaiming_normal_(layer.weight, mode='fan_out')
+                nn.init.kaiming_normal_(layer.weight)
                 if layer.bias is not None:
                     nn.init.constant_(layer.bias, 0)
 
