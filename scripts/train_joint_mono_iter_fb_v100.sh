@@ -1,4 +1,4 @@
-python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
+python3 train.py --data_root="/mnt/data/kitti_jpg/" \
                  --exp_dir="mono_iter_fb" \
                  --exp_name="v4" \
                  --dataset_name="KITTI_EIGEN" \

@@ -48,23 +48,22 @@ class WarpingLayer_Pose(nn.Module):
         local_scale[:, 0] = h_x
         local_scale[:, 1] = w_x
 
-        rel_scale = local_scale / input_size
-        k_scale = intrinsic_scale(k1, rel_scale[:, 0], rel_scale[:, 1])
-        depth = disp2depth_kitti(disp, k_scale[:, 0, 0])
-        x_warp, _, _, _, _ = inverse_warp(x, depth.squeeze(dim=1), None, k_scale, torch.inverse(k_scale), pose_mat=pose)
+        # rel_scale = local_scale / input_size
+        # k_scale = intrinsic_scale(k1, rel_scale[:, 0], rel_scale[:, 1])
+        # depth = disp2depth_kitti(disp, k_scale[:, 0, 0])
+        # x_warp, _, _, _, _ = inverse_warp(x, depth.squeeze(dim=1), None, k_scale, torch.inverse(k_scale), pose_mat=pose)
 
-        # pts1, k1_scale = pixel2pts_ms(k1, disp, local_scale / input_size)
-        # _, coord1 = pts2pixel_pose_ms(k1_scale, pts1, None, [h_x, w_x], pose_mat=pose)
+        pts1, k1_scale = pixel2pts_ms(k1, disp, local_scale / input_size)
+        _, coord1 = pts2pixel_pose_ms(k1_scale, pts1, None, [h_x, w_x], pose_mat=pose)
 
-        # grid = coord1.transpose(1, 2).transpose(2, 3)
-        # x_warp = tf.grid_sample(x, grid)
+        grid = coord1.transpose(1, 2).transpose(2, 3)
+        x_warp = tf.grid_sample(x, grid)
 
-        # mask = torch.ones_like(x, requires_grad=False)
-        # mask = tf.grid_sample(mask, grid)
-        # mask = (mask >= 1.0).float()
+        mask = torch.ones_like(x, requires_grad=False)
+        mask = tf.grid_sample(mask, grid)
+        mask = (mask >= 1.0).float()
 
-        # return x_warp * mask
-        return x_warp
+        return x_warp * mask
 
 
 def flow_warp(x, flo):
