@@ -629,7 +629,7 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
             loss_sf_sm = loss_sf_sm + loss_3d_s
             loss_sf_fb_sum = loss_sf_fb_sum + loss_sceneflow_fb
             
-            loss_pose, loss_pose_im, loss_pose_pts, loss_pose_3d_s, pose_diffs, pose_occ_f, pose_occ_b = self.old_pose_loss(pose_f, pose_b,
+            loss_pose, loss_pose_im, loss_pose_pts, loss_pose_3d_s, pose_diffs, pose_occ_f, pose_occ_b = self.pose_loss(pose_f, pose_b,
                                                                                                                 disp_l1, disp_l2,
                                                                                                                 disp_occ_l1, disp_occ_l2,
                                                                                                                 k_l1_aug, k_l2_aug,
@@ -641,7 +641,7 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
             inv_pose_f = torch.cat([pose_f[:, :3, :3].transpose(1, 2), torch.bmm(pose_f[:, :3, :3].transpose(1, 2), -pose_f[:, :, -1:])], dim=-1)
             inv_pose_b = torch.cat([pose_b[:, :3, :3].transpose(1, 2), torch.bmm(pose_b[:, :3, :3].transpose(1, 2), -pose_b[:, :, -1:])], dim=-1)
 
-            loss_pose_fb, _, _, _, _, _, _= self.old_pose_loss(inv_pose_b, inv_pose_f,
+            loss_pose_fb, _, _, _, _, _, _= self.pose_loss(inv_pose_b, inv_pose_f,
                                                            disp_l1, disp_l2,
                                                            disp_occ_l1, disp_occ_l2,
                                                            k_l1_aug, k_l2_aug,
