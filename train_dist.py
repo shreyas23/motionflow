@@ -79,6 +79,8 @@ parser.add_argument('--model_name', type=str,
                     default="scenenet", help="name of model")
 parser.add_argument('--encoder_name', type=str, default="pwc",
                     help="which encoder to use for Scene Net")
+parser.add_argument('--decoder_type', type=str, default="full",
+                    help="which decoder to use for Scene Net")
 
 # dataset params
 parser.add_argument('--dataset_name', default='KITTI', help='KITTI or Eigen')

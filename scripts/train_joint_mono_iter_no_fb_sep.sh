@@ -1,6 +1,6 @@
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
-                 --exp_dir="mono_iter_fb" \
-                 --exp_name="v6" \
+                 --exp_dir="mono_iter_no_fb" \
+                 --exp_name="v2" \
                  --dataset_name="KITTI_EIGEN" \
                  --num_examples=-1 \
                  --model_name="scenenet_joint_mono_iter" \
@@ -27,7 +27,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --mask_lr_w=0.0 \
                  --mask_cons_w=0.0 \
                  --static_cons_w=0.0 \
-                 --fb_w=0.2 \
+                 --fb_w=0.0 \
                  --flow_diff_thresh=1e-3
 # python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
 #                  --exp_dir="mono_iter_fb" \

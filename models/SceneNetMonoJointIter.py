@@ -14,7 +14,7 @@ from .modules_sceneflow import initialize_msra, upsample_outputs_as
 from .modules_sceneflow import upconv
 
 from .encoders import FeatureExtractor, ResNetEncoder
-from .decoders import PoseNet, PoseExpNet, MotionNet, FlowDispPoseDecoder, JointContextNetwork
+from .decoders import PoseNet, PoseExpNet, MotionNet, FlowDispPoseDecoder, JointContextNetwork, FlowDispPoseDecoderFull, JointContextNetworkFull
 
 from .common import WarpingLayer_Pose
 from utils.inverse_warp import pose_vec2mat
@@ -59,12 +59,20 @@ class SceneNetMonoJointIter(nn.Module):
                 num_ch_in = self.dim_corr + self.dim_corr + ch + ch + 32 + 3 + 1 + 6 + 1
                 self.upconv_layers.append(upconv(32, 32, 3, 2))
 
-            layer_sf = FlowDispPoseDecoder(num_ch_in, use_bn=args.use_bn)
+            if args.decoder_type == "full": 
+                layer_sf = FlowDispPoseDecoderFull(num_ch_in, use_bn=args.use_bn)
+            else:
+                layer_sf = FlowDispPoseDecoder(num_ch_in, use_bn=args.use_bn)
+
             self.flow_estimators.append(layer_sf)
 
         self.corr_params = {"pad_size": self.search_range, "kernel_size": 1, "max_disp": self.search_range, "stride1": 1, "stride2": 1, "corr_multiply": 1}        
 
-        self.context_networks = JointContextNetwork(32 + 3 + 1 + 6 + 1, use_bn=args.use_bn)
+        if args.decoder_type == 'full': 
+            self.context_networks = JointContextNetworkFull(32 + 3 + 1 + 6 + 1, use_bn=args.use_bn)
+        else:
+            self.context_networks = JointContextNetwork(32 + 3 + 1 + 6 + 1, use_bn=args.use_bn)
+
         self.sigmoid = torch.nn.Sigmoid()
 
         self.initialize_weights()
