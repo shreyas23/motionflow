@@ -234,6 +234,90 @@ class FlowDispDecoder(nn.Module):
     return x_out, sf, disp1
 
 
+#class FlowDispPoseDecoder(nn.Module):
+#    def __init__(self, ch_in, num_refs=1, use_mask=True, use_bn=False):
+#        super(FlowDispPoseDecoder, self).__init__()
+#
+#        self.use_mask = use_mask
+#
+#        self.convs = nn.Sequential(
+#            conv(ch_in, 256, use_bn=use_bn),
+#            conv(256, 256, use_bn=use_bn),
+#            conv(256, 128, use_bn=use_bn),
+#            conv(128, 128, use_bn=use_bn),
+#            conv(128, 96, use_bn=use_bn),
+#            conv(96, 96, use_bn=use_bn),
+#            conv(96, 64, use_bn=use_bn),
+#            conv(64, 32, use_bn=use_bn)
+#        )
+#
+#        self.conv_sf = conv(32, 3, use_relu=False)
+#        self.conv_d1 = conv(32, 1, use_relu=False)
+#
+#        self.convs_pose = conv(32, num_refs * 6, kernel_size=1, use_relu=False)
+#
+#        if use_mask:
+#            self.convs_mask = conv(32, 1, use_relu=False)
+#
+#    def forward(self, x):
+#        x_out = self.convs(x)
+#        sf = self.conv_sf(x_out)
+#        disp1 = self.conv_d1(x_out)
+#        pose_out = self.convs_pose(x_out)
+#        pred_pose = pose_out.mean(3).mean(2) * 0.01
+#
+#        if self.use_mask:
+#            mask = self.convs_mask(x_out)
+#        else:
+#            mask = None
+#
+#        return x_out, sf, disp1, mask, pred_pose, pose_out
+#
+#
+#class JointContextNetwork(nn.Module):
+#    def __init__(self, ch_in, num_refs = 1, use_mask=True, use_bn=False):
+#        super(JointContextNetwork, self).__init__()
+#
+#        self.use_mask = use_mask
+#
+#        self.convs = nn.Sequential(
+#            conv(ch_in, 256, 3, 1, 1, use_bn=use_bn),
+#            conv(256, 128, 3, 1, 2, use_bn=use_bn),
+#            conv(128, 128, 3, 1, 4, use_bn=use_bn),
+#            conv(128, 96, 3, 1, 8, use_bn=use_bn),
+#            conv(96, 64, 3, 1, 16, use_bn=use_bn),
+#            conv(64, 32, 3, 1, 1, use_bn=use_bn)
+#        )
+#
+#        self.conv_sf = conv(32, 3, use_relu=False)
+#        self.conv_d1 = nn.Sequential(
+#            conv(32, 1, use_relu=False),
+#            torch.nn.Sigmoid()
+#        )
+#        self.convs_pose = conv(32, num_refs * 6, kernel_size=1, use_relu=False)
+#
+#        if use_mask:
+#            self.convs_mask = nn.Sequential(
+#                conv(32, 1, use_relu=False),
+#                torch.nn.Sigmoid()
+#            )
+#
+#    def forward(self, x):
+#
+#        x_out = self.convs(x)
+#        sf = self.conv_sf(x_out)
+#        disp1 = self.conv_d1(x_out) * 0.3
+#
+#        pose_out = self.convs_pose(x_out)
+#        pred_pose = pose_out.mean(3).mean(2) * 0.01
+#
+#        if self.use_mask:
+#            mask = self.convs_mask(x_out)
+#        else:
+#            mask = None
+#
+#        return sf, disp1, mask, pred_pose
+
 class FlowDispPoseDecoder(nn.Module):
     def __init__(self, ch_in, num_refs=1, use_mask=True, use_bn=False):
         super(FlowDispPoseDecoder, self).__init__()
@@ -242,11 +326,9 @@ class FlowDispPoseDecoder(nn.Module):
 
         self.convs = nn.Sequential(
             conv(ch_in, 256, use_bn=use_bn),
-            conv(256, 256, use_bn=use_bn),
             conv(256, 128, use_bn=use_bn),
             conv(128, 128, use_bn=use_bn),
             conv(128, 96, use_bn=use_bn),
-            conv(96, 96, use_bn=use_bn),
             conv(96, 64, use_bn=use_bn),
             conv(64, 32, use_bn=use_bn)
         )
@@ -254,10 +336,16 @@ class FlowDispPoseDecoder(nn.Module):
         self.conv_sf = conv(32, 3, use_relu=False)
         self.conv_d1 = conv(32, 1, use_relu=False)
 
-        self.convs_pose = conv(32, num_refs * 6, kernel_size=1, use_relu=False)
+        self.convs_pose = nn.Sequential(
+            conv(32, 64, use_bn=use_bn),
+            conv(64, num_refs * 6, kernel_size=1, use_relu=False)
+        )
 
         if use_mask:
-            self.convs_mask = conv(32, 1, use_relu=False)
+            self.convs_mask = nn.Sequential(
+                conv(32, 16, use_bn=use_bn),
+                conv(16, 1, use_relu=False),
+            )
 
     def forward(self, x):
         x_out = self.convs(x)
@@ -281,8 +369,8 @@ class JointContextNetwork(nn.Module):
         self.use_mask = use_mask
 
         self.convs = nn.Sequential(
-            conv(ch_in, 256, 3, 1, 1, use_bn=use_bn),
-            conv(256, 128, 3, 1, 2, use_bn=use_bn),
+            conv(ch_in, 128, 3, 1, 1, use_bn=use_bn),
+            conv(128, 128, 3, 1, 2, use_bn=use_bn),
             conv(128, 128, 3, 1, 4, use_bn=use_bn),
             conv(128, 96, 3, 1, 8, use_bn=use_bn),
             conv(96, 64, 3, 1, 16, use_bn=use_bn),
@@ -294,11 +382,17 @@ class JointContextNetwork(nn.Module):
             conv(32, 1, use_relu=False),
             torch.nn.Sigmoid()
         )
-        self.convs_pose = conv(32, num_refs * 6, kernel_size=1, use_relu=False)
+        self.convs_pose = nn.Sequential(
+            conv(32, 32, use_bn=use_bn),
+            conv(32, 16, use_bn=use_bn),
+            conv(16, num_refs * 6, kernel_size=1, use_relu=False)
+        )
 
         if use_mask:
             self.convs_mask = nn.Sequential(
-                conv(32, 1, use_relu=False),
+                conv(32, 32, use_bn=use_bn),
+                conv(32, 16, use_bn=use_bn),
+                conv(16, 1, use_relu=False),
                 torch.nn.Sigmoid()
             )
 
@@ -317,97 +411,3 @@ class JointContextNetwork(nn.Module):
             mask = None
 
         return sf, disp1, mask, pred_pose
-
-# class FlowDispPoseDecoder(nn.Module):
-#     def __init__(self, ch_in, num_refs=1, use_mask=True, use_bn=False):
-#         super(FlowDispPoseDecoder, self).__init__()
-# 
-#         self.use_mask = use_mask
-# 
-#         self.convs = nn.Sequential(
-#             conv(ch_in, 256, use_bn=use_bn),
-#             conv(256, 128, use_bn=use_bn),
-#             conv(128, 128, use_bn=use_bn),
-#             conv(128, 96, use_bn=use_bn),
-#             conv(96, 64, use_bn=use_bn),
-#             conv(64, 32, use_bn=use_bn)
-#         )
-# 
-#         self.conv_sf = conv(32, 3, use_relu=False)
-#         self.conv_d1 = conv(32, 1, use_relu=False)
-# 
-#         self.convs_pose = nn.Sequential(
-#             conv(32, 64, use_bn=use_bn),
-#             conv(64, num_refs * 6, kernel_size=1, use_relu=False)
-#         )
-# 
-#         if use_mask:
-#             self.convs_mask = nn.Sequential(
-#                 conv(32, 16, use_bn=use_bn),
-#                 conv(16, 1, use_relu=False),
-#             )
-# 
-#     def forward(self, x):
-#         x_out = self.convs(x)
-#         sf = self.conv_sf(x_out)
-#         disp1 = self.conv_d1(x_out)
-#         pose_out = self.convs_pose(x_out)
-#         pred_pose = pose_out.mean(3).mean(2) * 0.01
-# 
-#         if self.use_mask:
-#             mask = self.convs_mask(x_out)
-#         else:
-#             mask = None
-# 
-#         return x_out, sf, disp1, mask, pred_pose, pose_out
-# 
-# 
-# class JointContextNetwork(nn.Module):
-#     def __init__(self, ch_in, num_refs = 1, use_mask=True, use_bn=False):
-#         super(JointContextNetwork, self).__init__()
-# 
-#         self.use_mask = use_mask
-# 
-#         self.convs = nn.Sequential(
-#             conv(ch_in, 128, 3, 1, 1, use_bn=use_bn),
-#             conv(128, 128, 3, 1, 2, use_bn=use_bn),
-#             conv(128, 128, 3, 1, 4, use_bn=use_bn),
-#             conv(128, 96, 3, 1, 8, use_bn=use_bn),
-#             conv(96, 64, 3, 1, 16, use_bn=use_bn),
-#             conv(64, 32, 3, 1, 1, use_bn=use_bn)
-#         )
-# 
-#         self.conv_sf = conv(32, 3, use_relu=False)
-#         self.conv_d1 = nn.Sequential(
-#             conv(32, 1, use_relu=False),
-#             torch.nn.Sigmoid()
-#         )
-#         self.convs_pose = nn.Sequential(
-#             conv(32, 32, use_bn=use_bn),
-#             conv(32, 16, use_bn=use_bn),
-#             conv(16, num_refs * 6, kernel_size=1, use_relu=False)
-#         )
-# 
-#         if use_mask:
-#             self.convs_mask = nn.Sequential(
-#                 conv(32, 32, use_bn=use_bn),
-#                 conv(32, 16, use_bn=use_bn),
-#                 conv(16, 1, use_relu=False),
-#                 torch.nn.Sigmoid()
-#             )
-# 
-#     def forward(self, x):
-# 
-#         x_out = self.convs(x)
-#         sf = self.conv_sf(x_out)
-#         disp1 = self.conv_d1(x_out) * 0.3
-# 
-#         pose_out = self.convs_pose(x_out)
-#         pred_pose = pose_out.mean(3).mean(2) * 0.01
-# 
-#         if self.use_mask:
-#             mask = self.convs_mask(x_out)
-#         else:
-#             mask = None
-# 
-#         return sf, disp1, mask, pred_pose
