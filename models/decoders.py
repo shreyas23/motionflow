@@ -248,16 +248,27 @@ class FlowDispPoseDecoder(nn.Module):
             conv(128, 96, use_bn=use_bn),
             conv(96, 96, use_bn=use_bn),
             conv(96, 64, use_bn=use_bn),
-            conv(64, 32, use_bn=use_bn)
         )
 
-        self.conv_sf = conv(32, 3, use_relu=False)
-        self.conv_d1 = conv(32, 1, use_relu=False)
+        self.conv_sf = nn.Sequential(
+            conv(64, 32, use_bn=use_bn),
+            conv(32, 3, use_relu=False, use_bn=False),
+        )
+        # self.conv_sf = conv(32, 3, use_relu=False)
 
-        self.convs_pose = conv(32, num_refs * 6, kernel_size=1, use_relu=False)
+        self.conv_d1 = nn.Sequential(
+            conv(64, 32, use_bn=use_bn),
+            conv(32, 1, use_relu=False, use_bn=False),
+        )
+        # self.conv_d1 = conv(32, 1, use_relu=False)
+
+        self.convs_pose = conv(64, num_refs * 6, kernel_size=1, use_relu=False, use_bn=False)
 
         if use_mask:
-            self.convs_mask = conv(32, 1, use_relu=False)
+            self.convs_mask = nn.Sequential(
+                conv(64, 32, use_bn=use_bn),
+                conv(32, 1, use_relu=False, use_bn=False),
+            )
 
     def forward(self, x):
         x_out = self.convs(x)
@@ -286,8 +297,8 @@ class JointContextNetwork(nn.Module):
             conv(128, 128, 3, 1, 4, use_bn=use_bn),
             conv(128, 96, 3, 1, 8, use_bn=use_bn),
             conv(96, 64, 3, 1, 16, use_bn=use_bn),
-            conv(64, 32, 3, 1, 1, use_bn=use_bn)
         )
+        self.final_conv = conv(64, 32, 3, 1, 1, use_bn=use_bn)
 
         self.conv_sf = conv(32, 3, use_relu=False)
         self.conv_d1 = nn.Sequential(
@@ -305,14 +316,15 @@ class JointContextNetwork(nn.Module):
     def forward(self, x):
 
         x_out = self.convs(x)
-        sf = self.conv_sf(x_out)
-        disp1 = self.conv_d1(x_out) * 0.3
+        x_final = self.final_conv(x_out)
+        sf = self.conv_sf(x_final)
+        disp1 = self.conv_d1(x_final) * 0.3
 
         pose_out = self.convs_pose(x_out)
         pred_pose = pose_out.mean(3).mean(2) * 0.01
 
         if self.use_mask:
-            mask = self.convs_mask(x_out)
+            mask = self.convs_mask(x_final)
         else:
             mask = None
 
