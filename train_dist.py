@@ -362,6 +362,9 @@ def train(gpu, args):
                     if epoch % args.save_freq == 0 or epoch == args.epochs:
                         torch.save({'model': model.state_dict(), 'optimizer': optimizer.state_dict()}, fp)
 
+                with open(os.path.join(log_dir, 'training_log.txt'), 'a') as f:
+                    json.dump(train_loss_avg_dict, f, indent=2)
+
             if args.save_freq > 0:
                 if epoch % args.save_freq == 0:
 
