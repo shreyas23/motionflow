@@ -241,12 +241,11 @@ class FlowDispPoseDecoderFull(nn.Module):
         self.use_mask = use_mask
 
         self.convs = nn.Sequential(
-            conv(ch_in, 256, use_bn=use_bn),
-            conv(256, 256, use_bn=use_bn),
-            conv(256, 128, use_bn=use_bn),
-            conv(128, 128, use_bn=use_bn),
+            conv(ch_in, 512, use_bn=use_bn),
+            conv(512, 256, use_bn=use_bn),
+            conv(256, 192, use_bn=use_bn),
+            conv(192, 128, use_bn=use_bn),
             conv(128, 96, use_bn=use_bn),
-            conv(96, 96, use_bn=use_bn),
             conv(96, 64, use_bn=use_bn),
             conv(64, 32, use_bn=use_bn)
         )
@@ -281,9 +280,9 @@ class JointContextNetworkFull(nn.Module):
         self.use_mask = use_mask
 
         self.convs = nn.Sequential(
-            conv(ch_in, 256, 3, 1, 1, use_bn=use_bn),
-            conv(256, 128, 3, 1, 2, use_bn=use_bn),
-            conv(128, 128, 3, 1, 4, use_bn=use_bn),
+            conv(ch_in, 512, 3, 1, 1, use_bn=use_bn),
+            conv(512, 256, 3, 1, 2, use_bn=use_bn),
+            conv(256, 128, 3, 1, 4, use_bn=use_bn),
             conv(128, 96, 3, 1, 8, use_bn=use_bn),
             conv(96, 64, 3, 1, 16, use_bn=use_bn),
             conv(64, 32, 3, 1, 1, use_bn=use_bn)
