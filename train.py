@@ -215,7 +215,7 @@ def main():
   print("Loding model and augmentations and placing on gpu...")
 
   if args.cuda:
-      loss = loss.cuda()
+    loss = loss.cuda()
     if augmentations is not None:
         augmentations = augmentations.cuda()
     
