@@ -63,7 +63,7 @@ class WarpingLayer_Pose(nn.Module):
         mask = tf.grid_sample(mask, grid)
         mask = (mask >= 1.0).float()
 
-        return x_warp # * mask
+        return x_warp * mask
 
 
 def flow_warp(x, flo):
