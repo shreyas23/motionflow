@@ -1,6 +1,6 @@
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --exp_dir="mono_iter_fb" \
-                 --exp_name="v6" \
+                 --exp_name="v5" \
                  --dataset_name="KITTI_EIGEN" \
                  --num_examples=-1 \
                  --model_name="scenenet_joint_mono_iter" \
