@@ -651,7 +651,7 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
         p_weight = max_val / p_loss
 
         total_loss = loss_sf_sum * f_weight + \
-                     loss_dp_sum + \
+                     loss_dp_sum * d_weight + \
                      loss_pose_sum * p_weight + \
                      loss_mask_sum * p_weight + \
                      loss_mask_consensus_sum * p_weight * self._mask_cons_w + \
