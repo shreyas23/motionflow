@@ -109,6 +109,9 @@ parser.add_argument('--static_cons_w', type=float, default=0.0, help='mask conse
 parser.add_argument('--mask_cons_w', type=float, default=0.0, help='mask consensus weight')
 parser.add_argument('--flow_diff_thresh', type=float, default=1e-3, help='mask consensus weight')
 
+parser.add_argument('--use_flow_mask', type=bool, default=False,
+                    help='only do resize augmentation on input data')
+
 # learning params
 parser.add_argument('--lr', type=float, default=2e-4,
                     help='initial learning rate')
