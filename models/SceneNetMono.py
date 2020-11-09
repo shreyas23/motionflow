@@ -21,9 +21,9 @@ from utils.sceneflow_util import flow_horizontal_flip, intrinsic_scale, get_pixe
 from utils.inverse_warp import pose_vec2mat
 
 
-class SceneNetStereo(nn.Module):
+class SceneNetMono(nn.Module):
     def __init__(self, args):
-        super(SceneNetStereo, self).__init__()
+        super(SceneNetMono, self).__init__()
 
         self._args = args
         self.num_chs = [3, 32, 64, 96, 128, 192, 256]
@@ -39,8 +39,8 @@ class SceneNetStereo(nn.Module):
         self.flow_estimators = nn.ModuleList()
         self.upconv_layers = nn.ModuleList()
 
+        self.corr_params = {"pad_size": self.search_range, "kernel_size": 1, "max_disp": self.search_range, "stride1": 1, "stride2": 1, "corr_multiply": 1}        
         self.dim_corr = (self.search_range * 2 + 1) ** 2
-        self.disp_range = 192
 
         for l, ch in enumerate(self.num_chs[::-1]):
             if l > self.output_level:

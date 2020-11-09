@@ -26,22 +26,17 @@ from augmentations import Augmentation_SceneFlow, Augmentation_Resize_Only
 
 from datasets.kitti_raw_monosf import KITTI_Raw_KittiSplit_Train, KITTI_Raw_KittiSplit_Valid, KITTI_Raw_EigenSplit_Train, KITTI_Raw_EigenSplit_Valid
 
-from models.SceneNet import SceneNet
-from models.SceneNetStereo import SceneNetStereo
-from models.SceneNetStereoJoint import SceneNetStereoJoint
+from models.SceneNetMono import SceneNetMono
 from models.SceneNetStereoJointIter import SceneNetStereoJointIter
 from models.SceneNetMonoJointIter import SceneNetMonoJointIter
 from models.SceneNetMonoJoint import SceneNetMonoJoint
-from models.model_monosceneflow import MonoSceneFlow
-from models.PoseDepthNet import PoseDispNet
 
 from utils.inverse_warp import flow_warp, pose2flow, inverse_warp, pose_vec2mat
 from utils.sceneflow_util import projectSceneFlow2Flow, disp2depth_kitti, reconstructImg
 from utils.sceneflow_util import pixel2pts_ms, pts2pixel_ms, pts2pixel_pose_ms, pixel2pts_ms_depth
 
-from losses import Loss_SceneFlow_SelfSup_Joint, Loss_SceneFlow_SelfSup_JointIter
+from losses import Loss_SceneFlow_SelfSup_Joint, Loss_SceneFlow_SelfSup_JointIter, Loss_SceneFlow_SelfSup_Separate
 from losses import _generate_image_left, _adaptive_disocc_detection
-from losses import Loss_PoseDepth
 
 
 parser = argparse.ArgumentParser(description="Self Supervised Joint Learning of Scene Flow, Disparity, Rigid Camera Motion, and Motion Segmentation",
@@ -196,17 +191,11 @@ def train(gpu, args):
     DATA_ROOT = args.data_root
 
     print(f"Loading model onto gpu: {gpu}")
-    if args.model_name == 'scenenet_pose_mono':
-        model = SceneNet(args).cuda(device=gpu)
-        loss = Loss_SceneFlow_SelfSup_Joint(args)
-    elif args.model_name == 'scenenet_pose_stereo':
-        model = SceneNetStereo(args).cuda(device=gpu)
-        loss = Loss_SceneFlow_SelfSup_Joint(args)
-    elif args.model_name == 'scenenet_joint_mono':
+    if args.model_name == 'scenenet_mono_separate':
+        model = SceneNetMono(args).cuda(device=gpu)
+        loss = Loss_SceneFlow_SelfSup_Separate(args)
+    elif args.model_name == 'scenenet_mono_joint':
         model = SceneNetMonoJoint(args).cuda(device=gpu)
-        loss = Loss_SceneFlow_SelfSup_Joint(args)
-    elif args.model_name == 'scenenet_joint_stereo':
-        model = SceneNetStereoJoint(args).cuda(device=gpu)
         loss = Loss_SceneFlow_SelfSup_Joint(args)
     elif args.model_name == 'scenenet_joint_stereo_iter':
         model = SceneNetStereoJointIter(args).cuda(device=gpu)
@@ -214,9 +203,6 @@ def train(gpu, args):
     elif args.model_name == 'scenenet_joint_mono_iter':
         model = SceneNetMonoJointIter(args).cuda(device=gpu)
         loss = Loss_SceneFlow_SelfSup_JointIter(args)
-    elif args.model_name == 'posedepth':
-        model = PoseDispNet(args).cuda(device=gpu)
-        loss = Loss_PoseDepth()
     else:
         raise NotImplementedError
 

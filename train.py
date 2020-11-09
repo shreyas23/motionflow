@@ -21,8 +21,7 @@ from augmentations import Augmentation_SceneFlow, Augmentation_Resize_Only
 
 from datasets.kitti_raw_monosf import KITTI_Raw_KittiSplit_Train, KITTI_Raw_KittiSplit_Valid
 
-from models.SceneNet import SceneNet
-from models.SceneNetStereo import SceneNetStereo
+from models.SceneNetMono import SceneNetMono
 from models.SceneNetMonoJoint import SceneNetMonoJoint
 from models.SceneNetStereoJoint import SceneNetStereoJoint
 from models.SceneNetStereoJointIter import SceneNetStereoJointIter
@@ -34,7 +33,7 @@ from utils.inverse_warp import flow_warp, pose2flow, inverse_warp, pose_vec2mat
 from utils.sceneflow_util import projectSceneFlow2Flow, disp2depth_kitti, reconstructImg
 from utils.sceneflow_util import pixel2pts_ms, pts2pixel_ms, pts2pixel_pose_ms, pixel2pts_ms_depth
 
-from losses import Loss_SceneFlow_SelfSup_JointIter, Loss_SceneFlow_SelfSup_Joint
+from losses import Loss_SceneFlow_SelfSup_JointIter, Loss_SceneFlow_SelfSup_Joint, Loss_SceneFlow_SelfSup_Separate
 # from losses import Loss_SceneFlow_SelfSup_Pose, Loss_SceneFlow_SelfSup_JointIter
 # from losses import Loss_SceneFlow_SelfSup, Loss_SceneFlow_SelfSup_Pose, Loss_SceneFlow_SelfSup_PoseStereo, Loss_SceneFlow_SelfSup_JointStereo
 from losses import _generate_image_left, _adaptive_disocc_detection
@@ -174,20 +173,19 @@ def main():
   # load the dataset/dataloader
   print("Loading dataset and dataloaders...")
   if DATASET_NAME == 'KITTI':
-    if args.model_name == 'scenenet_joint_iter':
-      model = SceneNetMonoJointIter(args)
+    if args.model_name == 'scenenet_mono_separate':
+      model = SceneNetMono(args).cuda()
+      loss = Loss_SceneFlow_SelfSup_Separate(args)
+    elif args.model_name == 'scenenet_mono_joint':
+      model = SceneNetMonoJoint(args).cuda()
+      loss = Loss_SceneFlow_SelfSup_Joint(args)
+    elif args.model_name == 'scenenet_joint_stereo_iter':
+      model = SceneNetStereoJointIter(args).cuda()
       loss = Loss_SceneFlow_SelfSup_JointIter(args)
-    elif args.model_name == 'scenenet_joint_mono':
-      model = SceneNetMonoJoint(args)
-      loss = Loss_SceneFlow_SelfSup_Joint(args)
-    elif args.model_name == 'scenenet_joint_stereo':
-      model = SceneNetStereoJoint(args)
-      loss = Loss_SceneFlow_SelfSup_Joint(args)
-    elif args.model_name == 'posedepth':
-      model = PoseDispNet(args)
-      loss = Loss_PoseDepth()
+    elif args.model_name == 'scenenet_joint_mono_iter':
+      model = SceneNetMonoJointIter(args).cuda()
+      loss = Loss_SceneFlow_SelfSup_JointIter(args)
     else:
-      print(args.model_name)
       raise NotImplementedError
 
     # define dataset
