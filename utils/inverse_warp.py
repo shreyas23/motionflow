@@ -312,12 +312,12 @@ def inverse_warp(img, depth, pose, intrinsics, intrinsics_inv, rotation_mode='eu
 
     cam_coords = pixel2cam(depth, intrinsics_inv)  # [B,3,H,W]
 
+    if pose is not None and pose_mat is None:
+        pose_mat = pose_vec2mat(pose, rotation_mode)  # [B,3,4]
+
     proj_cam_coords = torch.bmm(pose_mat, torch.cat([cam_coords.view(batch_size, 3, h*w), 
                                             torch.ones(batch_size, 1, h*w).to(device=cam_coords.device, dtype=cam_coords.dtype)], dim=1))
     proj_cam_coords = proj_cam_coords.view(batch_size, 3, h, w)
-
-    if pose is not None and pose_mat is None:
-        pose_mat = pose_vec2mat(pose, rotation_mode)  # [B,3,4]
 
     # Get projection matrix for tgt camera frame to source pixel frame
     proj_cam_to_src_pixel = intrinsics.bmm(pose_mat)  # [B, 3, 4]
