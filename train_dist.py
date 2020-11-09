@@ -339,14 +339,14 @@ def train(gpu, args):
                 if val_dataset is not None:
                     for k, v in val_loss_avg_dict.items():
                         writer.add_scalar(f'loss/val/{k}', v.item(), epoch)
-                if epoch % args.log_freq == 0:
-                    visualize_output(args, input_dict, output_dict, epoch, writer)
-
-                writer.flush()
 
                 if args.save_freq > 0:
                     if epoch % args.save_freq == 0 or epoch == args.epochs:
                         torch.save({'model': model.state_dict(), 'optimizer': optimizer.state_dict()}, fp)
+
+                if epoch % args.log_freq == 0:
+                    visualize_output(args, input_dict, output_dict, epoch, writer)
+                    writer.flush()
 
             if args.save_freq > 0:
                 if epoch % args.save_freq == 0:
