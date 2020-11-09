@@ -1,4 +1,4 @@
-python3 train.py --data_root="/mnt/data/kitti_jpg/" \
+python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --exp_dir="final" \
                  --exp_name="ablation_separate_net" \
                  --dataset_name="KITTI_EIGEN" \
