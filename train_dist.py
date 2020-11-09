@@ -476,7 +476,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     # if args.model_name in ['scenenet', 'scenenet_stereo', 'scenenet_joint']:
     if 'scenenet' in args.model_name:
         sf_b = output_dict['flow_b'][0].detach()
-        if args.model_name == 'scenenet_stereo':
+        if 'separate' in args.model_name:
             pose = output_dict['pose_b'].detach()
         else:
             pose = output_dict['pose_b'][0].detach()
