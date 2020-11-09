@@ -176,7 +176,7 @@ def main():
     if args.model_name == 'scenenet_mono_separate':
       model = SceneNetMono(args).cuda()
       loss = Loss_SceneFlow_SelfSup_Separate(args)
-    elif args.model_name == 'scenenet_mono_joint':
+    elif args.model_name == 'scenenet_joint_mono':
       model = SceneNetMonoJoint(args).cuda()
       loss = Loss_SceneFlow_SelfSup_Joint(args)
     elif args.model_name == 'scenenet_joint_stereo_iter':
