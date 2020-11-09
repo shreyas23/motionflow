@@ -28,6 +28,7 @@ from models.SceneNetStereoJointIter import SceneNetStereoJointIter
 from models.SceneNetMonoJointIter import SceneNetMonoJointIter
 from models.model_monosceneflow import MonoSceneFlow
 from models.PoseDepthNet import PoseDispNet
+from models.MonoIterNoCV import MonoIterNoCV
 
 from utils.inverse_warp import flow_warp, pose2flow, inverse_warp, pose_vec2mat
 from utils.sceneflow_util import projectSceneFlow2Flow, disp2depth_kitti, reconstructImg
@@ -184,6 +185,9 @@ def main():
       loss = Loss_SceneFlow_SelfSup_JointIter(args)
     elif args.model_name == 'scenenet_joint_mono_iter':
       model = SceneNetMonoJointIter(args).cuda()
+      loss = Loss_SceneFlow_SelfSup_JointIter(args)
+    elif args.model_name == 'no_cv':
+      model = MonoIterNoCV(args).cuda()
       loss = Loss_SceneFlow_SelfSup_JointIter(args)
     else:
       raise NotImplementedError
