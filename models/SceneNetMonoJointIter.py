@@ -15,6 +15,7 @@ from .modules_sceneflow import upconv
 
 from .encoders import FeatureExtractor, ResNetEncoder
 from .decoders import PoseNet, PoseExpNet, MotionNet, FlowDispPoseDecoder, JointContextNetwork, FlowDispPoseDecoderFull, JointContextNetworkFull
+from .decoders import JointContextNetworkSmall, FlowDispPoseDecoderSmall
 
 from .common import WarpingLayer_Pose
 from utils.inverse_warp import pose_vec2mat
@@ -61,6 +62,8 @@ class SceneNetMonoJointIter(nn.Module):
 
             if args.decoder_type == "full": 
                 layer_sf = FlowDispPoseDecoderFull(num_ch_in, use_bn=args.use_bn)
+            elif args.decoder_type == "small":
+                layer_sf = FlowDispPoseDecoderSmall(num_ch_in, use_bn=args.use_bn)
             else:
                 layer_sf = FlowDispPoseDecoder(num_ch_in, use_bn=args.use_bn)
 
@@ -70,6 +73,8 @@ class SceneNetMonoJointIter(nn.Module):
 
         if args.decoder_type == 'full': 
             self.context_networks = JointContextNetworkFull(32 + 3 + 1 + 6 + 1, use_bn=args.use_bn)
+        elif args.decoder_type == "small":
+            self.context_networks = JointContextNetworkSmall(32 + 3 + 1 + 6 + 1, use_bn=args.use_bn)
         else:
             self.context_networks = JointContextNetwork(32 + 3 + 1 + 6 + 1, use_bn=args.use_bn)
 
