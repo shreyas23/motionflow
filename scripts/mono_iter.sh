@@ -1,10 +1,10 @@
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --exp_dir="final" \
-                 --exp_name="mono_iter" \
+                 --exp_name="mono_iter_fix" \
                  --dataset_name="KITTI_EIGEN" \
                  --num_examples=-1 \
                  --model_name="scenenet_joint_mono_iter" \
-                 --decoder_type="small" \
+                 --decoder_type="full" \
                  --start_epoch=1 \
                  --epochs=60 \
                  --batch_size=4 \
