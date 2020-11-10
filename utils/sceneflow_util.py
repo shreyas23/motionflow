@@ -12,7 +12,8 @@ from sys import exit
 def add_pose(pose_mat, pose_res):
     b, _, _ = pose_mat.shape
     pose_mat_res = pose_vec2mat(pose_res)
-    pose_mat_full = torch.cat([pose_mat, torch.ones(b, 1, 4).cuda()], dim=1)
+    pose_mat_full = torch.cat([pose_mat, torch.zeros(b, 1, 4).to(device=pose_mat.device)], dim=1)
+    pose_mat_full[:, -1, -1] = 1
     return torch.bmm(pose_mat_res, pose_mat_full)
 
 
