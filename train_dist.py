@@ -204,7 +204,7 @@ def train(gpu, args):
     elif args.model_name == 'scenenet_joint_mono_iter':
         model = SceneNetMonoJointIter(args).cuda(device=gpu)
         loss = Loss_SceneFlow_SelfSup_JointIter(args)
-    elif args.model_name == 'scenenet_no_cv':
+    elif args.model_name == 'scenenet_iter_no_cv':
         model = MonoIterNoCV(args).cuda(device=gpu)
         loss = Loss_SceneFlow_SelfSup_JointIter(args)
     else:
