@@ -27,5 +27,5 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --mask_lr_w=0.0 \
                  --mask_cons_w=0.0 \
                  --static_cons_w=0.0 \
-                 --fb_w=0.0 \
+                 --fb_w=0.2 \
                  --flow_diff_thresh=1e-3
