@@ -96,7 +96,6 @@ class SceneNetMonoJointIter(nn.Module):
             elif isinstance(layer, nn.Sequential):
                 pass
 
-
     def run_pwc(self, input_dict, x1_raw, x2_raw, k1, k2):
             
         output_dict = {}
