@@ -307,7 +307,7 @@ class JointContextNetworkSmall(nn.Module):
         disp1 = self.conv_d1(x_out) * 0.3
 
         pose_out = self.convs_pose(x_out)
-        pred_pose = pose_out.mean(3).mean(2) * 0.01
+        pred_pose = pose_out.mean(3).mean(2) * 0.1
 
         if self.use_mask:
             mask = self.convs_mask(x_out)
@@ -348,7 +348,7 @@ class FlowDispPoseDecoderFull(nn.Module):
         pred_pose = pose_out.mean(3).mean(2)
 
         if self.use_mask:
-            mask = self.convs_mask(x_out)
+            mask = self.convs_mask(x_out) * 0.1
         else:
             mask = None
 
@@ -390,7 +390,7 @@ class JointContextNetworkFull(nn.Module):
         disp1 = self.conv_d1(x_out) * 0.3
 
         pose_out = self.convs_pose(x_out)
-        pred_pose = pose_out.mean(3).mean(2)
+        pred_pose = pose_out.mean(3).mean(2) * 0.1
 
         if self.use_mask:
             mask = self.convs_mask(x_out)
