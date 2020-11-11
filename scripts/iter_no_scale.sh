@@ -2,6 +2,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --exp_dir="final" \
                  --exp_name="iter_no_scale" \
                  --dataset_name="KITTI_EIGEN" \
+                 --resize_only=True \
                  --num_examples=-1 \
                  --model_name="scenenet_joint_mono_iter" \
                  --decoder_type="full" \
