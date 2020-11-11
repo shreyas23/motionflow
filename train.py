@@ -19,7 +19,7 @@ import torch.distributed as dist
 
 from augmentations import Augmentation_SceneFlow, Augmentation_Resize_Only
 
-from datasets.kitti_raw_monosf import KITTI_Raw_KittiSplit_Train, KITTI_Raw_KittiSplit_Valid
+from datasets.kitti_raw_monosf import KITTI_Raw_KittiSplit_Train, KITTI_Raw_KittiSplit_Valid, KITTI_Raw_EigenSplit_Train, KITTI_Raw_EigenSplit_Valid
 
 from models.SceneNetMono import SceneNetMono
 from models.SceneNetMonoJoint import SceneNetMonoJoint
@@ -174,44 +174,52 @@ def main():
   # load the dataset/dataloader
   print("Loading dataset and dataloaders...")
   if DATASET_NAME == 'KITTI':
-    if args.model_name == 'scenenet_mono_separate':
-      model = SceneNetMono(args).cuda()
-      loss = Loss_SceneFlow_SelfSup_Separate(args)
-    elif args.model_name == 'scenenet_joint_mono':
-      model = SceneNetMonoJoint(args).cuda()
-      loss = Loss_SceneFlow_SelfSup_Joint(args)
-    elif args.model_name == 'scenenet_joint_stereo_iter':
-      model = SceneNetStereoJointIter(args).cuda()
-      loss = Loss_SceneFlow_SelfSup_JointIter(args)
-    elif args.model_name == 'scenenet_joint_mono_iter':
-      model = SceneNetMonoJointIter(args).cuda()
-      loss = Loss_SceneFlow_SelfSup_JointIter(args)
-    elif args.model_name == 'no_cv':
-      model = MonoIterNoCV(args).cuda()
-      loss = Loss_SceneFlow_SelfSup_JointIter(args)
-    else:
+      train_dataset = KITTI_Raw_KittiSplit_Train(args, DATA_ROOT, num_examples=args.num_examples)
+      train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=args.shuffle, num_workers=args.num_workers, pin_memory=True)
+      if args.validate:
+          val_dataset = KITTI_Raw_KittiSplit_Valid(args, DATA_ROOT)
+          val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True) if val_dataset else None
+      else:
+          val_dataset = None
+          val_dataloader = None
+
+  elif DATASET_NAME == 'KITTI_EIGEN':
+      train_dataset = KITTI_Raw_EigenSplit_Train(args, DATA_ROOT, num_examples=args.num_examples)
+      train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=args.shuffle, num_workers=args.num_workers, pin_memory=True)
+      if args.validate:
+          val_dataset = KITTI_Raw_EigenSplit_Valid(args, DATA_ROOT)
+          val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True) if val_dataset else None
+      else:
+          val_dataset = None
+          val_dataloader = None
+  else:
       raise NotImplementedError
 
-    # define dataset
-    train_dataset = KITTI_Raw_KittiSplit_Train(
-        args, DATA_ROOT, num_examples=args.num_examples)
-    train_dataloader = DataLoader(train_dataset, args.batch_size,
-                                  shuffle=args.shuffle, num_workers=args.num_workers, pin_memory=True)
-    val_dataset = KITTI_Raw_KittiSplit_Valid(
-        args, DATA_ROOT, num_examples=args.num_examples)
-    val_dataset=None
+  if args.model_name == 'scenenet_mono_separate':
+      model = SceneNetMono(args).cuda()
+      loss = Loss_SceneFlow_SelfSup_Separate(args)
+  elif args.model_name == 'scenenet_joint_mono':
+      model = SceneNetMonoJoint(args).cuda()
+      loss = Loss_SceneFlow_SelfSup_Joint(args)
+  elif args.model_name == 'scenenet_joint_stereo_iter':
+      model = SceneNetStereoJointIter(args).cuda()
+      loss = Loss_SceneFlow_SelfSup_JointIter(args)
+  elif args.model_name == 'scenenet_joint_mono_iter':
+      model = SceneNetMonoJointIter(args).cuda()
+      loss = Loss_SceneFlow_SelfSup_JointIter(args)
+  elif args.model_name == 'scenenet_iter_no_cv':
+      model = MonoIterNoCV(args).cuda()
+      loss = Loss_SceneFlow_SelfSup_JointIter(args)
+  else:
+      raise NotImplementedError
 
-    val_dataloader = DataLoader(val_dataset, 4, shuffle=False, num_workers=args.num_workers, pin_memory=True) if val_dataset else None
-
-    # define augmentations
-    if args.resize_only:
+  # define augmentations
+  if args.resize_only:
       print("Augmentations: Augmentation_Resize_Only")
       augmentations = Augmentation_Resize_Only(args, photometric=False)
-    else:
+  else:
       print("Augmentations: Augmentation_SceneFlow")
       augmentations = Augmentation_SceneFlow(args)
-  else:
-    raise NotImplementedError
 
   # load the model
   print("Loding model and augmentations and placing on gpu...")
