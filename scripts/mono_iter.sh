@@ -1,9 +1,10 @@
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
-                 --exp_dir="final" \
-                 --exp_name="mono_iter_fix" \
+                 --exp_dir="mono_iter_no_scale" \
+                 --exp_name="" \
                  --dataset_name="KITTI_EIGEN" \
                  --num_examples=-1 \
                  --model_name="scenenet_joint_mono_iter" \
+                 --encoder_name="pwc" \
                  --decoder_type="small" \
                  --start_epoch=1 \
                  --epochs=60 \
