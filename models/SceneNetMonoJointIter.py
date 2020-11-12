@@ -96,6 +96,13 @@ class SceneNetMonoJointIter(nn.Module):
             elif isinstance(layer, nn.Sequential):
                 pass
 
+        for decoder in self.flow_estimators:
+            for layer in decoder.convs_pose:
+                if isinstance(layer, nn.Conv2d) or isinstance(layer, nn.ConvTranspose2d):
+                    nn.init.zeros_(layer.weight)
+                    if layer.bias is not None:
+                        nn.init.zeros_(layer.bias)
+
     def run_pwc(self, input_dict, x1_raw, x2_raw, k1, k2):
             
         output_dict = {}
