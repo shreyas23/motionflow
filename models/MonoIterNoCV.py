@@ -53,9 +53,9 @@ class MonoIterNoCV(nn.Module):
             if l > self.output_level:
                 break
             if l == 0:
-                num_ch_in = self.dim_corr + ch + ch
+                num_ch_in = self.dim_corr + ch
             else:
-                num_ch_in = self.dim_corr + ch + ch + 32 + 3 + 1 + 6 + 1
+                num_ch_in = self.dim_corr + ch + 32 + 3 + 1 + 6 + 1
                 self.upconv_layers.append(upconv(32, 32, 3, 2))
 
             if args.decoder_type == "full": 
@@ -119,7 +119,6 @@ class MonoIterNoCV(nn.Module):
             if l == 0:
                 x2_warp = x2
                 x1_warp = x1
-
             else:
                 flow_f = interpolate2d_as(flow_f, x1, mode="bilinear")
                 flow_b = interpolate2d_as(flow_b, x1, mode="bilinear")
@@ -143,15 +142,15 @@ class MonoIterNoCV(nn.Module):
 
             # monosf estimator
             if l == 0:
-                x1_out, flow_f, disp_l1, mask_l1, pose_f, pose_f_out = self.flow_estimators[l](torch.cat([out_corr_relu_f, x1, x2], dim=1))
-                x2_out, flow_b, disp_l2, mask_l2, pose_b, pose_b_out = self.flow_estimators[l](torch.cat([out_corr_relu_b, x2, x1], dim=1))
+                x1_out, flow_f, disp_l1, mask_l1, pose_f, pose_f_out = self.flow_estimators[l](torch.cat([out_corr_relu_f, x1], dim=1))
+                x2_out, flow_b, disp_l2, mask_l2, pose_b, pose_b_out = self.flow_estimators[l](torch.cat([out_corr_relu_b, x2], dim=1))
                 pose_mat_f = pose_vec2mat(pose_f)
                 pose_mat_b = pose_vec2mat(pose_b)
             else:
                 x1_out, flow_f_res, disp_l1, mask_l1, pose_f_res, pose_f_out = self.flow_estimators[l](torch.cat([
-                    out_corr_relu_f, x1, x2, x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
+                    out_corr_relu_f, x1, x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
                 x2_out, flow_b_res, disp_l2, mask_l2, pose_b_res, pose_b_out = self.flow_estimators[l](torch.cat([
-                    out_corr_relu_b, x2, x1, x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
+                    out_corr_relu_b, x2, x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
 
                 flow_f = flow_f + flow_f_res
                 flow_b = flow_b + flow_b_res
