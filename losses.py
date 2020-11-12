@@ -525,7 +525,7 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
             if self._use_flow_mask:
                 flow_mask_l1 = (1.0 - mask_l1)
                 flow_mask_l2 = (1.0 - mask_l2)
-            else:             
+            else:
                 flow_mask_l1 = None
                 flow_mask_l2 = None
 
@@ -1554,8 +1554,8 @@ class Loss_SceneFlow_SelfSup_Separate(nn.Module):
 
             # static consistency sum
             if self._static_cons_w > 0.0 or self._mask_cons_w > 0.0:
-                loss_static_cons_f, flow_diff_f = static_cons_loss(mask_l1, sf_f, None, disp_l1, flow_occ_f, pose_occ_f, disp_occ_l1, k_l1_aug, aug_size, pose_mat=pose_f)
-                loss_static_cons_b, flow_diff_b = static_cons_loss(mask_l2, sf_b, None, disp_l2, flow_occ_b, pose_occ_b, disp_occ_l2, k_l2_aug, aug_size, pose_mat=pose_b)
+                loss_static_cons_f, flow_diff_f = static_cons_loss(mask_l1, sf_f, pose_f, disp_l1, flow_occ_f, pose_occ_f, disp_occ_l1, k_l1_aug, aug_size, pose_mat=None)
+                loss_static_cons_b, flow_diff_b = static_cons_loss(mask_l2, sf_b, pose_b, disp_l2, flow_occ_b, pose_occ_b, disp_occ_l2, k_l2_aug, aug_size, pose_mat=None)
             else:
                 loss_static_cons_f, flow_diff_f = torch.tensor(0), None
                 loss_static_cons_b, flow_diff_b = torch.tensor(0), None
