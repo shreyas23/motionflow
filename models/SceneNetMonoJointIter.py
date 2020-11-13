@@ -50,6 +50,8 @@ class SceneNetMonoJointIter(nn.Module):
         self.upconv_layers = nn.ModuleList()
 
         self.dim_corr = (self.search_range * 2 + 1) ** 2
+        
+        self.out_ch_size = 64
 
         for l, ch in enumerate(self.num_chs[::-1]):
             if l > self.output_level:
@@ -57,8 +59,8 @@ class SceneNetMonoJointIter(nn.Module):
             if l == 0:
                 num_ch_in = self.dim_corr + self.dim_corr + ch
             else:
-                num_ch_in = self.dim_corr + self.dim_corr + ch + 32 + 3 + 1 + 6 + 1
-                self.upconv_layers.append(upconv(32, 32, 3, 2))
+                num_ch_in = self.dim_corr + self.dim_corr + ch + self.out_ch_size + 3 + 1 + 6 + 1
+                self.upconv_layers.append(upconv(self.out_ch_size, self.out_ch_size, 3, 2))
 
             if args.decoder_type == "full": 
                 layer_sf = FlowDispPoseDecoderFull(num_ch_in, use_bn=args.use_bn)
@@ -72,11 +74,11 @@ class SceneNetMonoJointIter(nn.Module):
         self.corr_params = {"pad_size": self.search_range, "kernel_size": 1, "max_disp": self.search_range, "stride1": 1, "stride2": 1, "corr_multiply": 1}        
 
         if args.decoder_type == 'full': 
-            self.context_networks = JointContextNetworkFull(32 + 3 + 1 + 6 + 1, use_bn=args.use_bn)
+            self.context_networks = JointContextNetworkFull(self.out_ch_size + 3 + 1 + 6 + 1, use_bn=args.use_bn)
         elif args.decoder_type == "small":
-            self.context_networks = JointContextNetworkSmall(32 + 3 + 1 + 6 + 1, use_bn=args.use_bn)
+            self.context_networks = JointContextNetworkSmall(self.out_ch_size + 3 + 1 + 6 + 1, use_bn=args.use_bn)
         else:
-            self.context_networks = JointContextNetwork(32 + 3 + 1 + 6 + 1, use_bn=args.use_bn)
+            self.context_networks = JointContextNetwork(self.out_ch_size + 3 + 1 + 6 + 1, use_bn=args.use_bn)
 
         self.sigmoid = torch.nn.Sigmoid()
 
