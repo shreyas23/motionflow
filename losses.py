@@ -640,21 +640,21 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
             out_masks_l1.append(census_mask_l1)
 
         # finding weight
-        f_loss = loss_sf_sum.detach()
-        p_loss = loss_pose_sum.detach()
-        d_loss = loss_dp_sum.detach()
+        # f_loss = loss_sf_sum.detach()
+        # p_loss = loss_pose_sum.detach()
+        # d_loss = loss_dp_sum.detach()
 
-        max_val = torch.max(f_loss, torch.max(p_loss, d_loss))
+        # max_val = torch.max(f_loss, torch.max(p_loss, d_loss))
 
-        f_weight = max_val / f_loss
-        d_weight = max_val / d_loss
-        p_weight = max_val / p_loss
+        # f_weight = max_val / f_loss
+        # d_weight = max_val / d_loss
+        # p_weight = max_val / p_loss
 
-        total_loss = loss_sf_sum * f_weight + \
-                     loss_dp_sum * d_weight + \
-                     loss_pose_sum * p_weight + \
-                     loss_mask_sum * p_weight + \
-                     loss_mask_consensus_sum * p_weight * self._mask_cons_w + \
+        total_loss = loss_sf_sum + \
+                     loss_dp_sum + \
+                     loss_pose_sum  + \
+                     loss_mask_sum  + \
+                     loss_mask_consensus_sum * self._mask_cons_w + \
                      loss_lr_mask_sum * self._mask_lr_w + loss_static_cons_sum * self._static_cons_w
 
         loss_dict = {}
