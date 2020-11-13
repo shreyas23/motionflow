@@ -66,11 +66,6 @@ class PoseExpNet(nn.Module):
 
         if self.output_exp:
             upconv_planes = [256, 256, 128, 64, 32, 16]
-            # self.upconv5 = upconv(conv_planes[4],   upconv_planes[0], kernel_size=4, stride=2, use_bn=use_bn)
-            # self.upconv4 = upconv(upconv_planes[0], upconv_planes[1], kernel_size=4, stride=2, use_bn=use_bn)
-            # self.upconv3 = upconv(upconv_planes[1], upconv_planes[2], kernel_size=4, stride=2, use_bn=use_bn)
-            # self.upconv2 = upconv(upconv_planes[2], upconv_planes[3], kernel_size=4, stride=2, use_bn=use_bn)
-            # self.upconv1 = upconv(upconv_planes[3], upconv_planes[4], kernel_size=4, stride=2, use_bn=use_bn)
             self.upconv6 = upconv(conv_planes[5], upconv_planes[0], kernel_size=4, stride=2)
             self.upconv5 = upconv(upconv_planes[0]+conv_planes[4], upconv_planes[1], kernel_size=4, stride=2)
             self.upconv4 = upconv(upconv_planes[1]+conv_planes[3], upconv_planes[2], kernel_size=4, stride=2)
@@ -262,7 +257,7 @@ class FlowDispPoseDecoderSmall(nn.Module):
         sf = self.conv_sf(x_out)
         disp1 = self.conv_d1(x_out)
         pose_out = self.convs_pose(x_out)
-        pred_pose = pose_out.mean(3).mean(2) * 0.1
+        pred_pose = pose_out.mean(3).mean(2) * 0.01
 
         if self.use_mask:
             mask = self.convs_mask(x_out)
@@ -307,7 +302,7 @@ class JointContextNetworkSmall(nn.Module):
         disp1 = self.conv_d1(x_out) * 0.3
 
         pose_out = self.convs_pose(x_out)
-        pred_pose = pose_out.mean(3).mean(2) * 0.1
+        pred_pose = pose_out.mean(3).mean(2) * 0.01
 
         if self.use_mask:
             mask = self.convs_mask(x_out)
@@ -328,8 +323,8 @@ class FlowDispPoseDecoderFull(nn.Module):
             conv(256, 192, use_bn=use_bn),
             conv(192, 128, use_bn=use_bn),
             conv(128, 96, use_bn=use_bn),
-            conv(96, 64, use_bn=use_bn),
-            conv(64, 32, use_bn=use_bn)
+            conv(96, 96, use_bn=use_bn),
+            conv(96, 64, use_bn=use_bn)
         )
 
         self.conv_sf = conv(32, 3, use_relu=False, use_bn=False)
@@ -345,7 +340,7 @@ class FlowDispPoseDecoderFull(nn.Module):
         sf = self.conv_sf(x_out)
         disp1 = self.conv_d1(x_out)
         pose_out = self.convs_pose(x_out)
-        pred_pose = pose_out.mean(3).mean(2) * 0.1
+        pred_pose = pose_out.mean(3).mean(2)
 
         if self.use_mask:
             mask = self.convs_mask(x_out)
@@ -366,8 +361,8 @@ class JointContextNetworkFull(nn.Module):
             conv(512, 256, 3, 1, 2, use_bn=use_bn),
             conv(256, 128, 3, 1, 4, use_bn=use_bn),
             conv(128, 96, 3, 1, 8, use_bn=use_bn),
-            conv(96, 64, 3, 1, 16, use_bn=use_bn),
-            conv(64, 32, 3, 1, 1, use_bn=use_bn)
+            conv(96, 96, 3, 1, 16, use_bn=use_bn),
+            conv(96, 64, 3, 1, 1, use_bn=use_bn)
         )
 
         self.conv_sf = conv(32, 3, use_relu=False, use_bn=False)
@@ -390,7 +385,7 @@ class JointContextNetworkFull(nn.Module):
         disp1 = self.conv_d1(x_out) * 0.3
 
         pose_out = self.convs_pose(x_out)
-        pred_pose = pose_out.mean(3).mean(2) * 0.1
+        pred_pose = pose_out.mean(3).mean(2)
 
         if self.use_mask:
             mask = self.convs_mask(x_out)
