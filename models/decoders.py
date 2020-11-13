@@ -67,22 +67,22 @@ class PoseExpNet(nn.Module):
         if self.output_exp:
             upconv_planes = [256, 256, 128, 64, 32, 16]
             self.upconv6 = upconv(conv_planes[5], upconv_planes[0], kernel_size=4, stride=2)
-            self.upconv5 = upconv(upconv_planes[0]+conv_planes[4], upconv_planes[1], kernel_size=4, stride=2)
-            self.upconv4 = upconv(upconv_planes[1]+conv_planes[3], upconv_planes[2], kernel_size=4, stride=2)
-            self.upconv3 = upconv(upconv_planes[2]+conv_planes[2], upconv_planes[3], kernel_size=4, stride=2)
-            self.upconv2 = upconv(upconv_planes[3]+conv_planes[1], upconv_planes[4], kernel_size=4, stride=2)
-            self.upconv1 = upconv(upconv_planes[4]+conv_planes[0], upconv_planes[5], kernel_size=4, stride=2)
+            self.upconv5 = upconv(upconv_planes[0]+conv_planes[4], upconv_planes[1], kernel_size=4, stride=2, use_bn=use_bn)
+            self.upconv4 = upconv(upconv_planes[1]+conv_planes[3], upconv_planes[2], kernel_size=4, stride=2, use_bn=use_bn)
+            self.upconv3 = upconv(upconv_planes[2]+conv_planes[2], upconv_planes[3], kernel_size=4, stride=2, use_bn=use_bn)
+            self.upconv2 = upconv(upconv_planes[3]+conv_planes[1], upconv_planes[4], kernel_size=4, stride=2, use_bn=use_bn)
+            self.upconv1 = upconv(upconv_planes[4]+conv_planes[0], upconv_planes[5], kernel_size=4, stride=2, use_bn=use_bn)
 
-            self.predict_mask5 = nn.Conv2d(upconv_planes[1], self.nb_ref_imgs, kernel_size=3, padding=1)
-            self.predict_mask4 = nn.Conv2d(upconv_planes[2], self.nb_ref_imgs, kernel_size=3, padding=1)
-            self.predict_mask3 = nn.Conv2d(upconv_planes[3], self.nb_ref_imgs, kernel_size=3, padding=1)
-            self.predict_mask2 = nn.Conv2d(upconv_planes[4], self.nb_ref_imgs, kernel_size=3, padding=1)
-            self.predict_mask1 = nn.Conv2d(upconv_planes[5], self.nb_ref_imgs, kernel_size=3, padding=1)
+            self.predict_mask5 = conv(upconv_planes[1], self.nb_ref_imgs, kernel_size=3, padding=1, use_relu=False, use_bn=False)
+            self.predict_mask4 = conv(upconv_planes[2], self.nb_ref_imgs, kernel_size=3, padding=1, use_relu=False, use_bn=False)
+            self.predict_mask3 = conv(upconv_planes[3], self.nb_ref_imgs, kernel_size=3, padding=1, use_relu=False, use_bn=False)
+            self.predict_mask2 = conv(upconv_planes[4], self.nb_ref_imgs, kernel_size=3, padding=1, use_relu=False, use_bn=False)
+            self.predict_mask1 = conv(upconv_planes[5], self.nb_ref_imgs, kernel_size=3, padding=1, use_relu=False, use_bn=False)
 
     def init_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
-                nn.init.xavier_uniform_(m.weight.data)
+                nn.init.kaiming_normal_(m.weight.data)
                 if m.bias is not None:
                     m.bias.data.zero_()
 
@@ -340,7 +340,7 @@ class FlowDispPoseDecoderFull(nn.Module):
         sf = self.conv_sf(x_out)
         disp1 = self.conv_d1(x_out)
         pose_out = self.convs_pose(x_out)
-        pred_pose = pose_out.mean(3).mean(2)
+        pred_pose = pose_out.mean(3).mean(2) * 0.1
 
         if self.use_mask:
             mask = self.convs_mask(x_out)
@@ -385,7 +385,7 @@ class JointContextNetworkFull(nn.Module):
         disp1 = self.conv_d1(x_out) * 0.3
 
         pose_out = self.convs_pose(x_out)
-        pred_pose = pose_out.mean(3).mean(2)
+        pred_pose = pose_out.mean(3).mean(2) * 0.1
 
         if self.use_mask:
             mask = self.convs_mask(x_out)

@@ -28,11 +28,15 @@ def conv(in_chs, out_chs, kernel_size=3, stride=1, dilation=1, bias=True, use_re
   return nn.Sequential(*layers)
 
 
-def upconv(in_planes, out_planes, kernel_size=3, stride=1, padding=1):
-    return nn.Sequential(
-        nn.ConvTranspose2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding),
-        nn.LeakyReLU(0.1, inplace=True)
-    )
+def upconv(in_planes, out_planes, kernel_size=3, stride=1, padding=1, use_relu=True, use_bn=False):
+    layers = []
+    layers.append(nn.ConvTranspose2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding))
+    if use_bn:
+        layers.append(nn.BatchNorm2d(out_chs))
+    if use_relu:
+        layers.append(nn.LeakyReLU(0.1, inplace=True))
+
+    return nn.Sequential(*layers)
 
 
 class WarpingLayer_Pose(nn.Module):
