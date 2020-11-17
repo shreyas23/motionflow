@@ -1162,7 +1162,7 @@ class Loss_SceneFlow_SelfSup_Separate(nn.Module):
         self._args = args
         self._weights = [4.0, 2.0, 1.0, 1.0, 1.0]
 
-        self._ssim_w = 0.85
+        self._ssim_w = args.ssim_w
 
         # disp weights
         self._disp_sm_w = args.disp_sm_w

@@ -20,7 +20,7 @@ def sample_grid(x, grid):
 
 def invert_pose(pose):
     if pose.shape[-1] == 6:
-        pose_mat = pose_vec2mat(pose.squeeze)
+        pose_mat = pose_vec2mat(pose.squeeze(dim=1))
     else:
         pose_mat = pose
 

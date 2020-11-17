@@ -8,8 +8,6 @@ import logging
 from utils.interpolation import interpolate2d_as
 from utils.sceneflow_util import pixel2pts_ms, pts2pixel_ms
 
-from .common import conv
-
 def get_grid(x):
     grid_H = torch.linspace(-1.0, 1.0, x.size(3)).view(1, 1, 1, x.size(3)).expand(x.size(0), 1, x.size(2), x.size(3))
     grid_V = torch.linspace(-1.0, 1.0, x.size(2)).view(1, 1, x.size(2), 1).expand(x.size(0), 1, x.size(2), x.size(3))

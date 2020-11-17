@@ -19,13 +19,15 @@ class DispDecoder(nn.Module):
         self.scales = scales
 
         self.num_ch_enc = num_ch_enc
-        self.num_ch_dec = np.array([16, 32, 64, 128, 256])
+        self.num_ch_dec = np.array([16, 32, 64, 96, 128, 256])
+
+        self.test_conv = Conv(num_ch_enc[-1], num_ch_enc[-1], stride=2)
 
         # decoder
         self.convs = OrderedDict()
-        for i in range(4, -1, -1):
+        for i in range(5, -1, -1):
             # upconv_0
-            num_ch_in = self.num_ch_enc[-1] if i == 4 else self.num_ch_dec[i + 1]
+            num_ch_in = self.num_ch_enc[-1] if i == 5 else self.num_ch_dec[i + 1]
             num_ch_out = self.num_ch_dec[i]
             self.convs[("upconv", i, 0)] = Conv(num_ch_in, num_ch_out)
 
@@ -43,11 +45,12 @@ class DispDecoder(nn.Module):
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, input_features):
-        self.outputs = {}
+        self.outputs = []
 
         # decoder
         x = input_features[-1]
-        for i in range(4, -1, -1):
+        x = self.test_conv(x)
+        for i in range(5, -1, -1):
             x = self.convs[("upconv", i, 0)](x)
             x = [upsample(x)]
             if self.use_skips and i > 0:
@@ -55,6 +58,6 @@ class DispDecoder(nn.Module):
             x = torch.cat(x, 1)
             x = self.convs[("upconv", i, 1)](x)
             if i in self.scales:
-                self.outputs[("disp", i)] = self.sigmoid(self.convs[("dispconv", i)](x))
+                self.outputs.append(self.sigmoid(self.convs[("dispconv", i)](x)))
 
         return self.outputs

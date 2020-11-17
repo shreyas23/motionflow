@@ -31,52 +31,23 @@ class Conv(nn.Module):
             'elu': nn.ELU(inplace=True),
         }
 
+        padding = ((kernel_size - 1) * dilation) // 2
+
         layers = []
-        layers.append(nn.Conv2d(in_chs, out_chs, kernel_size=kernel_size, stride=stride, dilation=dilation, padding_mode=pad_mode, bias=bias))
+        layers.append(nn.Conv2d(in_chs, out_chs, kernel_size=kernel_size, stride=stride, dilation=dilation, padding=padding, padding_mode=pad_mode, bias=bias))
 
         if use_bn:
             layers.append(nn.BatchNorm2d(out_chs))
 
         if nonlin in nonlin_dict:
             nonlin_layer = nonlin_dict[nonlin]
-
-        layers.append(nonlin_layer)
-
-        self.conv = nn.Sequential(*layers)
-
-    def forward(self, x):
-        out = self.conv(x)
-        return out
-
-
-class UpConv(nn.Module):
-    """ UpConv layer with options for padding and ELU/LeakyReLU nonlinearity
-    """
-    def __init__(self, in_chs, out_chs, kernel_size=3, stride=1, dilation=1, nonlin='elu', pad_mode='reflect', use_bn=False, bias=True):
-        super(UpConv, self).__init__()
-
-        nonlin_dict = {
-            'leakyrelu' : nn.LeakyReLU(0.1, inplace=True),
-            'elu': nn.ELU(inplace=True),
-        }
-
-        layers = []
-        layers.append(nn.ConvTranspose2d(in_chs, out_chs, kernel_size=kernel_size, stride=stride, dilation=dilation, padding_mode=pad_mode, bias=bias))
-
-        if use_bn:
-            layers.append(nn.BatchNorm2d(out_chs))
-
-        if nonlin in nonlin_dict:
-            nonlin_layer = nonlin_dict[nonlin]
-
-        layers.append(nonlin_layer)
+            layers.append(nonlin_layer)
 
         self.conv = nn.Sequential(*layers)
 
     def forward(self, x):
         out = self.conv(x)
         return out
-
 
 
 class BackprojectDepth(nn.Module):
