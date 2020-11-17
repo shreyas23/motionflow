@@ -250,11 +250,9 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
         self._flow_diff_thresh = args.flow_diff_thresh
 
         # consistency weights 
-        self._fb_w = args.fb_w
         self._mask_lr_w = args.mask_lr_w
         self._disp_lr_w = args.disp_lr_w
         self._static_cons_w = args.static_cons_w
-
         self._use_flow_mask = args.use_flow_mask
 
 
@@ -463,7 +461,6 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
         loss_pose_sum = 0
         loss_sf_2d = 0
         loss_sf_3d = 0
-        loss_sf_sm = 0
         loss_pose_im_sum = 0
         loss_pose_pts_sum = 0
         loss_pose_sm_sum = 0
@@ -474,8 +471,6 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
         loss_lr_mask_sum = 0
         loss_lr_disp_sum = 0
         loss_mask_sum = 0
-        loss_pose_fb_sum = 0
-        loss_sf_fb_sum = 0
 
         k_l1_aug = target_dict['input_k_l1_aug']
         k_l2_aug = target_dict['input_k_l2_aug']
@@ -497,16 +492,17 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
         masks_r1 = output_dict['output_dict_r']['mask_l1']
         masks_r2 = output_dict['output_dict_r']['mask_l2']
 
-        for ii, (sf_f, sf_b, disp_l1, disp_l2, disp_r1, disp_r2, pose_f, pose_b, mask_l1, mask_l2, mask_r1, mask_r2) in enumerate(zip(output_dict['flow_f'], output_dict['flow_b'], 
+        for ii, (sf_f, sf_b, disp_l1, disp_l2, disp_r1, disp_r2, pose, mask_l1, mask_l2, mask_r1, mask_r2) in enumerate(zip(output_dict['flow_f'], output_dict['flow_b'], 
                                                                                                                                       output_dict['disp_l1'], output_dict['disp_l2'], 
                                                                                                                                       disps_r1, disps_r2,
-                                                                                                                                      output_dict['pose_f'], output_dict['pose_b'],
+                                                                                                                                      output_dict['pose_b'],
                                                                                                                                       masks_l1, masks_l2,
                                                                                                                                       masks_r1, masks_r2)):
 
             assert(sf_f.size()[2:4] == sf_b.size()[2:4])
             assert(sf_f.size()[2:4] == disp_l1.size()[2:4])
             assert(sf_f.size()[2:4] == disp_l2.size()[2:4])
+            assert(sf_f.size()[2:4] == masks_l1.size()[2:4])
             
             ## For image reconstruction loss
             img_l1_aug = interpolate2d_as(target_dict["input_l1_aug"], sf_f)
@@ -638,6 +634,8 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
 
             out_masks_l2.append(census_mask_l2)
             out_masks_l1.append(census_mask_l1)
+
+            output_dict['pose_f'].detach_()
 
         # finding weight
         # f_loss = loss_sf_sum.detach()

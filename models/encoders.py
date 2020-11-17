@@ -3,30 +3,12 @@ from __future__ import absolute_import, division, print_function
 import torch
 import torch.nn as nn
 import torch.nn.functional as tf
+import torchvision.models as models
+import torch.utils.model_zoo as model_zoo
+
+import numpy as np
 import logging
 
-from .common import conv, PyramidPoolingModule
-
-
-class PWCEncoder(nn.Module):
-  def __init__(self, conv_chs=None, use_bn=False):
-    super(PWCEncoder, self).__init__()
-
-    self.conv_chs = conv_chs
-    self.convs = nn.ModuleList()
-      
-    for in_ch, out_ch in zip(self.conv_chs[:-1], self.conv_chs[1:]):
-      layers = nn.Sequential(
-        conv(in_ch, out_ch, stride=2, use_bn=use_bn),
-        conv(out_ch, out_ch, use_bn=use_bn))
-      self.convs.append(layers)
-          
-  def forward(self, x):
-    fp = [x]
-    for conv in self.convs:
-        fp.append(conv(fp[-1]))
-
-    return fp[::-1]
 
 class FeatureExtractor(nn.Module):
     def __init__(self, num_chs, use_bn=False):
@@ -49,81 +31,86 @@ class FeatureExtractor(nn.Module):
 
         return feature_pyramid[::-1]
 
-class BasicBlock(nn.Module):
-    expansion = 1
-    def __init__(self, in_ch, out_ch, stride, downsample, pad, dilation, use_bn=True):
-      super(BasicBlock, self).__init__()
 
-      self.conv1 = conv(in_ch, out_ch, 3, stride, dilation, use_bn=use_bn)
-      self.conv2 = conv(out_ch, out_ch, 3, 1, dilation, use_relu=False, use_bn=use_bn)
+class ResNetMultiImageInput(models.ResNet):
+    """Constructs a resnet model with varying number of input images.
+    Adapted from https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
+    """
+    def __init__(self, block, layers, num_classes=1000, num_input_images=1):
+        super(ResNetMultiImageInput, self).__init__(block, layers)
+        self.inplanes = 64
+        self.conv1 = nn.Conv2d(
+            num_input_images * 3, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        self.layer1 = self._make_layer(block, 64, layers[0])
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
 
-      self.downsample = downsample
-      self.stride = stride
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
 
-    def forward(self, x):
-      out = self.conv1(x)
-      out = self.conv2(out)
 
-      if self.downsample is not None:
-          x = self.downsample(x)
+def resnet_multiimage_input(num_layers, pretrained=False, num_input_images=1):
+    """Constructs a ResNet model.
+    Args:
+        num_layers (int): Number of resnet layers. Must be 18 or 50
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        num_input_images (int): Number of frames stacked as input
+    """
+    assert num_layers in [18, 50], "Can only run with 18 or 50 layer resnet"
+    blocks = {18: [2, 2, 2, 2], 50: [3, 4, 6, 3]}[num_layers]
+    block_type = {18: models.resnet.BasicBlock, 50: models.resnet.Bottleneck}[num_layers]
+    model = ResNetMultiImageInput(block_type, blocks, num_input_images=num_input_images)
 
-      out += x
+    if pretrained:
+        loaded = model_zoo.load_url(models.resnet.model_urls['resnet{}'.format(num_layers)])
+        loaded['conv1.weight'] = torch.cat(
+            [loaded['conv1.weight']] * num_input_images, 1) / num_input_images
+        model.load_state_dict(loaded)
+    return model
 
-      return out
 
-class ResNetEncoder(nn.Module):
-    def __init__(self, args, in_chs, conv_chs=None, use_bn=False):
-        super(ResNetEncoder, self).__init__()
+class ResnetEncoder(nn.Module):
+    """Pytorch module for a resnet encoder
+    """
+    def __init__(self, num_layers, pretrained, num_input_images=1):
+        super(ResnetEncoder, self).__init__()
 
-        self.args = args
+        self.num_ch_enc = np.array([64, 64, 128, 256, 512])
 
-        if conv_chs is None:
-          self.conv_chs = [32, 32, 64, 128, 128]
+        resnets = {18: models.resnet18,
+                   34: models.resnet34,
+                   50: models.resnet50,
+                   101: models.resnet101,
+                   152: models.resnet152}
+
+        if num_layers not in resnets:
+            raise ValueError("{} is not a valid number of resnet layers".format(num_layers))
+
+        if num_input_images > 1:
+            self.encoder = resnet_multiimage_input(num_layers, pretrained, num_input_images)
         else:
-          self.conv_chs = conv_chs
+            self.encoder = resnets[num_layers](pretrained)
 
-        self.in_chs = self.conv_chs[0]
+        if num_layers > 34:
+            self.num_ch_enc[1:] *= 4
 
-        self.conv1 = nn.Sequential(
-          conv(in_chs, self.in_chs, 3, 2, 1, 1, use_bn=use_bn),
-          conv(self.in_chs, self.in_chs, 3, 1, 1, 1, use_bn=use_bn),
-          conv(self.in_chs, self.in_chs, 3, 1, 1, 1, use_bn=use_bn))
+    def forward(self, input_image):
+        self.features = []
+        x = (input_image - 0.45) / 0.225
+        x = self.encoder.conv1(x)
+        x = self.encoder.bn1(x)
+        self.features.append(self.encoder.relu(x))
+        self.features.append(self.encoder.layer1(self.encoder.maxpool(self.features[-1])))
+        self.features.append(self.encoder.layer2(self.features[-1]))
+        self.features.append(self.encoder.layer3(self.features[-1]))
+        self.features.append(self.encoder.layer4(self.features[-1]))
 
-        self.res_layers = nn.ModuleList()
-        for conv_ch in self.conv_chs:
-            self.res_layers.append(self._make_layer(BasicBlock, conv_ch, 3, 2, 1, 1, use_bn=use_bn))
-
-        if args.use_ppm:
-          self.ppm = PyramidPoolingModule(args=args, encoder_planes=[32, 32, 64, 128, 128], ppm_last_conv_planes=128, ppm_inter_conv_planes=128) 
-        else:
-          self.ppm = None
-
-    def _make_layer(self, block, chs, blocks, stride, pad, dilation, use_bn=True):
-      downsample = None
-      if stride != 1 or self.in_chs != chs * block.expansion:
-        if use_bn:
-          downsample = nn.Sequential(
-            nn.Conv2d(self.in_chs, chs * block.expansion, kernel_size=1, stride=stride, bias=False),
-            nn.BatchNorm2d(chs * block.expansion))
-        else:
-          downsample = nn.Conv2d(self.in_chs, chs * block.expansion, kernel_size=1, stride=stride, bias=False)
-
-        layers = []
-        layers.append(block(self.in_chs, chs, stride, downsample, pad, dilation, use_bn=use_bn))
-        self.in_chs = chs * block.expansion
-        for _ in range(1, blocks):
-          layers.append(block(self.in_chs, chs, 1, None, pad, dilation, use_bn=use_bn))
-
-        return nn.Sequential(*layers)
-
-    def forward(self, x):
-      outs = [x]
-
-      outs.append(self.conv1(x))
-
-      for res_layer in self.res_layers:
-        outs.append(res_layer(outs[-1]))
-      if self.args.use_ppm:
-        outs.append(self.ppm(outs[-1]))
-
-      return outs[::-1]
+        return self.features

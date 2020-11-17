@@ -32,7 +32,7 @@ def upconv(in_planes, out_planes, kernel_size=3, stride=1, padding=1, use_relu=T
     layers = []
     layers.append(nn.ConvTranspose2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding))
     if use_bn:
-        layers.append(nn.BatchNorm2d(out_chs))
+        layers.append(nn.BatchNorm2d(out_planes))
     if use_relu:
         layers.append(nn.LeakyReLU(0.1, inplace=True))
 
