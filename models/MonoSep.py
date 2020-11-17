@@ -33,7 +33,7 @@ class MonoSep(nn.Module):
         self.sf_layers = nn.ModuleList()
         self.upconv_layers = nn.ModuleList()
 
-        self.context_network = JointContextNetwork(3 + 6 + 1 + 1)
+        self.context_network = JointContextNetwork(in_chs=(3 + 6 + 1 + 1))
 
         self.corr_params = {"pad_size": self.search_range, "kernel_size": 1, "max_disp": self.search_range, "stride1": 1, "stride2": 1, "corr_multiply": 1}        
         self.dim_corr = (self.search_range * 2 + 1) ** 2
@@ -52,28 +52,25 @@ class MonoSep(nn.Module):
             self.flow_estimators.append(layer_sf)
         
 
-    def run_pwc(self, input_dict, x1_pyramid, x2_pyramid, img_x1, img_x2, disp_l1, disp_l2, k1, k2):
+    def run_pwc(self, input_dict, img_x1, img_x2, disp_l1, disp_l2, k1, k2):
             
         output_dict = {}
 
-        input_x1_features = self.encoder(img_x1)
-        input_x2_features = self.encoder(img_x2)
+        x1_features = self.encoder(img_x1)
+        x2_features = self.encoder(img_x2)
 
-        output_dict["out_disps_l1"] = self.disp_decoder(input_x1_features)
-        output_dict["out_disps_l2"] = self.disp_decoder(input_x2_features)
+        output_dict["out_disps_l1"] = self.disp_decoder(x1_features)[::-1]
+        output_dict["out_disps_l2"] = self.disp_decoder(x2_features)[::-1]
 
-        pose_feats = [input_x1_features, input_x2_features]
-        output_dict["out_pose_f"] = self.pose_decoder(pose_feats)
-        output_dict["out_pose_b"] = invert_pose(output_dict["out_pose_f"])
-
-        x1_pyramid.append(img_x1)
-        x2_pyramid.append(img_x2)
+        pose_feats = [x1_features, x2_features]
+        output_dict["out_pose_f"], pose_feats_f = self.pose_decoder(pose_feats)
+        output_dict["out_pose_b"], pose_feats_b  = invert_pose(output_dict["out_pose_f"])
 
         # outputs
         sceneflows_f = []
         sceneflows_b = []
 
-        for l, (x1, x2) in enumerate(zip(x1_pyramid, x2_pyramid)):
+        for l, (x1, x2) in enumerate(zip(x1_features, x2_features)):
 
             # warping
             if l == 0:
@@ -110,8 +107,8 @@ class MonoSep(nn.Module):
                 sceneflows_f.append(flow_f)
                 sceneflows_b.append(flow_b)                
             else:
-                flow_res_f, disp_l1, mask_l1, pose_f_res = self.context_networks(torch.cat([x1_out, flow_f, disp_l1, pose_f_out, mask_l1], dim=1))
-                flow_res_b, disp_l2, mask_l2, pose_b_res = self.context_networks(torch.cat([x2_out, flow_b, disp_l2, pose_b_out, mask_l2], dim=1))
+                flow_res_f = self.context_network(torch.cat([x1_out, flow_f, output_dict["out_disps_l1"][-1], pose_feats_f[-1]], dim=1))
+                flow_res_b = self.context_network(torch.cat([x2_out, flow_b, output_dict["out_disps_l2"][-1], pose_feats_b[-1]], dim=1))
                 flow_f = flow_f + flow_res_f
                 flow_b = flow_b + flow_res_b
 
@@ -120,7 +117,10 @@ class MonoSep(nn.Module):
 
                 break
 
-        x1_rev = x1_pyramid[::-1]
+        x1_rev = x1_features[::-1]
+
+        output_dict['flow_f'] = upsample_outputs_as(sceneflows_f[::-1], x1_rev)
+        output_dict['flow_b'] = upsample_outputs_as(sceneflows_b[::-1], x1_rev)
 
         output_dict['flow_f'] = upsample_outputs_as(sceneflows_f[::-1], x1_rev)
         output_dict['flow_b'] = upsample_outputs_as(sceneflows_b[::-1], x1_rev)
@@ -135,15 +135,8 @@ class MonoSep(nn.Module):
 
         ## Left
         output_dict = self.run_pwc(input_dict, 
-                                   input_l1_features[::-1], input_l2_features[::-1], 
                                    input_dict['input_l1_aug'], input_dict['input_l2_aug'],
                                    input_dict['input_k_l1_aug'], input_dict['input_k_l2_aug'])
-
-        flow_res_f, disp_l1, mask_l1, pose_f = self.context_networks(torch.cat([x1_out, flow_f, disp_l1, pose_f_out, mask_l1], dim=1))
-        flow_res_b, disp_l2, mask_l2, pose_b = self.context_networks(torch.cat([x2_out, flow_b, disp_l2, pose_b_out, mask_l2], dim=1))
-
-        flow_f = flow_f + flow_res_f
-        flow_b = flow_b + flow_res_b
 
         ## Right
         ## ss: train val 
@@ -158,7 +151,6 @@ class MonoSep(nn.Module):
             input_r2_features = self.encoder(input_r2_flip)
 
             output_dict_r = self.run_pwc(input_dict, 
-                                         input_r1_features, input_r2_features, 
                                          input_r1_flip, input_r2_flip, 
                                          k_r1_flip, k_r2_flip)
 
