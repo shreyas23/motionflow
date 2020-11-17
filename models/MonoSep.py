@@ -52,19 +52,9 @@ class MonoSep(nn.Module):
             self.flow_estimators.append(layer_sf)
         
 
-    def run_pwc(self, input_dict, img_x1, img_x2, disp_l1, disp_l2, k1, k2):
+    def run_pwc(self, input_dict, x1_features, x2_features, disp_l1, disp_l2, k1, k2):
             
         output_dict = {}
-
-        x1_features = self.encoder(img_x1)
-        x2_features = self.encoder(img_x2)
-
-        output_dict["out_disps_l1"] = self.disp_decoder(x1_features)[::-1]
-        output_dict["out_disps_l2"] = self.disp_decoder(x2_features)[::-1]
-
-        pose_feats = [x1_features, x2_features]
-        output_dict["out_pose_f"], pose_feats_f = self.pose_decoder(pose_feats)
-        output_dict["out_pose_b"], pose_feats_b  = invert_pose(output_dict["out_pose_f"])
 
         # outputs
         sceneflows_f = []
@@ -138,10 +128,19 @@ class MonoSep(nn.Module):
 
         output_dict = {}
 
+        x1_features = self.encoder(input_dict['input_l1_aug'])
+        x2_features = self.encoder(input_dict['input_l2_aug'])
+
+        output_dict["out_disps_l1"] = self.disp_decoder(x1_features)[::-1]
+        output_dict["out_disps_l2"] = self.disp_decoder(x2_features)[::-1]
+
+        pose_feats = [x1_features, x2_features]
+        output_dict["out_pose_f"], _ = self.pose_decoder(pose_feats)
+        output_dict["out_pose_b"], _  = invert_pose(output_dict["out_pose_f"])
 
         ## Left
         output_dict = self.run_pwc(input_dict, 
-                                   input_dict['input_l1_aug'], input_dict['input_l2_aug'],
+                                   x1_features, x2_features,
                                    input_dict['input_k_l1_aug'], input_dict['input_k_l2_aug'])
 
         ## Right
@@ -157,7 +156,7 @@ class MonoSep(nn.Module):
             input_r2_features = self.encoder(input_r2_flip)
 
             output_dict_r = self.run_pwc(input_dict, 
-                                         input_r1_flip, input_r2_flip, 
+                                         input_r1_features, input_r2_features,
                                          k_r1_flip, k_r2_flip)
 
             for ii in range(0, len(output_dict_r['flow_f'])):
