@@ -39,32 +39,6 @@ class WarpingLayer_Flow(nn.Module):
         return x_warp * mask
 
 
-class WarpingLayer_SF(nn.Module):
-    def __init__(self):
-        super(WarpingLayer_SF, self).__init__()
- 
-    def forward(self, x, sceneflow, disp, k1, input_size):
-
-        _, _, h_x, w_x = x.size()
-        disp = interpolate2d_as(disp, x) * w_x
-
-        local_scale = torch.zeros_like(input_size)
-        local_scale[:, 0] = h_x
-        local_scale[:, 1] = w_x
-
-        pts1, k1_scale = pixel2pts_ms(k1, disp, local_scale / input_size)
-        _, _, coord1 = pts2pixel_ms(k1_scale, pts1, sceneflow, [h_x, w_x])
-
-        grid = coord1.transpose(1, 2).transpose(2, 3)
-        x_warp = tf.grid_sample(x, grid)
-
-        mask = torch.ones_like(x, requires_grad=False)
-        mask = tf.grid_sample(mask, grid)
-        mask = (mask >= 1.0).float()
-
-        return x_warp * mask
-
-
 def initialize_msra(modules):
     logging.info("Initializing MSRA")
     for layer in modules:
@@ -93,104 +67,27 @@ def upsample_outputs_as(input_list, ref_list):
     return output_list
 
 
-# def conv(in_planes, out_planes, kernel_size=3, stride=1, dilation=1, isReLU=True):
-#     if isReLU:
-#         return nn.Sequential(
-#             nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, dilation=dilation,
-#                       padding=((kernel_size - 1) * dilation) // 2, bias=True),
-#             nn.LeakyReLU(0.1, inplace=True)
-#         )
-#     else:
-#         return nn.Sequential(
-#             nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, dilation=dilation,
-#                       padding=((kernel_size - 1) * dilation) // 2, bias=True)
-#         )
+class WarpingLayer_SF(nn.Module):
+    def __init__(self):
+        super(WarpingLayer_SF, self).__init__()
+ 
+    def forward(self, x, sceneflow, disp, k1, input_size):
 
+        _, _, h_x, w_x = x.size()
+        disp = interpolate2d_as(disp, x) * w_x
 
-class upconv(nn.Module):
-    def __init__(self, num_in_layers, num_out_layers, kernel_size, scale):
-        super(upconv, self).__init__()
-        self.scale = scale
-        self.conv1 = conv(num_in_layers, num_out_layers, kernel_size, 1)
+        local_scale = torch.zeros_like(input_size)
+        local_scale[:, 0] = h_x
+        local_scale[:, 1] = w_x
 
-    def forward(self, x):
-        x = nn.functional.interpolate(x, scale_factor=self.scale, mode='nearest')
-        return self.conv1(x)
+        pts1, k1_scale = pixel2pts_ms(k1, disp, local_scale / input_size)
+        _, _, coord1 = pts2pixel_ms(k1_scale, pts1, sceneflow, [h_x, w_x])
 
+        grid = coord1.transpose(1, 2).transpose(2, 3)
+        x_warp = tf.grid_sample(x, grid)
 
-class FeatureExtractor(nn.Module):
-    def __init__(self, num_chs):
-        super(FeatureExtractor, self).__init__()
-        self.num_chs = num_chs
-        self.convs = nn.ModuleList()
+        mask = torch.ones_like(x, requires_grad=False)
+        mask = tf.grid_sample(mask, grid)
+        mask = (mask >= 1.0).float()
 
-        for l, (ch_in, ch_out) in enumerate(zip(num_chs[:-1], num_chs[1:])):
-            layer = nn.Sequential(
-                conv(ch_in, ch_out, stride=2),
-                conv(ch_out, ch_out)
-            )
-            self.convs.append(layer)
-
-    def forward(self, x):
-        feature_pyramid = []
-        for conv in self.convs:
-            x = conv(x)
-            feature_pyramid.append(x)
-
-        return feature_pyramid[::-1]
-
-
-class MonoSceneFlowDecoder(nn.Module):
-    def __init__(self, ch_in, use_bn=False):
-        super(MonoSceneFlowDecoder, self).__init__()
-
-        self.convs = nn.Sequential(
-            conv(ch_in, 128, use_bn=use_bn),
-            conv(128, 128, use_bn=use_bn),
-            conv(128, 96, use_bn=use_bn),
-            conv(96, 64, use_bn=use_bn),
-            conv(64, 32, use_bn=use_bn)
-        )
-        # self.conv_sf = conv(32, 3, isReLU=False)
-        # self.conv_d1 = conv(32, 1, isReLU=False)
-        self.conv_sf = conv(32, 3, use_relu=False)
-        self.conv_d1 = conv(32, 1, use_relu=False)
-
-    def forward(self, x):
-        x_out = self.convs(x)
-        sf = self.conv_sf(x_out)
-        disp1 = self.conv_d1(x_out)
-
-        return x_out, sf, disp1
-
-
-class ContextNetwork(nn.Module):
-    def __init__(self, ch_in, use_bn=False):
-        super(ContextNetwork, self).__init__()
-
-        self.convs = nn.Sequential(
-            conv(ch_in, 128, 3, 1, 1, use_bn=use_bn),
-            conv(128, 128, 3, 1, 2, use_bn=use_bn),
-            conv(128, 128, 3, 1, 4, use_bn=use_bn),
-            conv(128, 96, 3, 1, 8, use_bn=use_bn),
-            conv(96, 64, 3, 1, 16, use_bn=use_bn),
-            conv(64, 32, 3, 1, 1, use_bn=use_bn)
-        )
-        # self.conv_sf = conv(32, 3, isReLU=False)
-        # self.conv_d1 = nn.Sequential(
-        #     conv(32, 1, isReLU=False), 
-        #     torch.nn.Sigmoid()
-        # )
-        self.conv_sf = conv(32, 3, use_relu=False)
-        self.conv_d1 = nn.Sequential(
-            conv(32, 1, use_relu=False), 
-            torch.nn.Sigmoid()
-        )
-
-    def forward(self, x):
-
-        x_out = self.convs(x)
-        sf = self.conv_sf(x_out)
-        disp1 = self.conv_d1(x_out) * 0.3
-
-        return sf, disp1
+        return x_warp * mask
