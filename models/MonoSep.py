@@ -102,20 +102,26 @@ class MonoSep(nn.Module):
                 flow_f = flow_f + flow_f_res
                 flow_b = flow_b + flow_b_res
 
-            # upsampling or post-processing
-            if l != self.output_level:
-                sceneflows_f.append(flow_f)
-                sceneflows_b.append(flow_b)                
-            else:
-                flow_res_f = self.context_network(torch.cat([x1_out, flow_f, output_dict["out_disps_l1"][-1], pose_feats_f[-1]], dim=1))
-                flow_res_b = self.context_network(torch.cat([x2_out, flow_b, output_dict["out_disps_l2"][-1], pose_feats_b[-1]], dim=1))
-                flow_f = flow_f + flow_res_f
-                flow_b = flow_b + flow_res_b
+            sceneflows_f.append(flow_f)
+            sceneflows_b.append(flow_b)                
 
-                sceneflows_f.append(flow_f)
-                sceneflows_b.append(flow_b)
-
+            if l == self.output_level:
                 break
+
+            # upsampling or post-processing
+            # if l != self.output_level:
+            #     sceneflows_f.append(flow_f)
+            #     sceneflows_b.append(flow_b)                
+            # else:
+            #     flow_res_f = self.context_network(torch.cat([x1_out, flow_f, output_dict["out_disps_l1"][-1], pose_feats_f[-1]], dim=1))
+            #     flow_res_b = self.context_network(torch.cat([x2_out, flow_b, output_dict["out_disps_l2"][-1], pose_feats_b[-1]], dim=1))
+            #     flow_f = flow_f + flow_res_f
+            #     flow_b = flow_b + flow_res_b
+
+            #     sceneflows_f.append(flow_f)
+            #     sceneflows_b.append(flow_b)
+
+            #     break
 
         x1_rev = x1_features[::-1]
 
