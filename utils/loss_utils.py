@@ -3,7 +3,7 @@ import torch.nn
 from torch.nn import functional as tf
 
 ###############################################
-# Basic Module
+# Loss Utils
 ###############################################
 
 def _reconstruction_error(tgt_img, ref_img_warped, ssim_w):
@@ -72,6 +72,10 @@ def _apply_disparity(img, disp):
 
 def _generate_image_left(img, disp):
     return _apply_disparity(img, -disp)
+
+
+def _generate_image_right(img, disp):
+    return _apply_disparity(img, disp)
 
 
 def _adaptive_disocc_detection(flow):
