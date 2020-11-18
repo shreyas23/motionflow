@@ -2,8 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as tf
 
-from utils.loss_utils import _generate_image_left, _generate_image_right, _adaptive_disocc_detection_disp
-from utils.loss_utils import _adaptive_disocc_detection, _elementwise_epe, _elementwise_l1 
+from utils.loss_utils import *
 from utils.interpolation import interpolate2d_as
 
 
@@ -76,6 +75,8 @@ class Loss(nn.Module):
         img_l2 = target['input_l2_aug']
         img_r1 = target['input_r1_aug']
         img_r2 = target['input_r2_aug']
+        K_l1 = target['input_k_l1_aug']
+        K_l2 = target['input_k_l2_aug']
 
         disps_l1 = output['disps_l1']
         disps_l2 = output['disps_l2']
@@ -85,6 +86,7 @@ class Loss(nn.Module):
         flows_b = output['flows_b']
         pose_f = output['pose_f']
         pose_b = output['pose_b']
+
         if self.args.use_mask:
             masks_l1 = output['mask_l1']
             masks_l2 = output['mask_l2']
@@ -93,18 +95,32 @@ class Loss(nn.Module):
             flow_f = interpolate2d_as(flows_f[s], img_l1)
             flow_b = interpolate2d_as(flows_b[s], img_l1)
             disp_l1 = interpolate2d_as(disps_l1[s], img_l1)
-            disp_l2 = interpolate2d_as(disps_l1[s], img_l1)
+            disp_l2 = interpolate2d_as(disps_l2[s], img_l1)
+            disp_r1 = interpolate2d_as(disps_r1[s], img_l1)
+            disp_r2 = interpolate2d_as(disps_r2[s], img_l1)
 
-            depth_diff1, left_occ1, loss_lr1 = self.depth_loss(disp_l1[s], disp_r1[s], img_l1, img_r1)
-            depth_diff2, left_occ2, loss_lr2 = self.depth_loss(disp_l2[s], disp_r2[s], img_l2, img_r2)
+            if self.args.use_mask:
+                mask_l1 = interpolate2d_as(masks_l1[s], img_l1)
+                mask_l2 = interpolate2d_as(masks_l2[s], img_l1)
+
+            # depth loss
+            depth_diff1, left_occ1, loss_lr1 = self.depth_loss(disp_l1, disp_r1, img_l1, img_r1)
+            depth_diff2, left_occ2, loss_lr2 = self.depth_loss(disp_l2, disp_r2, img_l2, img_r2)
             loss_lr_sum = (loss_lr1 + loss_lr2) * self.disp_lr_w
+
+            #pose diffs
+            pose_diff1, pose_occ_b = self.pose_loss(pose_f, disp_l1, img_l1, img_l2, K_l1)
+            pose_diff2, pose_occ_f = self.pose_loss(pose_b, disp_l2, img_l2, img_l1, K_l2)
+
+            # sf diffs
+            sf_diff1, sf_occ_b = self.sf_loss(flow_f, disp_l1, img_l1, img_l2, K_l1)
+            sf_diff2, sf_occ_f = self.sf_loss(flow_b, disp_l2, img_l2, img_l1, K_l2)
+
+
 
             depth_loss1 = torch.min()
             depth_loss_sum = depth_loss_sum + depth_loss
 
-            sf_loss_sum = self.sceneflow_loss()
-
-            pose_los
 
         loss_dict = {}
 
