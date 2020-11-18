@@ -5,6 +5,8 @@ import torch.nn.functional as tf
 from utils.loss_utils import *
 from utils.interpolation import interpolate2d_as
 
+from models.common import BackprojectDepth, Project3D
+
 
 class Loss(nn.Module):
     def __init__(self, args):
@@ -61,8 +63,27 @@ class Loss(nn.Module):
 
         return img_diff, left_occ, loss_lr
     
-    def motion_loss(self, ):
-        return
+    def motion_loss(self, disp, src, tgt, sf=None, T=None, mode='pose'):
+        """ Calculate the difference between the src and tgt images 
+        disp: disparity from left to right (B, 1, H, W)
+        src/tgt: consecutive images from left camera
+        flow: scene flow from tgt to src (B, 3, H, W)
+        pose: pose transform from tgt to src (B, 3, 3)
+        """
+
+        if mode == 'pose':
+            assert (T is not None), "T cannot be None when mode=pose"
+        elif mode == 'sf':
+            assert (sf is not None), "sf cannot be None when mode=sf"
+
+        b, _, h, w = disp.shape
+
+        ref_warp = BackprojectDepth(b, h, w)()
+
+        img_diff = _reconstruction_error(tgt, ref_warp, self.ssim_w)
+        
+
+        return img_diff, occ_mask
 
     def forward(self, target, output):
         depth_loss_sum = 0
