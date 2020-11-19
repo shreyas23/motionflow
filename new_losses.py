@@ -182,16 +182,15 @@ class Loss(nn.Module):
             depth_loss1 = disp_diff1[mask_disp_diff1 * left_occ1].mean()
             depth_loss2 = disp_diff2[mask_disp_diff2 * left_occ2].mean()
             depth_loss = depth_loss1 + depth_loss2
-            # depth_loss = disp_diff1[left_occ1].mean() + disp_diff2[left_occ2].mean()
 
             if self.flow_loss_mode == 'min':
-                occ_f = pose_occ_f * sf_occ_f
-                occ_b = pose_occ_b * sf_occ_b
+                occ_f = pose_occ_f * sf_occ_f * left_occ1
+                occ_b = pose_occ_b * sf_occ_b * left_occ2
                 flow_loss1 = min_flow_diff1[occ_f].mean()
                 flow_loss2 = min_flow_diff2[occ_b].mean()
             elif self.flow_loss_mode == 'avg':
-                occ_f = (pose_occ_f * sf_occ_f)
-                occ_b = (pose_occ_b * sf_occ_b)
+                occ_f = pose_occ_f * sf_occ_f * left_occ1
+                occ_b = pose_occ_b * sf_occ_b * left_occ2
                 flow_loss1 = flow_diffs1.mean(dim=1, keepdim=True)[occ_f].mean()
                 flow_loss2 = flow_diffs2.mean(dim=1, keepdim=True)[occ_b].mean()
             elif self.flow_loss_mode == 'sep':
