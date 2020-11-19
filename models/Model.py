@@ -30,7 +30,7 @@ class Model(nn.Module):
         self.encoder = ResnetEncoder(num_layers=18, pretrained=args.pt_encoder, num_input_images=1)
         self.encoder_chs = self.encoder.num_ch_enc
 
-        self.disp_decoder = DispDecoder(num_ch_enc=self.encoder_chs, scales=range(5))
+        self.disp_decoder = DispDecoder(num_ch_enc=self.encoder_chs, scales=range(4))
         self.pose_decoder = PoseDecoder(self.encoder_chs, 2)
 
         self.sf_out_chs = 32
@@ -57,8 +57,22 @@ class Model(nn.Module):
                 self.upconv_layers.append(UpConv(self.sf_out_chs, self.sf_out_chs, 3, 2))
 
             self.sf_layers.append(SFDecoder(num_ch_in))
-        
 
+        self.init_weights()
+
+    def init_weights(self):
+        for layer in self.modules():
+            if isinstance(layer, nn.Conv2d) or isinstance(layer, nn.ConvTranspose2d):
+                nn.init.kaiming_normal_(layer.weight)
+                if layer.bias is not None:
+                    nn.init.constant_(layer.bias, 0)
+
+            elif isinstance(layer, nn.LeakyReLU):
+                pass
+
+            elif isinstance(layer, nn.Sequential):
+                pass
+        
     def run_pwc(self, input_dict, x1_features, x2_features, k1, k2):
             
         output_dict = {}
@@ -105,15 +119,10 @@ class Model(nn.Module):
                 flow_b = flow_b + flow_b_res
 
             # upsampling or post-processing
-            sceneflows_f.append(flow_f)
-            sceneflows_b.append(flow_b)                
-
-            if l == self.output_level:
-                x1_out = interpolate2d_as(x1_out, disps_l1[-1])
-                x2_out = interpolate2d_as(x2_out, disps_l1[-1])
-                flow_f = interpolate2d_as(flow_f, disps_l1[-1])
-                flow_b = interpolate2d_as(flow_b, disps_l1[-1])
-
+            if l != self.output_level:
+                sceneflows_f.append(flow_f)
+                sceneflows_b.append(flow_b)                
+            else:
                 flow_res_f = self.context_network(torch.cat([x1_out, flow_f, disps_l1[-1]], dim=1))
                 flow_res_b = self.context_network(torch.cat([x2_out, flow_b, disps_l2[-1]], dim=1))
                 flow_f = flow_f + flow_res_f
@@ -123,13 +132,11 @@ class Model(nn.Module):
                 sceneflows_b.append(flow_b)
                 break
 
-        x1_rev = x1_features
+        output_dict['flows_f'] = upsample_outputs_as(sceneflows_f[::-1], x1_features)
+        output_dict['flows_b'] = upsample_outputs_as(sceneflows_b[::-1], x1_features)
 
-        output_dict['flows_f'] = upsample_outputs_as(sceneflows_f[::-1], x1_rev)[:self.num_scales]
-        output_dict['flows_b'] = upsample_outputs_as(sceneflows_b[::-1], x1_rev)[:self.num_scales]
-
-        output_dict["disps_l1"] = disps_l1[::-1][:self.num_scales]
-        output_dict["disps_l2"] = disps_l2[::-1][:self.num_scales]
+        output_dict["disps_l1"] = disps_l1[::-1]
+        output_dict["disps_l2"] = disps_l2[::-1]
 
         return output_dict
 

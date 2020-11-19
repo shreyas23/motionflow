@@ -66,7 +66,7 @@ def _apply_disparity(img, disp):
     flow_field = torch.stack((x_base + x_shifts, y_base), dim=3)
     # In grid_sample coordinates are assumed to be between -1 and 1
     output = tf.grid_sample(img, 2 * flow_field - 1,
-                            mode='bilinear', padding_mode='zeros')
+                            mode='bilinear', padding_mode='border')
 
     return output
 
@@ -164,13 +164,13 @@ def _smoothness_motion_2nd(sf, img, beta=1):
 def _disp2depth_kitti_K(disp, fx, min_depth=0.1, max_depth=100):
 
     #scale disparity according to monodepthv2
-    min_disp = (0.54 * fx) / max_depth
-    max_disp = (0.54 * fx) / min_depth
-    scaled_disp = min_disp + (max_disp - min_disp) * disp
+    # min_disp = (0.54 * fx) / max_depth
+    # max_disp = (0.54 * fx) / min_depth
+    # scaled_disp = min_disp + (max_disp - min_disp) * disp
 
-    mask = (scaled_disp > 0).float()
+    mask = (disp > 0).float()
     depth = fx.unsqueeze(1).unsqueeze(
-        1).unsqueeze(1) * 0.54 / (scaled_disp + (1.0 - mask))
+        1).unsqueeze(1) * 0.54 / (disp + (1.0 - mask))
 
     depth = torch.clamp(depth, min_depth, max_depth)
 

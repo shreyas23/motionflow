@@ -1,12 +1,11 @@
 
 import torch
 import torch.nn as nn
-import numpy as np
 import torch.nn.functional as F
 
-from collections import OrderedDict
-
+import numpy as np
 from .common import Conv, upsample
+from collections import OrderedDict
 
 
 class DispDecoder(nn.Module):
@@ -19,22 +18,23 @@ class DispDecoder(nn.Module):
         self.scales = scales
 
         self.num_ch_enc = num_ch_enc
-        self.num_ch_dec = np.array([16, 32, 64, 96, 128, 256])
+        self.num_ch_dec = np.array([16, 32, 64, 128, 256])
 
-        self.test_conv = Conv(num_ch_enc[-1], num_ch_enc[-1], stride=2)
+        self.downsample = Conv(num_ch_enc[-1], num_ch_enc[-1], stride=2)
 
         # decoder
         self.convs = OrderedDict()
-        for i in range(5, -1, -1):
+        for i in range(4, -1, -1):
             # upconv_0
-            num_ch_in = self.num_ch_enc[-1] if i == 5 else self.num_ch_dec[i + 1]
+            num_ch_in = self.num_ch_enc[-1] if i == 4 else self.num_ch_dec[i + 1]
             num_ch_out = self.num_ch_dec[i]
             self.convs[("upconv", i, 0)] = Conv(num_ch_in, num_ch_out)
 
             # upconv_1
             num_ch_in = self.num_ch_dec[i]
             if self.use_skips and i > 0:
-                num_ch_in += self.num_ch_enc[i - 1]
+                num_ch_in += self.num_ch_enc[i]
+                # num_ch_in += self.num_ch_enc[i - 1]
             num_ch_out = self.num_ch_dec[i]
             self.convs[("upconv", i, 1)] = Conv(num_ch_in, num_ch_out)
 
@@ -49,12 +49,13 @@ class DispDecoder(nn.Module):
 
         # decoder
         x = input_features[-1]
-        x = self.test_conv(x)
-        for i in range(5, -1, -1):
+        x = self.downsample(x)
+        for i in range(4, -1, -1):
             x = self.convs[("upconv", i, 0)](x)
             x = [upsample(x)]
             if self.use_skips and i > 0:
-                x += [input_features[i - 1]]
+                x += [input_features[i]]
+                # x += [input_features[i - 1]]
             x = torch.cat(x, 1)
             x = self.convs[("upconv", i, 1)](x)
             if i in self.scales:

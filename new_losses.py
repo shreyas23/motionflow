@@ -98,13 +98,12 @@ class Loss(nn.Module):
             assert (sf is not None), "sf cannot be None when mode=sf"
             of = projectSceneFlow2Flow(K, sf, disp)
 
-        back_proj = BackprojectDepth(b, h, w, mode=mode).to(device=disp.device)
-        proj = Project3D(b, h, w, mode=mode)
+        back_proj = BackprojectDepth(b, h, w).to(device=disp.device)
+        proj = Project3D(b, h, w).to(device=disp.device)
 
         occ_mask = _adaptive_disocc_detection(of).detach()
-        cam_points = back_proj(depth, torch.inverse(K))
-        
-        grid = proj.forward(cam_points, K, T=T, sf=sf)
+        cam_points = back_proj(depth, torch.inverse(K), mode=mode)
+        grid = proj(cam_points, K, T=T, sf=sf, mode=mode)
         ref_warp = tf.grid_sample(src, grid, mode="bilinear", padding_mode="border")
         img_diff = _reconstruction_error(tgt, ref_warp, self.ssim_w)
 
@@ -172,10 +171,6 @@ class Loss(nn.Module):
             sf_diff1, sf_occ_b = self.flow_loss(disp_l1, img_l2, img_l1, K_l1, sf=flow_f, mode='sf')
             sf_diff2, sf_occ_f = self.flow_loss(disp_l2, img_l1, img_l2, K_l2, sf=flow_b, mode='sf')
 
-            # create flow occlusion masks
-            occ_f = pose_occ_f * sf_occ_f
-            occ_b = pose_occ_b * sf_occ_b
-
             # min(pose, sf)
             flow_diffs1 = torch.cat([pose_diff1, sf_diff1], dim=1)
             flow_diffs2 = torch.cat([pose_diff2, sf_diff2], dim=1)
@@ -190,14 +185,20 @@ class Loss(nn.Module):
             depth_loss = depth_loss1 + depth_loss2
 
             if self.flow_loss_mode == 'min':
+                occ_f = pose_occ_f * sf_occ_f
+                occ_b = pose_occ_b * sf_occ_b
                 flow_loss1 = min_flow_diff1[occ_f].mean()
                 flow_loss2 = min_flow_diff2[occ_b].mean()
             elif self.flow_loss_mode == 'avg':
+                occ_f = (pose_occ_f * sf_occ_f)
+                occ_b = (pose_occ_b * sf_occ_b)
+                flow_loss1 = flow_diffs1.mean(dim=1, keepdim=True)[occ_f].mean()
+                flow_loss2 = flow_diffs2.mean(dim=1, keepdim=True)[occ_b].mean()
+            elif self.flow_loss_mode == 'sep':
+                occ_f = torch.cat([pose_occ_f, sf_occ_f], dim=1)
+                occ_b = torch.cat([pose_occ_b, sf_occ_b], dim=1)
                 flow_loss1 = flow_diffs1[occ_f].mean(dim=1, keepdim=True).mean()
                 flow_loss2 = flow_diffs2[occ_b].mean(dim=1, keepdim=True).mean()
-            elif self.flow_loss_mode == 'sep':
-                flow_loss1 = pose_diff1[pose_occ_f].mean() + sf_diff1[sf_occ_f].mean()
-                flow_loss2 = pose_diff2[pose_occ_b].mean() + sf_diff2[sf_occ_b].mean()
 
             flow_loss = flow_loss1 + flow_loss2
 

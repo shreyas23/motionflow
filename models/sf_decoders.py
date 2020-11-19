@@ -7,15 +7,15 @@ class SFDecoder(nn.Module):
         super(SFDecoder, self).__init__()
 
         self.convs = nn.Sequential(
-            Conv(in_ch, 128, use_bn=use_bn),
-            Conv(128, 128, use_bn=use_bn),
-            Conv(128, 128, use_bn=use_bn),
-            Conv(128, 96, use_bn=use_bn),
-            Conv(96, 64, use_bn=use_bn),
-            Conv(64, 32, use_bn=use_bn)
+            Conv(in_ch, 128, use_bn=use_bn, nonlin='leakyrelu'),
+            Conv(128, 128, use_bn=use_bn, nonlin='leakyrelu'),
+            Conv(128, 128, use_bn=use_bn, nonlin='leakyrelu'),
+            Conv(128, 96, use_bn=use_bn, nonlin='leakyrelu'),
+            Conv(96, 64, use_bn=use_bn, nonlin='leakyrelu'),
+            Conv(64, 32, use_bn=use_bn, nonlin='leakyrelu')
         )
 
-        self.conv_sf = Conv(32, 3, nonlin='none', pad_mode='reflection')
+        self.conv_sf = Conv(32, 3, nonlin='none')
 
     def forward(self, x):
         x_out = self.convs(x)

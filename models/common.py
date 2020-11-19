@@ -48,4 +48,3 @@ class Conv(nn.Module):
     def forward(self, x):
         out = self.conv(x)
         return out
-
