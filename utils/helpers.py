@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as tf
 import numpy as np
 
-from .loss_utils import _disp2depth_kitti_K, _adaptive_disocc_detection, _generate_image_left
+from .loss_utils import _disp2depth_kitti_K, _adaptive_disocc_detection, _generate_image_left, _reconstruction_error
 from .inverse_warp import pose_vec2mat, pose2flow
 from .interpolation import interpolate2d_as
 from .sceneflow_util import projectSceneFlow2Flow
@@ -125,6 +125,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     depth = _disp2depth_kitti_K(disp_l2, K[:, 0, 0])
     disp_warp = _generate_image_left(img_r2, disp_l2) 
     writer.add_images('disp', disp_l2, epoch)
+    writer.add_images('depth', depth, epoch)
     writer.add_images('disp_warp', disp_warp, epoch)
 
     # pose warp
@@ -140,11 +141,19 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     pose_occ_b = _adaptive_disocc_detection(pose_flow)
     writer.add_images('pose_occ', pose_occ_b, epoch)
 
+    # pose err
+    pose_diff = _reconstruction_error(img_l2, ref_warp, 0.85)
+    writer.add_images('pose_diff', pose_diff, epoch)
+
     # sf warp
     cam_points = back_proj(depth, torch.inverse(K), mode='sf')
     grid = proj(cam_points, K, T=None, sf=flow_b, mode='sf')
     ref_warp = tf.grid_sample(img_l1, grid, mode="bilinear", padding_mode="border")
     writer.add_images('sf_warp', ref_warp, epoch)
+
+    # sf err
+    sf_diff = _reconstruction_error(img_l2, ref_warp, 0.85)
+    writer.add_images('sf_diff', sf_diff, epoch)
 
     # sf occ map
     flow_f = projectSceneFlow2Flow(K, output_dict['flows_f'][0].detach(), disp_l1)

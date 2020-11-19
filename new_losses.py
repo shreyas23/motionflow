@@ -179,9 +179,10 @@ class Loss(nn.Module):
             mask_disp_diff1 = (disp_diff1 <= min_flow_diff1)
             mask_disp_diff2 = (disp_diff2 <= min_flow_diff2)
 
-            depth_loss1 = disp_diff1[mask_disp_diff1 * left_occ1].mean()
-            depth_loss2 = disp_diff2[mask_disp_diff2 * left_occ2].mean()
-            depth_loss = depth_loss1 + depth_loss2
+            # depth_loss1 = disp_diff1[mask_disp_diff1 * left_occ1].mean()
+            # depth_loss2 = disp_diff2[mask_disp_diff2 * left_occ2].mean()
+            # depth_loss = depth_loss1 + depth_loss2
+            depth_loss = disp_diff1[left_occ1].mean() + disp_diff2[left_occ2].mean()
 
             if self.flow_loss_mode == 'min':
                 occ_f = pose_occ_f * sf_occ_f
