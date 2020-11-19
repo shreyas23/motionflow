@@ -19,10 +19,10 @@ from utils.interpolation import interpolate2d_as
 from .modules_sceneflow import upsample_outputs_as
 
 
-class MonoSep(nn.Module):
+class Model(nn.Module):
 
     def __init__(self, args):
-        super(MonoSep, self).__init__()
+        super(Model, self).__init__()
 
         self.args = args
 
@@ -124,11 +124,11 @@ class MonoSep(nn.Module):
 
         x1_rev = x1_features
 
-        output_dict['flow_f'] = upsample_outputs_as(sceneflows_f[::-1], x1_rev)
-        output_dict['flow_b'] = upsample_outputs_as(sceneflows_b[::-1], x1_rev)
+        output_dict['flows_f'] = upsample_outputs_as(sceneflows_f[::-1], x1_rev)
+        output_dict['flows_b'] = upsample_outputs_as(sceneflows_b[::-1], x1_rev)
 
-        output_dict["disps_l1"] = disps_l1
-        output_dict["disps_l2"] = disps_l2
+        output_dict["disps_l1"] = disps_l1[::-1]
+        output_dict["disps_l2"] = disps_l2[::-1]
 
         return output_dict
 
@@ -141,8 +141,8 @@ class MonoSep(nn.Module):
         x2_features = self.encoder(input_dict['input_l2_aug'])
 
         pose_feats = [x1_features, x2_features]
-        output_dict["pose_f"], pose_feats = self.pose_decoder(pose_feats)
-        output_dict["pose_b"] = invert_pose(output_dict["pose_f"])
+        pose_vec_f = self.pose_decoder(pose_feats).squeeze(dim=1)
+        output_dict["pose_f"], output_dict["pose_b"] = invert_pose(pose_vec_f)
 
         ## Left
         output_dict.update(self.run_pwc(input_dict, x1_features, x2_features, input_dict['input_k_l1_aug'], input_dict['input_k_l2_aug']))
@@ -161,9 +161,9 @@ class MonoSep(nn.Module):
 
             output_dict_r = self.run_pwc(input_dict, input_r1_features, input_r2_features, k_r1_flip, k_r2_flip)
 
-            for ii in range(0, len(output_dict_r['flow_f'])):
-                output_dict_r['flow_f'][ii] = flow_horizontal_flip(output_dict_r['flow_f'][ii])
-                output_dict_r['flow_b'][ii] = flow_horizontal_flip(output_dict_r['flow_b'][ii])
+            for ii in range(0, len(output_dict_r['flows_f'])):
+                output_dict_r['flows_f'][ii] = flow_horizontal_flip(output_dict_r['flows_f'][ii])
+                output_dict_r['flows_b'][ii] = flow_horizontal_flip(output_dict_r['flows_b'][ii])
 
             output_dict['output_dict_r'] = output_dict_r
 

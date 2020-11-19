@@ -26,18 +26,13 @@ from augmentations import Augmentation_SceneFlow, Augmentation_Resize_Only
 
 from datasets.kitti_raw_monosf import KITTI_Raw_KittiSplit_Train, KITTI_Raw_KittiSplit_Valid, KITTI_Raw_EigenSplit_Train, KITTI_Raw_EigenSplit_Valid
 
-from models.SceneNetMono import SceneNetMono
-from models.SceneNetStereoJointIter import SceneNetStereoJointIter
-from models.SceneNetMonoJointIter import SceneNetMonoJointIter
-from models.SceneNetMonoJoint import SceneNetMonoJoint
-from models.MonoIterNoCV import MonoIterNoCV
+from models.Model import Model
+from new_losses import Loss
 
 from utils.inverse_warp import flow_warp, pose2flow, inverse_warp, pose_vec2mat
 from utils.sceneflow_util import projectSceneFlow2Flow, disp2depth_kitti, reconstructImg
 from utils.sceneflow_util import pixel2pts_ms, pts2pixel_ms, pts2pixel_pose_ms, pixel2pts_ms_depth
-
-from losses import Loss_SceneFlow_SelfSup_Joint, Loss_SceneFlow_SelfSup_JointIter, Loss_SceneFlow_SelfSup_Separate
-from losses import _generate_image_left, _adaptive_disocc_detection
+from utils.loss_utils import _generate_image_left, _adaptive_disocc_detection
 
 
 parser = argparse.ArgumentParser(description="Self Supervised Joint Learning of Scene Flow, Disparity, Rigid Camera Motion, and Motion Segmentation",
@@ -95,7 +90,7 @@ parser.add_argument('--no_flip_augs', type=bool, default=False,
                     help='only do resize augmentation on input data')
 
 # weight params
-parser.add_argument('--fb_w', type=float, default=0.2, help='mask consensus weight')
+parser.add_argument('--flow_min_w', type=float, default=0.5, help='mask consensus weight')
 parser.add_argument('--pose_pts_w', type=float, default=0.2, help='mask consensus weight')
 parser.add_argument('--sf_pts_w', type=float, default=0.2, help='mask consensus weight')
 parser.add_argument('--pose_sm_w', type=float, default=200, help='mask consensus weight')
@@ -192,23 +187,9 @@ def train(gpu, args):
     DATA_ROOT = args.data_root
 
     print(f"Loading model onto gpu: {gpu}")
-    if args.model_name == 'scenenet_mono_separate':
-        model = SceneNetMono(args).cuda(device=gpu)
-        loss = Loss_SceneFlow_SelfSup_Separate(args)
-    elif args.model_name == 'scenenet_joint_mono':
-        model = SceneNetMonoJoint(args).cuda(device=gpu)
-        loss = Loss_SceneFlow_SelfSup_Joint(args)
-    elif args.model_name == 'scenenet_joint_stereo_iter':
-        model = SceneNetStereoJointIter(args).cuda(device=gpu)
-        loss = Loss_SceneFlow_SelfSup_JointIter(args)
-    elif args.model_name == 'scenenet_joint_mono_iter':
-        model = SceneNetMonoJointIter(args).cuda(device=gpu)
-        loss = Loss_SceneFlow_SelfSup_JointIter(args)
-    elif args.model_name == 'scenenet_iter_no_cv':
-        model = MonoIterNoCV(args).cuda(device=gpu)
-        loss = Loss_SceneFlow_SelfSup_JointIter(args)
-    else:
-        raise NotImplementedError
+
+    model = Model(args).cuda(device=gpu)
+    loss = Loss(args).cuda(device=gpu)
 
     if args.use_bn:
         model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
@@ -249,7 +230,6 @@ def train(gpu, args):
     if args.cuda:
         train_augmentations = train_augmentations.cuda(device=gpu)
         val_augmentations = val_augmentations.cuda(device=gpu)
-        loss = loss.cuda()
 
     # load optimizer and lr scheduler
     optimizer = Adam(model.parameters(), 

@@ -1,6 +1,7 @@
 import torch
-import torch.nn
-from torch.nn import functional as tf
+import torch.nn as nn
+import torch.nn.functional as tf
+from models.forwardwarp_package.forward_warp import forward_warp
 
 ###############################################
 # Loss Utils
@@ -160,17 +161,40 @@ def _smoothness_motion_2nd(sf, img, beta=1):
     return (smoothness_x.abs() + smoothness_y.abs())
 
 
-def _disp2depth_kitti_K(disp, k_value):
+def _disp2depth_kitti_K(disp, fx, min_depth=0.1, max_depth=100):
 
-    mask = (disp > 0).float()
-    depth = k_value.unsqueeze(1).unsqueeze(
-        1).unsqueeze(1) * 0.54 / (disp + (1.0 - mask))
+    #scale disparity according to monodepthv2
+    min_disp = (0.54 * fx) / max_depth
+    max_disp = (0.54 * fx) / min_depth
+    scaled_disp = min_disp + (max_disp - min_disp) * disp
+
+    mask = (scaled_disp > 0).float()
+    depth = fx.unsqueeze(1).unsqueeze(
+        1).unsqueeze(1) * 0.54 / (scaled_disp + (1.0 - mask))
+
+    depth = torch.clamp(depth, min_depth, max_depth)
 
     return depth
 
 
-def _depth2disp_kitti_K(depth, k_value):
+def _depth2disp_kitti_K(depth, fx):
 
-    disp = k_value.unsqueeze(1).unsqueeze(1).unsqueeze(1) * 0.54 / depth
+    disp = fx.unsqueeze(1).unsqueeze(1).unsqueeze(1) * 0.54 / depth
 
     return disp
+
+# from monodepth v2
+def disp_smooth_loss(disp, img):
+    """Computes the smoothness loss for a disparity image
+       The color image is used for edge-aware smoothness
+    """
+    grad_disp_x = torch.abs(disp[:, :, :, :-1] - disp[:, :, :, 1:])
+    grad_disp_y = torch.abs(disp[:, :, :-1, :] - disp[:, :, 1:, :])
+
+    grad_img_x = torch.mean(torch.abs(img[:, :, :, :-1] - img[:, :, :, 1:]), 1, keepdim=True)
+    grad_img_y = torch.mean(torch.abs(img[:, :, :-1, :] - img[:, :, 1:, :]), 1, keepdim=True)
+
+    grad_disp_x *= torch.exp(-grad_img_x)
+    grad_disp_y *= torch.exp(-grad_img_y)
+
+    return grad_disp_x.mean() + grad_disp_y.mean()

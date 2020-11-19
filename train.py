@@ -21,24 +21,14 @@ from augmentations import Augmentation_SceneFlow, Augmentation_Resize_Only
 
 from datasets.kitti_raw_monosf import KITTI_Raw_KittiSplit_Train, KITTI_Raw_KittiSplit_Valid, KITTI_Raw_EigenSplit_Train, KITTI_Raw_EigenSplit_Valid
 
-from models.SceneNetMono import SceneNetMono
-from models.SceneNetMonoJoint import SceneNetMonoJoint
-from models.SceneNetStereoJoint import SceneNetStereoJoint
-from models.SceneNetStereoJointIter import SceneNetStereoJointIter
-from models.SceneNetMonoJointIter import SceneNetMonoJointIter
-from models.model_monosceneflow import MonoSceneFlow
-from models.PoseDepthNet import PoseDispNet
-from models.MonoIterNoCV import MonoIterNoCV
-
 from utils.inverse_warp import flow_warp, pose2flow, inverse_warp, pose_vec2mat
 from utils.sceneflow_util import projectSceneFlow2Flow, disp2depth_kitti, reconstructImg
 from utils.sceneflow_util import pixel2pts_ms, pts2pixel_ms, pts2pixel_pose_ms, pixel2pts_ms_depth
 
-from losses import Loss_SceneFlow_SelfSup_JointIter, Loss_SceneFlow_SelfSup_Joint, Loss_SceneFlow_SelfSup_Separate
-# from losses import Loss_SceneFlow_SelfSup_Pose, Loss_SceneFlow_SelfSup_JointIter
-# from losses import Loss_SceneFlow_SelfSup, Loss_SceneFlow_SelfSup_Pose, Loss_SceneFlow_SelfSup_PoseStereo, Loss_SceneFlow_SelfSup_JointStereo
+from new_losses import Loss
+from models.Model import Model
+
 from losses import _generate_image_left, _adaptive_disocc_detection
-from losses import Loss_PoseDepth
 
 
 parser = argparse.ArgumentParser(description="Self Supervised Joint Learning of Scene Flow, Disparity, Rigid Camera Motion, and Motion Segmentation",
@@ -94,7 +84,8 @@ parser.add_argument('--resize_only', type=bool, default=False,
                     help='only do resize augmentation on input data')
 
 # weight params
-parser.add_argument('--fb_w', type=float, default=0.2, help='mask consensus weight')
+parser.add_argument('--ssim_w', type=float, default=0.85, help='mask consensus weight')
+parser.add_argument('--flow_min_w', type=float, default=0.5, help='mask consensus weight')
 parser.add_argument('--sf_pts_w', type=float, default=0.2, help='mask consensus weight')
 parser.add_argument('--sf_sm_w', type=float, default=200, help='mask consensus weight')
 parser.add_argument('--pose_sm_w', type=float, default=200, help='mask consensus weight')
@@ -109,6 +100,10 @@ parser.add_argument('--static_cons_w', type=float, default=0.0, help='mask conse
 parser.add_argument('--mask_cons_w', type=float, default=0.0, help='mask consensus weight')
 parser.add_argument('--flow_diff_thresh', type=float, default=1e-3, help='mask consensus weight')
 
+parser.add_argument('--flow_loss_mode', type=str, default="avg",
+                    help='only do resize augmentation on input data')
+parser.add_argument('--pt_encoder', type=bool, default=True,
+                    help='only do resize augmentation on input data')
 parser.add_argument('--use_flow_mask', type=bool, default=False,
                     help='only do resize augmentation on input data')
 
@@ -195,23 +190,8 @@ def main():
   else:
       raise NotImplementedError
 
-  if args.model_name == 'scenenet_mono_separate':
-      model = SceneNetMono(args).cuda()
-      loss = Loss_SceneFlow_SelfSup_Separate(args)
-  elif args.model_name == 'scenenet_joint_mono':
-      model = SceneNetMonoJoint(args).cuda()
-      loss = Loss_SceneFlow_SelfSup_Joint(args)
-  elif args.model_name == 'scenenet_joint_stereo_iter':
-      model = SceneNetStereoJointIter(args).cuda()
-      loss = Loss_SceneFlow_SelfSup_JointIter(args)
-  elif args.model_name == 'scenenet_joint_mono_iter':
-      model = SceneNetMonoJointIter(args).cuda()
-      loss = Loss_SceneFlow_SelfSup_JointIter(args)
-  elif args.model_name == 'scenenet_iter_no_cv':
-      model = MonoIterNoCV(args).cuda()
-      loss = Loss_SceneFlow_SelfSup_JointIter(args)
-  else:
-      raise NotImplementedError
+  model = Model(args).cuda()
+  loss = Loss(args).cuda()
 
   # define augmentations
   if args.resize_only:
@@ -231,12 +211,6 @@ def main():
     
     device = torch.device("cuda:0")
     model = model.to(device=device)
-
-    if args.num_gpus > 1 and torch.cuda.device_count() > 1:
-        print(f"Using {torch.cuda.device_count()} GPUs...")
-
-        model = nn.parallel.DataParallel(model)
-        assert (isinstance(model, nn.DataParallel)), "model is not parallelized"
 
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
