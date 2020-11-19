@@ -90,6 +90,7 @@ parser.add_argument('--no_flip_augs', type=bool, default=False,
                     help='only do resize augmentation on input data')
 
 # weight params
+parser.add_argument('--ssim_w', type=float, default=0.85, help='mask consensus weight')
 parser.add_argument('--flow_min_w', type=float, default=0.5, help='mask consensus weight')
 parser.add_argument('--pose_pts_w', type=float, default=0.2, help='mask consensus weight')
 parser.add_argument('--sf_pts_w', type=float, default=0.2, help='mask consensus weight')
@@ -103,9 +104,6 @@ parser.add_argument('--mask_reg_w', type=float, default=0.2, help='mask consensu
 parser.add_argument('--static_cons_w', type=float, default=0.2, help='mask consensus weight')
 parser.add_argument('--mask_cons_w', type=float, default=0.0, help='mask consensus weight')
 parser.add_argument('--flow_diff_thresh', type=float, default=1e-3, help='mask consensus weight')
-
-parser.add_argument('--use_flow_mask', type=bool, default=False,
-                    help='only do resize augmentation on input data')
 
 # learning params
 parser.add_argument('--lr', type=float, default=1e-4,
@@ -128,10 +126,21 @@ parser.add_argument('--train_consistency', type=bool, default=False,
                     help="whether to use consistency losses in training procedure")
 parser.add_argument('--use_bn', type=bool, default=False,
                     help="whether to use batch-norm in training procedure")
-parser.add_argument('--use_mask', type=bool, default=True,
+parser.add_argument('--use_mask', type=bool, default=False,
                     help="whether to use consensus mask in training procedure")
+parser.add_argument('--use_flow_mask', type=bool, default=False,
+                    help='only do resize augmentation on input data')
+parser.add_argument('--pt_encoder', type=bool, default=True,
+                    help='only do resize augmentation on input data')
 parser.add_argument('--use_ppm', type=bool, default=False,
                     help="whether to use consensus mask in training procedure")
+parser.add_argument('--num_scales', type=int, default=4,
+                    help="whether to use consensus mask in training procedure")
+
+# loss params
+parser.add_argument('--flow_loss_mode', type=str, default="min",
+                    help='only do resize augmentation on input data')
+
 
 # etc.
 parser.add_argument('--debugging', type=bool,
@@ -252,7 +261,6 @@ def train(gpu, args):
     # set up logging
     if not args.no_logging:
         log_dir = os.path.join(args.log_dir, args.exp_dir)
-
         if gpu == 0:
             os.makedirs(log_dir, exist_ok=True)
 
@@ -264,9 +272,9 @@ def train(gpu, args):
         log_dir = os.path.join(log_dir, exp_name)
         writer = SummaryWriter(log_dir) if gpu == 0 else None
     
-    if gpu == 0:
-        with open(os.path.join(log_dir, 'args.txt'), 'w') as f:
-            json.dump(args.__dict__, f, indent=2)
+        if gpu == 0:
+            with open(os.path.join(log_dir, 'args.txt'), 'w') as f:
+                json.dump(args.__dict__, f, indent=2)
 
     curr_epoch = args.start_epoch
 
@@ -380,7 +388,12 @@ def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_
 
     loss_dict_avg = None
 
-    for i, data in enumerate(tqdm(dataloader)):
+    if gpu == 0:
+        dataloader_iter = tqdm(dataloader)
+    else:
+        dataloader_iter = dataloader
+
+    for i, data in enumerate(dataloader_iter):
         loss_dict, output_dict = step(
             args, data, model, loss, augmentations, optimizer, gpu)
         

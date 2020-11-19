@@ -25,6 +25,7 @@ class Model(nn.Module):
         super(Model, self).__init__()
 
         self.args = args
+        self.num_scales = args.num_scales
 
         self.encoder = ResnetEncoder(num_layers=18, pretrained=args.pt_encoder, num_input_images=1)
         self.encoder_chs = self.encoder.num_ch_enc
@@ -124,11 +125,11 @@ class Model(nn.Module):
 
         x1_rev = x1_features
 
-        output_dict['flows_f'] = upsample_outputs_as(sceneflows_f[::-1], x1_rev)
-        output_dict['flows_b'] = upsample_outputs_as(sceneflows_b[::-1], x1_rev)
+        output_dict['flows_f'] = upsample_outputs_as(sceneflows_f[::-1], x1_rev)[:self.num_scales]
+        output_dict['flows_b'] = upsample_outputs_as(sceneflows_b[::-1], x1_rev)[:self.num_scales]
 
-        output_dict["disps_l1"] = disps_l1[::-1]
-        output_dict["disps_l2"] = disps_l2[::-1]
+        output_dict["disps_l1"] = disps_l1[::-1][:self.num_scales]
+        output_dict["disps_l2"] = disps_l2[::-1][:self.num_scales]
 
         return output_dict
 

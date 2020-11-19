@@ -18,8 +18,6 @@ class Loss(nn.Module):
 
         self.args = args
 
-        self.num_scales = 4
-
         self.flow_min_w = args.flow_min_w
         self.ssim_w = args.ssim_w
         self.flow_loss_mode = args.flow_loss_mode
@@ -112,6 +110,12 @@ class Loss(nn.Module):
 
         return img_diff, occ_mask
 
+    def detach_outputs(self, output_dict):
+        
+        for ii in range(0, len(output_dict['flows_f'])):
+            output_dict['flows_f'][ii].detach_()
+            output_dict['flows_b'][ii].detach_()
+
     def forward(self, output, target):
         depth_loss_sum = 0
         flow_loss_sum = 0
@@ -125,12 +129,12 @@ class Loss(nn.Module):
         K_l1 = target['input_k_l1_aug']
         K_l2 = target['input_k_l2_aug']
 
-        disps_l1 = output['disps_l1'][:self.num_scales]
-        disps_l2 = output['disps_l2'][:self.num_scales]
-        disps_r1 = output['output_dict_r']['disps_l1'][:self.num_scales]
-        disps_r2 = output['output_dict_r']['disps_l2'][:self.num_scales]
-        flows_f = output['flows_f'][:self.num_scales]
-        flows_b = output['flows_b'][:self.num_scales]
+        disps_l1 = output['disps_l1']
+        disps_l2 = output['disps_l2']
+        disps_r1 = output['output_dict_r']['disps_l1']
+        disps_r2 = output['output_dict_r']['disps_l2']
+        flows_f = output['flows_f']
+        flows_b = output['flows_b']
         pose_f = output['pose_f']
         pose_b = output['pose_b']
 
@@ -209,5 +213,7 @@ class Loss(nn.Module):
         loss_dict["flow_loss"] = flow_loss_sum.detach()
         loss_dict["disp_lr_loss"] = disp_lr_sum.detach()
         loss_dict["disp_sm_loss"] = disp_sm_sum.detach()
-        
+
+        self.detach_outputs(output['output_dict_r'])
+
         return loss_dict
