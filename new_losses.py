@@ -68,9 +68,9 @@ class Loss(nn.Module):
         lr_disp_diff_r = torch.abs(proj_disp_l - disp_r)
 
         # Smoothness loss
-        # mean_disp = disp_l.mean(2, True).mean(3, True)
-        # norm_disp = disp_l / (mean_disp + 1e-7)
-        smooth_loss = disp_smooth_loss(disp_l, img_l) / (2 ** scale)
+        mean_disp = disp_l.mean(2, True).mean(3, True)
+        norm_disp = disp_l / (mean_disp + 1e-7)
+        smooth_loss = disp_smooth_loss(norm_disp, img_l) / (2 ** scale)
 
         loss_lr = lr_disp_diff_l[left_occ].mean() + lr_disp_diff_r[right_occ].mean()
         lr_disp_diff_l[~left_occ].detach_()
@@ -176,13 +176,13 @@ class Loss(nn.Module):
             min_flow_diff1, _ = flow_diffs1.min(dim=1, keepdim=True)
             min_flow_diff2, _ = flow_diffs2.min(dim=1, keepdim=True)
 
-            mask_disp_diff1 = (disp_diff1 <= min_flow_diff1)
-            mask_disp_diff2 = (disp_diff2 <= min_flow_diff2)
+            mask_disp_diff1 = (disp_diff1 <= min_flow_diff1).detach()
+            mask_disp_diff2 = (disp_diff2 <= min_flow_diff2).detach()
 
-            # depth_loss1 = disp_diff1[mask_disp_diff1 * left_occ1].mean()
-            # depth_loss2 = disp_diff2[mask_disp_diff2 * left_occ2].mean()
-            # depth_loss = depth_loss1 + depth_loss2
-            depth_loss = disp_diff1[left_occ1].mean() + disp_diff2[left_occ2].mean()
+            depth_loss1 = disp_diff1[mask_disp_diff1 * left_occ1].mean()
+            depth_loss2 = disp_diff2[mask_disp_diff2 * left_occ2].mean()
+            depth_loss = depth_loss1 + depth_loss2
+            # depth_loss = disp_diff1[left_occ1].mean() + disp_diff2[left_occ2].mean()
 
             if self.flow_loss_mode == 'min':
                 occ_f = pose_occ_f * sf_occ_f
