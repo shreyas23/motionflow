@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as tf
 import numpy as np
 
-from .loss_utils import _disp2depth_kitti_K, _adaptive_disocc_detection
+from .loss_utils import _disp2depth_kitti_K, _adaptive_disocc_detection, _generate_image_left
 from .inverse_warp import pose_vec2mat, pose2flow
 from .interpolation import interpolate2d_as
 from .sceneflow_util import projectSceneFlow2Flow
@@ -123,7 +123,9 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
 
     # depth
     depth = _disp2depth_kitti_K(disp_l2, K[:, 0, 0])
-    writer.add_images('disp', depth, epoch)
+    disp_warp = _generate_image_left(img_r2, disp_l2) 
+    writer.add_images('disp', disp_l2, epoch)
+    writer.add_images('disp_warp', disp_warp, epoch)
 
     # pose warp
     cam_points = back_proj(depth, torch.inverse(K), mode='pose')

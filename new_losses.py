@@ -68,10 +68,9 @@ class Loss(nn.Module):
         lr_disp_diff_r = torch.abs(proj_disp_l - disp_r)
 
         # Smoothness loss
-        mean_disp = disp_l.mean(2, True).mean(3, True)
-        norm_disp = disp_l / (mean_disp + 1e-7)
-
-        smooth_loss = disp_smooth_loss(norm_disp, img_l) / (2 ** scale)
+        # mean_disp = disp_l.mean(2, True).mean(3, True)
+        # norm_disp = disp_l / (mean_disp + 1e-7)
+        smooth_loss = disp_smooth_loss(disp_l, img_l) / (2 ** scale)
 
         loss_lr = lr_disp_diff_l[left_occ].mean() + lr_disp_diff_r[right_occ].mean()
         lr_disp_diff_l[~left_occ].detach_()
@@ -104,7 +103,7 @@ class Loss(nn.Module):
         occ_mask = _adaptive_disocc_detection(of).detach()
         cam_points = back_proj(depth, torch.inverse(K), mode=mode)
         grid = proj(cam_points, K, T=T, sf=sf, mode=mode)
-        ref_warp = tf.grid_sample(src, grid, mode="bilinear", padding_mode="border")
+        ref_warp = tf.grid_sample(src, grid, padding_mode="border")
         img_diff = _reconstruction_error(tgt, ref_warp, self.ssim_w)
 
         return img_diff, occ_mask

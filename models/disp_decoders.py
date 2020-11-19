@@ -44,6 +44,22 @@ class DispDecoder(nn.Module):
         self.decoder = nn.ModuleList(list(self.convs.values()))
         self.sigmoid = nn.Sigmoid()
 
+        # self.init_weights()
+
+    def init_weights(self):
+        for layer in self.modules():
+            if isinstance(layer, nn.Conv2d) or isinstance(layer, nn.ConvTranspose2d):
+                nn.init.kaiming_normal_(layer.weight)
+                if layer.bias is not None:
+                    nn.init.constant_(layer.bias, 0)
+
+            elif isinstance(layer, nn.LeakyReLU):
+                pass
+
+            elif isinstance(layer, nn.Sequential):
+                pass
+
+
     def forward(self, input_features):
         self.outputs = []
 
@@ -59,6 +75,7 @@ class DispDecoder(nn.Module):
             x = torch.cat(x, 1)
             x = self.convs[("upconv", i, 1)](x)
             if i in self.scales:
-                self.outputs.append(self.sigmoid(self.convs[("dispconv", i)](x)))
+                out_disp = self.sigmoid(self.convs[("dispconv", i)](x))
+                self.outputs.append(out_disp)
 
         return self.outputs
