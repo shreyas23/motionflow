@@ -7,9 +7,8 @@ class SFDecoder(nn.Module):
         super(SFDecoder, self).__init__()
 
         self.convs = nn.Sequential(
-            Conv(in_ch, 128, use_bn=use_bn, nonlin='leakyrelu'),
-            Conv(128, 128, use_bn=use_bn, nonlin='leakyrelu'),
-            Conv(128, 128, use_bn=use_bn, nonlin='leakyrelu'),
+            Conv(in_ch, 256, use_bn=use_bn, nonlin='leakyrelu'),
+            Conv(256, 128, use_bn=use_bn, nonlin='leakyrelu'),
             Conv(128, 96, use_bn=use_bn, nonlin='leakyrelu'),
             Conv(96, 64, use_bn=use_bn, nonlin='leakyrelu'),
             Conv(64, 32, use_bn=use_bn, nonlin='leakyrelu')
