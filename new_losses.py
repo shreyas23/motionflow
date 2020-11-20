@@ -46,6 +46,8 @@ class Loss(nn.Module):
 
         self.use_flow_mask = args.use_flow_mask
 
+        self.scale_weights = [4.0, 2.0, 2.0, 1.0, 1.0]
+
     def depth_loss(self, disp_l, disp_r, img_l, img_r, scale):
         """ Calculate the difference between the src and tgt images 
         Inputs:
@@ -140,6 +142,8 @@ class Loss(nn.Module):
             masks_l1 = output['mask_l1']
             masks_l2 = output['mask_l2']
 
+        num_scales = len(disps_l1)
+
         for s, _ in enumerate(disps_l1):
             flow_f = interpolate2d_as(flows_f[s], img_l1)
             flow_b = interpolate2d_as(flows_b[s], img_l1)
@@ -201,14 +205,14 @@ class Loss(nn.Module):
 
             flow_loss = flow_loss1 + flow_loss2
 
-            depth_loss_sum = depth_loss_sum + depth_loss + loss_lr * self.disp_lr_w + loss_disp_sm * self.disp_sm_w
+            depth_loss_sum = depth_loss_sum + (depth_loss + loss_lr * self.disp_lr_w + loss_disp_sm * self.disp_sm_w) * self.scale_weights[s]
             disp_lr_sum = disp_lr_sum + loss_lr
             disp_sm_sum = disp_sm_sum + loss_disp_sm
-            flow_loss_sum = flow_loss_sum + flow_loss
+            flow_loss_sum = flow_loss_sum + flow_loss * self.scale_weights[s] 
 
         loss_dict = {}
 
-        loss_dict["total_loss"] = depth_loss_sum + flow_loss_sum
+        loss_dict["total_loss"] = (depth_loss_sum + flow_loss_sum) / num_scales
         loss_dict["depth_loss"] = depth_loss_sum.detach()
         loss_dict["flow_loss"] = flow_loss_sum.detach()
         loss_dict["disp_lr_loss"] = disp_lr_sum.detach()

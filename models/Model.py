@@ -30,7 +30,7 @@ class Model(nn.Module):
         self.encoder = ResnetEncoder(num_layers=18, pretrained=args.pt_encoder, num_input_images=1)
         self.encoder_chs = self.encoder.num_ch_enc
 
-        self.disp_decoder = DispDecoder(num_ch_enc=self.encoder_chs, scales=range(4))
+        self.disp_decoder = DispDecoder(num_ch_enc=self.encoder_chs, scales=range(5))
         self.pose_decoder = PoseDecoder(self.encoder_chs, 2)
 
         self.sf_out_chs = 32
@@ -55,7 +55,7 @@ class Model(nn.Module):
             else:
                 num_ch_in = self.dim_corr + ch + self.sf_out_chs + 3
                 self.upconv_layers.append(UpConv(self.sf_out_chs, self.sf_out_chs, 3, 2))
-
+            self.upconv_layers.append(UpConv(self.sf_out_chs, self.sf_out_chs, 3, 2))
             self.sf_layers.append(SFDecoder(num_ch_in))
 
         self.init_weights()
@@ -77,9 +77,11 @@ class Model(nn.Module):
             
         output_dict = {}
 
+        # disparities
         disps_l1 = self.disp_decoder(x1_features)
         disps_l2 = self.disp_decoder(x2_features)
 
+        # features
         x1_features = [input_dict['input_l1_aug']] + x1_features
         x2_features = [input_dict['input_l2_aug']] + x2_features
 
@@ -131,7 +133,7 @@ class Model(nn.Module):
                 sceneflows_f.append(flow_f)
                 sceneflows_b.append(flow_b)
                 break
-
+                
         output_dict['flows_f'] = upsample_outputs_as(sceneflows_f[::-1], x1_features)
         output_dict['flows_b'] = upsample_outputs_as(sceneflows_b[::-1], x1_features)
 
