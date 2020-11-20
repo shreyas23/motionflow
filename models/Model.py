@@ -139,7 +139,7 @@ class Model(nn.Module):
 
         output_dict["disps_l1"] = disps_l1[::-1]
         output_dict["disps_l2"] = disps_l2[::-1]
-
+        
         return output_dict
 
 
@@ -174,6 +174,8 @@ class Model(nn.Module):
             for ii in range(0, len(output_dict_r['flows_f'])):
                 output_dict_r['flows_f'][ii] = flow_horizontal_flip(output_dict_r['flows_f'][ii])
                 output_dict_r['flows_b'][ii] = flow_horizontal_flip(output_dict_r['flows_b'][ii])
+                output_dict_r['disps_l1'][ii] = torch.flip(output_dict_r['disps_l1'][ii], dims=[3])
+                output_dict_r['disps_l2'][ii] = torch.flip(output_dict_r['disps_l2'][ii], dims=[3])
 
             output_dict['output_dict_r'] = output_dict_r
 

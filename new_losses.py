@@ -61,24 +61,13 @@ class Loss(nn.Module):
 
         # occlusion detection
         left_occ = _adaptive_disocc_detection_disp(disp_r).detach()
-        right_occ = _adaptive_disocc_detection_disp(disp_l).detach()
-
-        # L-R Consistency loss
-        proj_disp_r = _generate_image_left(disp_r, disp_l)
-        proj_disp_l = _generate_image_right(disp_l, disp_r)
-        lr_disp_diff_l = torch.abs(proj_disp_r - disp_l)
-        lr_disp_diff_r = torch.abs(proj_disp_l - disp_r)
 
         # Smoothness loss
         mean_disp = disp_l.mean(2, True).mean(3, True)
         norm_disp = disp_l / (mean_disp + 1e-7)
         smooth_loss = disp_smooth_loss(norm_disp, img_l) / (2 ** scale)
 
-        loss_lr = lr_disp_diff_l[left_occ].mean() + lr_disp_diff_r[right_occ].mean()
-        lr_disp_diff_l[~left_occ].detach_()
-        lr_disp_diff_r[~right_occ].detach_()
-
-        return img_diff, left_occ, loss_lr, smooth_loss
+        return img_diff, left_occ, smooth_loss
     
     def flow_loss(self, disp, src, tgt, K, sf=None, T=None, mode='pose'):
         """ Calculate the difference between the src and tgt images 
@@ -115,11 +104,12 @@ class Loss(nn.Module):
         for ii in range(0, len(output_dict['flows_f'])):
             output_dict['flows_f'][ii].detach_()
             output_dict['flows_b'][ii].detach_()
+            output_dict['disps_l1'][ii].detach_()
+            output_dict['disps_l2'][ii].detach_()
 
     def forward(self, output, target):
         depth_loss_sum = 0
         flow_loss_sum = 0
-        disp_lr_sum = 0
         disp_sm_sum = 0
 
         img_l1 = target['input_l1_aug']
@@ -161,9 +151,8 @@ class Loss(nn.Module):
                     flow_mask_l2 = 1.0 - mask_l2
 
             # depth diffs
-            disp_diff1, left_occ1, loss_lr1, loss_disp_sm1 = self.depth_loss(disp_l1, disp_r1, img_l1, img_r1, s)
-            disp_diff2, left_occ2, loss_lr2, loss_disp_sm2 = self.depth_loss(disp_l2, disp_r2, img_l2, img_r2, s)
-            loss_lr = (loss_lr1 + loss_lr2) * self.disp_lr_w
+            disp_diff1, left_occ1, loss_disp_sm1 = self.depth_loss(disp_l1, disp_r1, img_l1, img_r1, s)
+            disp_diff2, left_occ2, loss_disp_sm2 = self.depth_loss(disp_l2, disp_r2, img_l2, img_r2, s)
             loss_disp_sm = loss_disp_sm1 + loss_disp_sm2 * self.disp_sm_w
 
             # pose diffs
@@ -205,8 +194,7 @@ class Loss(nn.Module):
 
             flow_loss = flow_loss1 + flow_loss2
 
-            depth_loss_sum = depth_loss_sum + (depth_loss + loss_lr * self.disp_lr_w + loss_disp_sm * self.disp_sm_w) * self.scale_weights[s]
-            disp_lr_sum = disp_lr_sum + loss_lr
+            depth_loss_sum = depth_loss_sum + (depth_loss + loss_disp_sm * self.disp_sm_w) * self.scale_weights[s]
             disp_sm_sum = disp_sm_sum + loss_disp_sm
             flow_loss_sum = flow_loss_sum + flow_loss * self.scale_weights[s] 
 
@@ -215,7 +203,6 @@ class Loss(nn.Module):
         loss_dict["total_loss"] = (depth_loss_sum + flow_loss_sum) / num_scales
         loss_dict["depth_loss"] = depth_loss_sum.detach()
         loss_dict["flow_loss"] = flow_loss_sum.detach()
-        loss_dict["disp_lr_loss"] = disp_lr_sum.detach()
         loss_dict["disp_sm_loss"] = disp_sm_sum.detach()
 
         self.detach_outputs(output['output_dict_r'])
