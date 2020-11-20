@@ -55,7 +55,7 @@ class Model(nn.Module):
             else:
                 num_ch_in = self.dim_corr + ch + self.sf_out_chs + 3
                 self.upconv_layers.append(UpConv(self.sf_out_chs, self.sf_out_chs, 3, 2))
-            self.upconv_layers.append(UpConv(self.sf_out_chs, self.sf_out_chs, 3, 2))
+
             self.sf_layers.append(SFDecoder(num_ch_in))
 
         self.init_weights()
