@@ -46,7 +46,7 @@ class Loss(nn.Module):
 
         self.use_flow_mask = args.use_flow_mask
 
-        self.scale_weights = [4.0, 2.0, 2.0, 1.0, 1.0]
+        self.scale_weights = [4.0, 2.0, 1.0, 1.0, 1.0]
 
     def depth_loss(self, disp_l, disp_r, img_l, img_r, scale):
         """ Calculate the difference between the src and tgt images 
@@ -133,7 +133,6 @@ class Loss(nn.Module):
             masks_l2 = output['mask_l2']
 
         num_scales = len(disps_l1)
-
         for s, _ in enumerate(disps_l1):
             flow_f = interpolate2d_as(flows_f[s], img_l1)
             flow_b = interpolate2d_as(flows_b[s], img_l1)

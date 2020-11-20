@@ -81,10 +81,6 @@ class Model(nn.Module):
         disps_l1 = self.disp_decoder(x1_features)
         disps_l2 = self.disp_decoder(x2_features)
 
-        # features
-        x1_features = [input_dict['input_l1_aug']] + x1_features
-        x2_features = [input_dict['input_l2_aug']] + x2_features
-
         # outputs
         sceneflows_f = []
         sceneflows_b = []
@@ -137,8 +133,8 @@ class Model(nn.Module):
         output_dict['flows_f'] = upsample_outputs_as(sceneflows_f[::-1], x1_features)
         output_dict['flows_b'] = upsample_outputs_as(sceneflows_b[::-1], x1_features)
 
-        output_dict["disps_l1"] = disps_l1[::-1]
-        output_dict["disps_l2"] = disps_l2[::-1]
+        output_dict["disps_l1"] = upsample_outputs_as(disps_l1[::-1], x1_features)
+        output_dict["disps_l2"] = upsample_outputs_as(disps_l2[::-1], x1_features)
         
         return output_dict
 
@@ -152,10 +148,10 @@ class Model(nn.Module):
 
         pose_feats = [x1_features, x2_features]
         pose_vec_f = self.pose_decoder(pose_feats).squeeze(dim=1)
-        output_dict["pose_f"], output_dict["pose_b"] = invert_pose(pose_vec_f)
 
         ## Left
-        output_dict.update(self.run_pwc(input_dict, x1_features, x2_features, input_dict['input_k_l1_aug'], input_dict['input_k_l2_aug']))
+        output_dict = self.run_pwc(input_dict, x1_features, x2_features, input_dict['input_k_l1_aug'], input_dict['input_k_l2_aug'])
+        output_dict["pose_f"], output_dict["pose_b"] = invert_pose(pose_vec_f)
 
         ## Right
         ## ss: train val 
