@@ -84,7 +84,6 @@ class ResnetEncoder(nn.Module):
         super(ResnetEncoder, self).__init__()
 
         self.num_ch_enc = np.array([64, 64, 128, 256, 512])
-        self.use_bn = use_bn
 
         resnets = {18: models.resnet18,
                    34: models.resnet34,
