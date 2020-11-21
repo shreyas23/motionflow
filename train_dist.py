@@ -29,6 +29,7 @@ from datasets.kitti_raw_monosf import KITTI_Raw_KittiSplit_Train, KITTI_Raw_Kitt
 from models.Model import Model
 from new_losses import Loss
 
+from utils.helpers import visualize_output
 from utils.inverse_warp import flow_warp, pose2flow, inverse_warp, pose_vec2mat
 from utils.sceneflow_util import projectSceneFlow2Flow, disp2depth_kitti, reconstructImg
 from utils.sceneflow_util import pixel2pts_ms, pts2pixel_ms, pts2pixel_pose_ms, pixel2pts_ms_depth
@@ -449,76 +450,6 @@ def eval(args, model, loss, dataloader, augmentations):
         loss_dict_avg[key] /= n
 
     return loss_dict_avg
-
-
-def visualize_output(args, input_dict, output_dict, epoch, writer):
-
-    assert (writer is not None), "tensorboard writer not provided"
-
-    img_l1_aug = input_dict['input_l1_aug'].detach()
-    img_l2_aug = input_dict['input_l2_aug'].detach()
-    img_r2_aug = input_dict['input_r2_aug'].detach()
-    k_l2_aug = input_dict['input_k_l2_aug'].detach()
-    aug_size = input_dict['aug_size']
-
-    # input
-    writer.add_images('input_l1', img_l1_aug, epoch)
-    writer.add_images('input_l2', img_l2_aug, epoch)
-    writer.add_images('input_r2', img_r2_aug, epoch)
-
-    # if args.model_name in ['scenenet', 'scenenet_stereo', 'scenenet_joint']:
-    if 'scenenet' in args.model_name:
-        sf_b = output_dict['flow_b'][0].detach()
-        if 'separate' in args.model_name:
-            pose = output_dict['pose_b'].detach()
-        else:
-            pose = output_dict['pose_b'][0].detach()
-        print(f"Transformation matrices for epoch: {epoch}, \n{pose}\n")
-        if args.use_mask:
-            mask = output_dict['mask_l2'][0].detach()
-            census_mask = output_dict['census_masks_l2'][0].detach()
-            writer.add_images('mask', mask, epoch)
-            writer.add_images('census mask', census_mask, epoch)
-
-        # disparity
-        disp_l2 = output_dict['disp_l2'][0].detach()
-        writer.add_images('img_r2_disp_warp', _generate_image_left(img_r2_aug, disp_l2), epoch)
-        _, _, h_dp, w_dp = sf_b.size()
-        disp_l2 = disp_l2 * w_dp
-        writer.add_images('disp_l2', disp_l2, epoch)
-
-        # scene flow
-        local_scale = torch.zeros_like(aug_size)
-        local_scale[:, 0] = h_dp
-        local_scale[:, 1] = w_dp
-
-        pts2, k2_scale, depth = pixel2pts_ms_depth(
-            k_l2_aug, disp_l2, local_scale / aug_size)
-
-        _, _, coord2 = pts2pixel_ms(k2_scale, pts2, sf_b, [h_dp, w_dp])
-        img_l1_warp = reconstructImg(coord2, img_l1_aug)
-        writer.add_images('img_l1_warp', img_l1_warp, epoch)
-
-        # camera pose
-        depth_l2 = disp2depth_kitti(disp_l2, k2_scale[:, 0, 0])
-        if 'iter' not in args.model_name:
-            img_l1_warp_cam, _, _, _, _ = inverse_warp(img_l1_aug, depth_l2.squeeze(dim=1), pose, k2_scale, torch.inverse(k2_scale))
-        else:
-            img_l1_warp_cam, _, _, _, _ = inverse_warp(img_l1_aug, depth_l2.squeeze(dim=1), None, k2_scale, torch.inverse(k2_scale), pose_mat=pose)
-        writer.add_images('img_l1_warp_cam', img_l1_warp_cam, epoch)
-
-    elif args.model_name in ['depth']:
-        pose = output_dict['pose_b'].detach()
-        _, _, h_dp, w_dp = disp_l2.size()
-        disp_l2 = disp_l2 * w_dp
-
-        # camera pose
-        depth = disp2depth_kitti(disp_l2, k_l2_aug[:, 0, 0])
-        img_l1_warp_cam = inverse_warp(img_l1_aug, depth.squeeze(
-            dim=1), pose.squeeze(dim=1), k_l2_aug, torch.inverse(k_l2_aug))
-
-        writer.add_images('img_l1_warp_cam', img_l1_warp_cam, epoch)
-
 
 if __name__ == '__main__':
   main()
