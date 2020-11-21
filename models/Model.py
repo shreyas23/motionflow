@@ -58,21 +58,6 @@ class Model(nn.Module):
 
             self.sf_layers.append(SFDecoder(num_ch_in))
 
-        self.init_weights()
-
-    def init_weights(self):
-        for layer in self.modules():
-            if isinstance(layer, nn.Conv2d) or isinstance(layer, nn.ConvTranspose2d):
-                nn.init.kaiming_normal_(layer.weight)
-                if layer.bias is not None:
-                    nn.init.constant_(layer.bias, 0)
-
-            elif isinstance(layer, nn.LeakyReLU):
-                pass
-
-            elif isinstance(layer, nn.Sequential):
-                pass
-        
     def run_pwc(self, input_dict, x1_features, x2_features, k1, k2):
             
         output_dict = {}
@@ -96,8 +81,8 @@ class Model(nn.Module):
                 flow_b = interpolate2d_as(flow_b, x1, mode="bilinear")
                 x1_out = self.upconv_layers[l-1](x1_out)
                 x2_out = self.upconv_layers[l-1](x2_out)
-                x2_warp = self.warping_layer_sf(x2, flow_f, disps_l1[l-1], k1, input_dict['aug_size'])
-                x1_warp = self.warping_layer_sf(x1, flow_b, disps_l2[l-1], k2, input_dict['aug_size'])
+                x2_warp = self.warping_layer_sf(x2, flow_f, disps_l1[l], k1, input_dict['aug_size'])
+                x1_warp = self.warping_layer_sf(x1, flow_b, disps_l2[l], k2, input_dict['aug_size'])
 
             # correlation
             out_corr_f = Correlation.apply(x1, x2_warp, self.corr_params)
@@ -146,11 +131,10 @@ class Model(nn.Module):
         x1_features = self.encoder(input_dict['input_l1_aug'])
         x2_features = self.encoder(input_dict['input_l2_aug'])
 
-        pose_feats = [x1_features, x2_features]
-        pose_vec_f = self.pose_decoder(pose_feats).squeeze(dim=1)
-
         ## Left
         output_dict = self.run_pwc(input_dict, x1_features, x2_features, input_dict['input_k_l1_aug'], input_dict['input_k_l2_aug'])
+
+        pose_vec_f = self.pose_decoder([x1_features, x2_features]).squeeze(dim=1)
         output_dict["pose_f"], output_dict["pose_b"] = invert_pose(pose_vec_f)
 
         ## Right

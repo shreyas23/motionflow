@@ -99,14 +99,6 @@ class Loss(nn.Module):
 
         return img_diff, occ_mask
 
-    def detach_outputs(self, output_dict):
-        
-        for ii in range(0, len(output_dict['flows_f'])):
-            output_dict['flows_f'][ii].detach_()
-            output_dict['flows_b'][ii].detach_()
-            output_dict['disps_l1'][ii].detach_()
-            output_dict['disps_l2'][ii].detach_()
-
     def forward(self, output, target):
         depth_loss_sum = 0
         flow_loss_sum = 0
@@ -133,7 +125,7 @@ class Loss(nn.Module):
             masks_l2 = output['mask_l2']
 
         num_scales = len(disps_l1)
-        for s, _ in enumerate(disps_l1):
+        for s in range(num_scales):
             flow_f = interpolate2d_as(flows_f[s], img_l1)
             flow_b = interpolate2d_as(flows_b[s], img_l1)
             disp_l1 = interpolate2d_as(disps_l1[s], img_l1)
@@ -204,6 +196,11 @@ class Loss(nn.Module):
         loss_dict["flow_loss"] = flow_loss_sum.detach()
         loss_dict["disp_sm_loss"] = disp_sm_sum.detach()
 
-        self.detach_outputs(output['output_dict_r'])
+        # detach unused parameters
+        for s in range(len(output['output_dict_r']['flows_f'])):
+            output['output_dict_r']['flows_f'][s].detach_()
+            output['output_dict_r']['flows_b'][s].detach_()
+            output['output_dict_r']['disps_l1'][s].detach_()
+            output['output_dict_r']['disps_l2'][s].detach_()
 
         return loss_dict

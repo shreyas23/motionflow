@@ -16,6 +16,21 @@ class SFDecoder(nn.Module):
 
         self.conv_sf = Conv(32, 3, nonlin='none')
 
+        self.init_weights()
+
+    def init_weights(self):
+        for layer in self.modules():
+            if isinstance(layer, nn.Conv2d) or isinstance(layer, nn.ConvTranspose2d):
+                nn.init.kaiming_normal_(layer.weight)
+                if layer.bias is not None:
+                    nn.init.constant_(layer.bias, 0)
+
+            elif isinstance(layer, nn.LeakyReLU):
+                pass
+
+            elif isinstance(layer, nn.Sequential):
+                pass
+        
     def forward(self, x):
         x_out = self.convs(x)
         sf = self.conv_sf(x_out)
