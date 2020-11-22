@@ -1,0 +1,17 @@
+python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
+                 --exp_dir="resnet_split_sum" \
+                 --exp_name="" \
+                 --dataset_name="KITTI_EIGEN" \
+                 --num_examples=-1 \
+                 --lr=1e-4 \
+                 --lr_gamma=0.5 \
+                 --lr_sched_type='none' \
+                 --flow_loss_mode='sum' \
+                 --epochs=15 \
+                 --batch_size=4 \
+                 --log_dir="/ceph/checkpoints/" \
+                 --log_freq=1 \
+                 --save_freq=1 \
+                 --num_workers=16 \
+                 --disp_sm_w=1e-3 \
+                 --disp_lr_w=0.0
