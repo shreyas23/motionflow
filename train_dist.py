@@ -139,9 +139,8 @@ parser.add_argument('--num_scales', type=int, default=4,
                     help="whether to use consensus mask in training procedure")
 
 # loss params
-parser.add_argument('--flow_loss_mode', type=str, default="min",
+parser.add_argument('--flow_reduce_mode', type=str, default="min",
                     help='only do resize augmentation on input data')
-
 
 # etc.
 parser.add_argument('--debugging', type=bool,

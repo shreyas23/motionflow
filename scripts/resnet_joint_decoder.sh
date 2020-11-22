@@ -1,9 +1,8 @@
-python3 train.py --data_root="/mnt/data/kitti_jpg/" \
+python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --exp_dir="test_new_model" \
                  --exp_name="" \
                  --dataset_name="KITTI_EIGEN" \
                  --num_examples=-1 \
-                 --shuffle=True \
                  --lr=4e-5 \
                  --lr_gamma=0.5 \
                  --lr_sched_type='none' \

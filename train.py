@@ -101,7 +101,7 @@ parser.add_argument('--static_cons_w', type=float, default=0.0, help='mask conse
 parser.add_argument('--mask_cons_w', type=float, default=0.0, help='mask consensus weight')
 parser.add_argument('--flow_diff_thresh', type=float, default=1e-3, help='mask consensus weight')
 
-parser.add_argument('--flow_loss_mode', type=str, default="avg",
+parser.add_argument('--flow_reduce_mode', type=str, default="avg",
                     help='only do resize augmentation on input data')
 parser.add_argument('--pt_encoder', type=bool, default=True,
                     help='only do resize augmentation on input data')

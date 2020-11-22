@@ -20,7 +20,7 @@ class Loss(nn.Module):
 
         self.flow_min_w = args.flow_min_w
         self.ssim_w = args.ssim_w
-        self.flow_loss_mode = args.flow_loss_mode
+        self.flow_reduce_mode = args.flow_reduce_mode
 
         # dis weights
         self.disp_sm_w = args.disp_sm_w
@@ -79,6 +79,7 @@ class Loss(nn.Module):
         """
 
         b, _, h, w = disp.shape
+        disp = disp * w
         depth = _disp2depth_kitti_K(disp, K[:, 0, 0])
 
         if mode == 'pose':
@@ -167,21 +168,21 @@ class Loss(nn.Module):
             depth_loss2 = disp_diff2[mask_disp_diff2 * left_occ2].mean()
             depth_loss = depth_loss1 + depth_loss2
 
-            if self.flow_loss_mode == 'min':
+            if self.flow_reduce_mode == 'min':
                 occ_f = pose_occ_f * sf_occ_f * left_occ1
                 occ_b = pose_occ_b * sf_occ_b * left_occ2
                 flow_loss1 = min_flow_diff1[occ_f].mean()
                 flow_loss2 = min_flow_diff2[occ_b].mean()
-            elif self.flow_loss_mode == 'avg':
+            elif self.flow_reduce_mode == 'avg':
                 occ_f = pose_occ_f * sf_occ_f * left_occ1
                 occ_b = pose_occ_b * sf_occ_b * left_occ2
                 flow_loss1 = flow_diffs1.mean(dim=1, keepdim=True)[occ_f].mean()
                 flow_loss2 = flow_diffs2.mean(dim=1, keepdim=True)[occ_b].mean()
-            elif self.flow_loss_mode == 'sep':
-                occ_f = torch.cat([pose_occ_f, sf_occ_f], dim=1)
-                occ_b = torch.cat([pose_occ_b, sf_occ_b], dim=1)
-                flow_loss1 = flow_diffs1[occ_f].mean(dim=1, keepdim=True).mean()
-                flow_loss2 = flow_diffs2[occ_b].mean(dim=1, keepdim=True).mean()
+            elif self.flow_reduce_mode == 'sum':
+                occ_f = torch.cat([pose_occ_f, sf_occ_f], dim=1) * left_occ1
+                occ_b = torch.cat([pose_occ_b, sf_occ_b], dim=1) * left_occ2
+                flow_loss1 = (flow_diffs1 * occ_f.float()).sum(dim=1, keepdim=True).mean()
+                flow_loss2 = (flow_diffs2 * occ_b.float()).sum(dim=1, keepdim=True).mean()
 
             flow_loss = flow_loss1 + flow_loss2
 
