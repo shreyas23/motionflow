@@ -23,12 +23,14 @@ class UpConv(nn.Module):
 class Conv(nn.Module):
     """ Conv layer with options for padding and ELU/LeakyReLU nonlinearity
     """
-    def __init__(self, in_chs, out_chs, kernel_size=3, stride=1, dilation=1, nonlin='elu', pad_mode='reflection', use_bn=False, bias=True):
+    def __init__(self, in_chs, out_chs, kernel_size=3, stride=1, dilation=1, nonlin='leakyrelu', pad_mode='reflection', use_bn=False, bias=True):
+    # def __init__(self, in_chs, out_chs, kernel_size=3, stride=1, dilation=1, nonlin='elu', pad_mode='reflection', use_bn=False, bias=True):
         super(Conv, self).__init__()
 
         nonlin_dict = {
             'leakyrelu' : nn.LeakyReLU(0.1, inplace=True),
             'elu': nn.ELU(inplace=True),
+            'relu': nn.ReLU(inplace=True)
         }
 
         padding = ((kernel_size - 1) * dilation) // 2

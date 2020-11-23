@@ -40,10 +40,10 @@ def flow_horizontal_flip(flow_input):
     return flow_flip.contiguous()
 
 
-def disp2depth_kitti(pred_disp, k_value):
+def disp2depth_kitti(pred_disp, fx, min_depth=1e-3, max_depth=80):
 
-    pred_depth = k_value.unsqueeze(1).unsqueeze(1).unsqueeze(1) * 0.54 / (pred_disp + 1e-8)
-    pred_depth = torch.clamp(pred_depth, 1e-3, 80)
+    pred_depth = fx.unsqueeze(1).unsqueeze(1).unsqueeze(1) * 0.54 / (pred_disp + 1e-8)
+    pred_depth = torch.clamp(pred_depth, min_depth, max_depth)
 
     return pred_depth
 

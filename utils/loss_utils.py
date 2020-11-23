@@ -161,7 +161,7 @@ def _smoothness_motion_2nd(sf, img, beta=1):
     return (smoothness_x.abs() + smoothness_y.abs())
 
 
-def _disp2depth_kitti_K(disp, fx, min_depth=0.1, max_depth=100):
+def _disp2depth_kitti_K(disp, fx, min_depth=1e-3, max_depth=80):
 
     #scale disparity according to monodepthv2
     # min_disp = (0.54 * fx) / max_depth
@@ -173,6 +173,7 @@ def _disp2depth_kitti_K(disp, fx, min_depth=0.1, max_depth=100):
     mask = (disp > 0).float()
     depth = fx.unsqueeze(1).unsqueeze(
         1).unsqueeze(1) * 0.54 / (disp + (1.0 - mask))
+    depth = torch.clamp(depth, min_depth, max_depth)
 
     return depth
 

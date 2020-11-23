@@ -405,8 +405,11 @@ def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_
         total_loss = loss_dict['total_loss']
         assert (not torch.isnan(total_loss)), "training loss is nan... exiting..."
         total_loss.backward()
-        if args.grad_clip > 0.0:
-            torch.nn.utils.clip_grad_value_(model.parameters(), args.grad_clip)
+
+        if args.grad_clip_norm > 0:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip_norm)
+        if args.grad_clip_value > 0:
+            torch.nn.utils.clip_grad_value_(model.parameters(), args.grad_clip_value)
         optimizer.step()
 
         for key in loss_dict.keys():

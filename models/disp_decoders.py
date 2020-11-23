@@ -26,14 +26,14 @@ class DispDecoder(nn.Module):
             # upconv_0
             num_ch_in = self.num_ch_enc[-1] if i == 4 else self.num_ch_dec[i + 1]
             num_ch_out = self.num_ch_dec[i]
-            self.convs[("upconv", i, 0)] = Conv(num_ch_in, num_ch_out)
+            self.convs[("upconv", i, 0)] = Conv(num_ch_in, num_ch_out, nonlin='leakyrelu')
 
             # upconv_1
             num_ch_in = self.num_ch_dec[i]
             if self.use_skips and i > 0:
                 num_ch_in += self.num_ch_enc[i-1]
             num_ch_out = self.num_ch_dec[i]
-            self.convs[("upconv", i, 1)] = Conv(num_ch_in, num_ch_out)
+            self.convs[("upconv", i, 1)] = Conv(num_ch_in, num_ch_out, nonlin='leakyrelu')
 
         for s in self.scales:
             self.convs[("dispconv", s)] = Conv(self.num_ch_dec[s], self.num_output_channels, nonlin='none')
@@ -41,12 +41,13 @@ class DispDecoder(nn.Module):
         self.decoder = nn.ModuleList(list(self.convs.values()))
         self.sigmoid = nn.Sigmoid()
 
-        # self.init_weights()
+        self.init_weights()
 
     def init_weights(self):
         for layer in self.modules():
             if isinstance(layer, nn.Conv2d) or isinstance(layer, nn.ConvTranspose2d):
                 nn.init.kaiming_normal_(layer.weight)
+                # nn.init.xavier_normal_(layer.weight)
                 if layer.bias is not None:
                     nn.init.constant_(layer.bias, 0)
 
@@ -74,7 +75,8 @@ class DispDecoder(nn.Module):
             x = self.convs[("upconv", i, 1)](x)
 
             if i in self.scales:
-                out_disp = self.sigmoid(self.convs[("dispconv", i)](x))
+                out_disp = self.sigmoid(self.convs[("dispconv", i)](x)) * 0.3
+                out_disp.register_hook(lambda grad: print("out_disp", grad.mean()))
                 self.outputs.append(out_disp)
 
         return self.outputs

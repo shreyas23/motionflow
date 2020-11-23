@@ -142,6 +142,12 @@ class Model(nn.Module):
 
         ## Left
         output_dict = self.run_pwc(input_dict, x1_features, x2_features, input_dict['input_k_l1_aug'], input_dict['input_k_l2_aug'])
+        for i, l in enumerate(output_dict['disps_l1']):
+            if torch.isnan(l).any() or torch.isinf(l).any():
+                print(f"disps_l1: {i}")
+        for i, l in enumerate(output_dict['disps_l2']):
+            if torch.isnan(l).any() or torch.isinf(l).any():
+                print(f"disps_l2: {i}")
 
         pose_vec_f = self.pose_decoder([x1_features, x2_features]).squeeze(dim=1)
         output_dict["pose_f"], output_dict["pose_b"] = invert_pose(pose_vec_f)

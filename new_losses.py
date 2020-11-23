@@ -141,6 +141,14 @@ class Loss(nn.Module):
                 if self.args.use_flow_mask:
                     flow_mask_l1 = 1.0 - mask_l1
                     flow_mask_l2 = 1.0 - mask_l2
+                else:
+                    flow_mask_l1 = None
+                    flow_mask_l2 = None
+            else:
+                mask_l1 = None
+                mask_l2 = None
+                flow_mask_l1 = None
+                flow_mask_l2 = None
 
             # depth diffs
             disp_diff1, left_occ1, loss_disp_sm1 = self.depth_loss(disp_l1, disp_r1, img_l1, img_r1, s)
@@ -164,6 +172,11 @@ class Loss(nn.Module):
             mask_disp_diff1 = (disp_diff1 <= min_flow_diff1).detach()
             mask_disp_diff2 = (disp_diff2 <= min_flow_diff2).detach()
 
+            # print("-----------------")
+            # print(mask_disp_diff1.sum())
+            # print(mask_disp_diff2.sum())
+            # print("-----------------")
+
             if mask_disp_diff1.sum() == 0:
                 mask_disp_diff1 = torch.ones_like(mask_disp_diff1).detach()
             
@@ -176,19 +189,25 @@ class Loss(nn.Module):
             depth_loss2 = disp_diff2[left_occ2].mean()
             depth_loss = depth_loss1 + depth_loss2
 
+            occ_f = pose_occ_f * sf_occ_f * left_occ1
+            occ_b = pose_occ_b * sf_occ_b * left_occ2
+
+            if self.args.use_mask:
+                occ_f = occ_f * mask_l1
+                occ_b = occ_b * mask_l2
+
             if self.flow_reduce_mode == 'min':
-                occ_f = pose_occ_f * sf_occ_f * left_occ1
-                occ_b = pose_occ_b * sf_occ_b * left_occ2
                 flow_loss1 = min_flow_diff1[occ_f].mean()
                 flow_loss2 = min_flow_diff2[occ_b].mean()
             elif self.flow_reduce_mode == 'avg':
-                occ_f = pose_occ_f * sf_occ_f * left_occ1
-                occ_b = pose_occ_b * sf_occ_b * left_occ2
                 flow_loss1 = flow_diffs1.mean(dim=1, keepdim=True)[occ_f].mean()
                 flow_loss2 = flow_diffs2.mean(dim=1, keepdim=True)[occ_b].mean()
             elif self.flow_reduce_mode == 'sum':
                 occ_f = torch.cat([pose_occ_f, sf_occ_f], dim=1) * left_occ1
                 occ_b = torch.cat([pose_occ_b, sf_occ_b], dim=1) * left_occ2
+                if self.args.use_mask:
+                    occ_f = occ_f * mask_l1
+                    occ_b = occ_b * mask_l2
                 flow_loss1 = (flow_diffs1 * occ_f.float()).sum(dim=1, keepdim=True).mean()
                 flow_loss2 = (flow_diffs2 * occ_b.float()).sum(dim=1, keepdim=True).mean()
 

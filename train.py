@@ -123,7 +123,9 @@ parser.add_argument('--weight_decay', type=float,
                     default=0.0, help='weight decay')
 parser.add_argument('--dropout', type=bool, default=False,
                     help='dropout for regularization', choices=[True, False])
-parser.add_argument('--grad_clip', type=float, default=0,
+parser.add_argument('--grad_clip_norm', type=float, default=0,
+                    help='gradient clipping threshold')
+parser.add_argument('--grad_clip_value', type=float, default=0,
                     help='gradient clipping threshold')
 
 # model params
@@ -351,8 +353,10 @@ def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_
     optimizer.zero_grad()
     total_loss = loss_dict['total_loss']
     total_loss.backward()
-    if args.grad_clip > 0:
-      torch.nn.utils.clip_grad_value_(model.parameters(), args.grad_clip)
+    if args.grad_clip_norm > 0:
+      torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip_norm)
+    if args.grad_clip_value > 0:
+      torch.nn.utils.clip_grad_value_(model.parameters(), args.grad_clip_value)
     optimizer.step()
 
     for key in loss_dict.keys():
