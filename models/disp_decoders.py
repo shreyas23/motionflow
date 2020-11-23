@@ -31,7 +31,7 @@ class DispDecoder(nn.Module):
             # upconv_1
             num_ch_in = self.num_ch_dec[i]
             if self.use_skips and i > 0:
-                num_ch_in += self.num_ch_enc[i]
+                num_ch_in += self.num_ch_enc[i-1]
             num_ch_out = self.num_ch_dec[i]
             self.convs[("upconv", i, 1)] = Conv(num_ch_in, num_ch_out)
 
@@ -64,15 +64,17 @@ class DispDecoder(nn.Module):
         x = input_features[-1]
         for i in range(4, -1, -1):
             x = self.convs[("upconv", i, 0)](x)
-            x = [x]
-            if self.use_skips and i > 0:
-                x += [input_features[i]]
-            x = torch.cat(x, 1)
-            x = self.convs[("upconv", i, 1)](x)
-            if i in self.scales:
-                out_disp = self.sigmoid(self.convs[("dispconv", i)](x))
-                self.outputs.append(out_disp)
+            x = [upsample(x)]
 
-            x = upsample(x)
+            if self.use_skips and i > 0:
+                x += [input_features[i-1]]
+
+            x = torch.cat(x, 1)
+
+            x = self.convs[("upconv", i, 1)](x)
+
+            if i in self.scales:
+                out_disp = self.sigmoid(self.convs[("dispconv", i)](x)) * 0.3 # idk why this works
+                self.outputs.append(out_disp)
 
         return self.outputs

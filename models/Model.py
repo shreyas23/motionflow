@@ -59,12 +59,15 @@ class Model(nn.Module):
             self.sf_layers.append(SFDecoder(num_ch_in))
 
     def run_pwc(self, input_dict, x1_features, x2_features, k1, k2):
-            
+
         output_dict = {}
 
         # disparities
         disps_l1 = self.disp_decoder(x1_features)
         disps_l2 = self.disp_decoder(x2_features)
+
+        x1_features = [input_dict['input_l1_aug']] + x1_features
+        x1_features = [input_dict['input_l2_aug']] + x1_features
 
         # outputs
         sceneflows_f = []
@@ -106,10 +109,10 @@ class Model(nn.Module):
                 sceneflows_f.append(flow_f)
                 sceneflows_b.append(flow_b)                
             else:
-                # disp_l1 = interpolate2d_as(disps_l1[-1], flow_f)
-                # disp_l2 = interpolate2d_as(disps_l2[-1], flow_b)
-                disp_l1 = disps_l1[-1]
-                disp_l2 = disps_l2[-1]
+                disp_l1 = interpolate2d_as(disps_l1[-1], flow_f)
+                disp_l2 = interpolate2d_as(disps_l2[-1], flow_b)
+                # disp_l1 = disps_l1[-1]
+                # disp_l2 = disps_l2[-1]
                 flow_res_f = self.context_network(torch.cat([x1_out, flow_f, disp_l1], dim=1))
                 flow_res_b = self.context_network(torch.cat([x2_out, flow_b, disp_l2], dim=1))
                 flow_f = flow_f + flow_res_f
