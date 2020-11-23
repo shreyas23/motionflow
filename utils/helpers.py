@@ -116,17 +116,23 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     writer.add_images('input_l2', img_l2, epoch)
     writer.add_images('input_r2', img_r2, epoch)
 
+    # create (back)proj classes
     b, _, h, w = img_l1.shape
-
     back_proj = BackprojectDepth(b, h, w).to(device=img_l1.device)
     proj = Project3D(b, h, w).to(device=img_l1.device)
 
     # depth
-    depth = _disp2depth_kitti_K(disp_l2, K[:, 0, 0])
     disp_warp = _generate_image_left(img_r2, disp_l2) 
     writer.add_images('disp', disp_l2, epoch)
-    writer.add_images('depth', depth, epoch)
     writer.add_images('disp_warp', disp_warp, epoch)
+
+    b, _, h, w = disp_l1.shape
+    disp_l1 = disp_l1 * w
+    disp_l2 = disp_l2 * w
+
+    # visualize depth
+    depth = _disp2depth_kitti_K(disp_l2, K[:, 0, 0])
+    writer.add_images('depth', depth, epoch)
 
     # pose warp
     cam_points = back_proj(depth, torch.inverse(K), mode='pose')
