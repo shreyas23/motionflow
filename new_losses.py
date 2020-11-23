@@ -145,7 +145,7 @@ class Loss(nn.Module):
             # depth diffs
             disp_diff1, left_occ1, loss_disp_sm1 = self.depth_loss(disp_l1, disp_r1, img_l1, img_r1, s)
             disp_diff2, left_occ2, loss_disp_sm2 = self.depth_loss(disp_l2, disp_r2, img_l2, img_r2, s)
-            loss_disp_sm = loss_disp_sm1 + loss_disp_sm2 * self.disp_sm_w
+            loss_disp_sm = (loss_disp_sm1 + loss_disp_sm2) * self.disp_sm_w
 
             # pose diffs
             pose_diff1, pose_occ_b = self.flow_loss(disp_l1, img_l2, img_l1, K_l1, T=pose_f, mode='pose')
