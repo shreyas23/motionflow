@@ -67,7 +67,7 @@ class Model(nn.Module):
         disps_l2 = self.disp_decoder(x2_features)
 
         x1_features = [input_dict['input_l1_aug']] + x1_features
-        x1_features = [input_dict['input_l2_aug']] + x1_features
+        x2_features = [input_dict['input_l2_aug']] + x2_features
 
         # outputs
         sceneflows_f = []
@@ -121,7 +121,7 @@ class Model(nn.Module):
                 sceneflows_f.append(flow_f)
                 sceneflows_b.append(flow_b)
                 break
-                
+
         output_dict['flows_f'] = upsample_outputs_as(sceneflows_f[::-1], x1_features)
         output_dict['flows_b'] = upsample_outputs_as(sceneflows_b[::-1], x1_features)
 
