@@ -113,10 +113,12 @@ class Model(nn.Module):
                 disp_l2 = interpolate2d_as(disps_l2[-1], flow_b)
                 # disp_l1 = disps_l1[-1]
                 # disp_l2 = disps_l2[-1]
-                flow_res_f = self.context_network(torch.cat([x1_out, flow_f, disp_l1], dim=1))
-                flow_res_b = self.context_network(torch.cat([x2_out, flow_b, disp_l2], dim=1))
+                flow_res_f, disp_l1 = self.context_network(torch.cat([x1_out, flow_f, disp_l1], dim=1))
+                flow_res_b, disp_l2 = self.context_network(torch.cat([x2_out, flow_b, disp_l2], dim=1))
                 flow_f = flow_f + flow_res_f
                 flow_b = flow_b + flow_res_b
+                disps_l1[-1] = disp_l1
+                disps_l2[-1] = disp_l2
 
                 sceneflows_f.append(flow_f)
                 sceneflows_b.append(flow_b)

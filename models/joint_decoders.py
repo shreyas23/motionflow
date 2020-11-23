@@ -57,7 +57,7 @@ class JointContextNetwork(nn.Module):
         self.convs = nn.Sequential(*layers)
 
         self.conv_sf = Conv(32, 3, nonlin='none')
-        # self.conv_d1 = nn.Sequential(Conv(32, 1, nonlin='none'), torch.nn.Sigmoid())
+        self.conv_disp = nn.Sequential(Conv(32, 1, nonlin='none'), torch.nn.Sigmoid())
         # self.convs_pose = Conv(conv_chs[-1], num_refs * 6, kernel_size=1, nonlin='none')
 
         # if use_mask:
@@ -70,7 +70,7 @@ class JointContextNetwork(nn.Module):
 
         x_out = self.convs(x)
         sf = self.conv_sf(x_out)
-        # disp1 = self.conv_d1(x_out) * 0.3
+        disp1 = self.conv_disp(x_out) * 0.3
 
         # pose_out = self.convs_pose(x_out)
         # pred_pose = pose_out.mean(3).mean(2) * 0.01
@@ -80,7 +80,7 @@ class JointContextNetwork(nn.Module):
         # else:
         #     mask = None
 
-        return sf#, disp1, pred_pose, mask
+        return sf, disp1#, pred_pose, mask
 
 
 class MonoSceneFlowDecoder(nn.Module):
