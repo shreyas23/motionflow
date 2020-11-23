@@ -170,8 +170,10 @@ class Loss(nn.Module):
             if mask_disp_diff1.sum() == 0:
                 mask_disp_diff2 = torch.ones_like(mask_disp_diff2).detach()
 
-            depth_loss1 = disp_diff1[mask_disp_diff1 * left_occ1].mean()
-            depth_loss2 = disp_diff2[mask_disp_diff2 * left_occ2].mean()
+            # depth_loss1 = disp_diff1[mask_disp_diff1 * left_occ1].mean()
+            # depth_loss2 = disp_diff2[mask_disp_diff2 * left_occ2].mean()
+            depth_loss1 = disp_diff1[left_occ1].mean()
+            depth_loss2 = disp_diff2[left_occ2].mean()
             depth_loss = depth_loss1 + depth_loss2
 
             if self.flow_reduce_mode == 'min':

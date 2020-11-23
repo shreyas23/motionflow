@@ -403,6 +403,7 @@ def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_
         # calculate gradients and then do Adam step
         optimizer.zero_grad()
         total_loss = loss_dict['total_loss']
+        assert (not torch.isnan(total_loss)), "training loss is nan... exiting..."
         total_loss.backward()
         if args.grad_clip > 0.0:
             torch.nn.utils.clip_grad_value_(model.parameters(), args.grad_clip)
