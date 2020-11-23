@@ -74,7 +74,7 @@ class DispDecoder(nn.Module):
             x = self.convs[("upconv", i, 1)](x)
 
             if i in self.scales:
-                out_disp = self.sigmoid(self.convs[("dispconv", i)](x)) * 0.3 # idk why this works
+                out_disp = self.sigmoid(self.convs[("dispconv", i)](x))
                 self.outputs.append(out_disp)
 
         return self.outputs
