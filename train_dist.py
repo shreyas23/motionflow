@@ -119,7 +119,9 @@ parser.add_argument('--beta', type=float, default=0.999,
                     help='beta param for adam')
 parser.add_argument('--weight_decay', type=float,
                     default=0.0, help='weight decay')
-parser.add_argument('--grad_clip', type=float, default=0,
+parser.add_argument('--grad_clip_norm', type=float, default=0,
+                    help='gradient clipping threshold')
+parser.add_argument('--grad_clip_value', type=float, default=0,
                     help='gradient clipping threshold')
 
 # model params

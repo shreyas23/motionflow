@@ -127,8 +127,7 @@ class PoseDecoder(nn.Module):
         self.convs[("pose", 1)] = nn.Conv2d(256, 256, 3, stride, 1)
         self.convs[("pose", 2)] = nn.Conv2d(256, 6 * num_frames_to_predict_for, 1)
 
-        # self.relu = nn.ReLU()
-        self.relu = nn.LeakyReLU()
+        self.relu = nn.ReLU()
 
         self.net = nn.ModuleList(list(self.convs.values()))
 
