@@ -451,6 +451,11 @@ class Augmentation_SceneFlow(Augmentation_ScaleCrop):
         k_r1 = k_r1.squeeze(1)
         k_r2 = k_r2.squeeze(1)
 
+        example_dict["input_l1_orig"] = im_l1
+        example_dict["input_l2_orig"] = im_l2
+        example_dict["input_r1_orig"] = im_r1
+        example_dict["input_r2_orig"] = im_r2
+
         if self._photometric and torch.rand(1) > 0.5:
             im_l1, im_l2, im_r1, im_r2 = self._photo_augmentation(
                 im_l1, im_l2, im_r1, im_r2)
