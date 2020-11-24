@@ -1176,16 +1176,16 @@ class Loss_SceneFlow_SelfSup_Separate(nn.Module):
         self._pose_sm_w = args.pose_sm_w
 
         # mask weights
-        self._mask_reg_w = args.mask_reg_w
-        self._mask_sm_w = args.mask_sm_w
-        self._mask_cons_w = args.mask_cons_w
-        self._flow_diff_thresh = args.flow_diff_thresh
+        self._mask_reg_w = 0
+        self._mask_sm_w = 0
+        self._mask_cons_w = 0
+        self._flow_diff_thresh = 0
 
         # consistency weights 
-        self._fb_w = args.fb_w
-        self._mask_lr_w = args.mask_lr_w
+        self._fb_w = 0.0
+        self._mask_lr_w = 0.0
         self._disp_lr_w = args.disp_lr_w
-        self._static_cons_w = args.static_cons_w
+        self._static_cons_w = 0.0
 
         self._use_flow_mask = args.use_flow_mask
 
@@ -1248,16 +1248,17 @@ class Loss_SceneFlow_SelfSup_Separate(nn.Module):
         pts1, k1_scale, depth_l1 = pixel2pts_ms_depth(k_l1_aug, disp_l1, local_scale / aug_size)
         pts2, k2_scale, depth_l2 = pixel2pts_ms_depth(k_l2_aug, disp_l2, local_scale / aug_size)
 
-        pts1_tf, coord1 = pts2pixel_pose_ms(k1_scale, pts1, pose_f, [h_dp, w_dp])
-        pts2_tf, coord2 = pts2pixel_pose_ms(k2_scale, pts2, pose_b, [h_dp, w_dp]) 
+        print(pose_f.shape)
+        pts1_tf, coord1 = pts2pixel_pose_ms(k1_scale, pts1, None, [h_dp, w_dp], pose_mat=pose_f)
+        pts2_tf, coord2 = pts2pixel_pose_ms(k2_scale, pts2, None, [h_dp, w_dp], pose_mat=pose_b) 
 
         pts2_warp = reconstructPts(coord1, pts2)
         pts1_warp = reconstructPts(coord2, pts1) 
 
-        flow_f = pose2flow(depth_l1.squeeze(dim=1), pose_f, k1_scale, torch.inverse(k1_scale))
-        flow_b = pose2flow(depth_l2.squeeze(dim=1), pose_b, k2_scale, torch.inverse(k2_scale))
-        sf_f = pose2sceneflow(depth_l1.squeeze(dim=1), pose_f, torch.inverse(k1_scale))
-        sf_b = pose2sceneflow(depth_l2.squeeze(dim=1), pose_b, torch.inverse(k2_scale))
+        flow_f = pose2flow(depth_l1.squeeze(dim=1), None, k1_scale, torch.inverse(k1_scale), pose_mat=pose_f)
+        flow_b = pose2flow(depth_l2.squeeze(dim=1), None, k2_scale, torch.inverse(k2_scale), pose_mat=pose_b)
+        sf_f = pose2sceneflow(depth_l1.squeeze(dim=1), None, torch.inverse(k1_scale), pose_mat=pose_f)
+        sf_b = pose2sceneflow(depth_l2.squeeze(dim=1), None, torch.inverse(k2_scale), pose_mat=pose_b)
         occ_map_b = _adaptive_disocc_detection(flow_f).detach() * disp_occ_l2
         occ_map_f = _adaptive_disocc_detection(flow_b).detach() * disp_occ_l1
 
@@ -1379,11 +1380,13 @@ class Loss_SceneFlow_SelfSup_Separate(nn.Module):
 
     def detaching_grad_of_outputs(self, output_dict):
         
-        for ii in range(0, len(output_dict['flow_f'])):
-            output_dict['flow_f'][ii].detach_()
-            output_dict['flow_b'][ii].detach_()
-        output_dict['pose_f'].detach_()
-        output_dict['pose_b'].detach_()
+        for ii in range(0, len(output_dict['flows_f'])):
+            output_dict['flows_f'][ii].detach_()
+            output_dict['flows_b'][ii].detach_()
+            output_dict['disps_l1'][ii].detach_()
+            output_dict['disps_l2'][ii].detach_()
+        # output_dict['pose_f'].detach_()
+        # output_dict['pose_b'].detach_()
 
     def forward(self, output_dict, target_dict):
 
@@ -1417,23 +1420,25 @@ class Loss_SceneFlow_SelfSup_Separate(nn.Module):
         if 'mask_l1' in output_dict:
             masks_l1 = output_dict['mask_l1']
             masks_l2 = output_dict['mask_l2']
+            masks_r1 = output_dict['output_dict_r']['mask_l1']
+            masks_r2 = output_dict['output_dict_r']['mask_l2']
         else:
-            masks_l1 = [None] * len(output_dict['flow_f'])
-            masks_l2 = [None] * len(output_dict['flow_f'])
+            masks_l1 = [None] * len(output_dict['flows_f'])
+            masks_l2 = [None] * len(output_dict['flows_f'])
+            masks_r1 = [None] * len(output_dict['flows_f'])
+            masks_r2 = [None] * len(output_dict['flows_f'])
         
         out_masks_l2 = []
         out_masks_l1 = []
 
-        disps_r1 = output_dict['output_dict_r']['disp_l1']
-        disps_r2 = output_dict['output_dict_r']['disp_l2']
-        masks_r1 = output_dict['output_dict_r']['mask_l1']
-        masks_r2 = output_dict['output_dict_r']['mask_l2']
+        disps_r1 = output_dict['output_dict_r']['disps_l1']
+        disps_r2 = output_dict['output_dict_r']['disps_l2']
 
         pose_f = output_dict['pose_f']
         pose_b = output_dict['pose_b']
 
-        for ii, (sf_f, sf_b, disp_l1, disp_l2, disp_r1, disp_r2, mask_l1, mask_l2, mask_r1, mask_r2) in enumerate(zip(output_dict['flow_f'], output_dict['flow_b'], 
-                                                                                                                    output_dict['disp_l1'], output_dict['disp_l2'], 
+        for ii, (sf_f, sf_b, disp_l1, disp_l2, disp_r1, disp_r2, mask_l1, mask_l2, mask_r1, mask_r2) in enumerate(zip(output_dict['flows_f'], output_dict['flows_b'], 
+                                                                                                                    output_dict['disps_l1'], output_dict['disps_l2'], 
                                                                                                                     disps_r1, disps_r2,
                                                                                                                     masks_l1, masks_l2,
                                                                                                                     masks_r1, masks_r2)):

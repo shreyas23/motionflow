@@ -27,6 +27,7 @@ from utils.sceneflow_util import projectSceneFlow2Flow, disp2depth_kitti, recons
 from utils.sceneflow_util import pixel2pts_ms, pts2pixel_ms, pts2pixel_pose_ms, pixel2pts_ms_depth
 
 from new_losses import Loss
+from losses import Loss_SceneFlow_SelfSup_Separate
 from models.Model import Model
 
 from losses import _generate_image_left, _adaptive_disocc_detection
@@ -197,6 +198,7 @@ def main():
 
   model = Model(args).cuda()
   loss = Loss(args).cuda()
+#   loss = Loss_SceneFlow_SelfSup_Separate(args).cuda()
 
   # define augmentations
   if args.resize_only:

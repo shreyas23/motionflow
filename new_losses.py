@@ -48,8 +48,8 @@ class Loss(nn.Module):
 
         self.use_flow_mask = args.use_flow_mask
 
-        # self.scale_weights = [4.0, 2.0, 1.0, 1.0, 1.0]
-        self.scale_weights = [1.0, 1.0, 1.0, 1.0, 1.0]
+        self.scale_weights = [4.0, 2.0, 1.0, 1.0, 1.0]
+        # self.scale_weights = [1.0, 1.0, 1.0, 1.0, 1.0]
 
     def depth_loss(self, disp_l, disp_r, img_l, img_r, scale):
         """ Calculate the difference between the src and tgt images 
@@ -60,10 +60,12 @@ class Loss(nn.Module):
         """
 
         # occlusion detection
-        left_occ = interpolate2d_as(_adaptive_disocc_detection_disp(disp_r).float(), img_l).detach().bool()
+        left_occ = _adaptive_disocc_detection_disp(disp_r).float()
+        left_occ = interpolate2d_as(left_occ, img_l).detach().bool()
 
         img_r_ds = interpolate2d_as(img_r, disp_l)
-        img_r_warp = interpolate2d_as(_generate_image_left(img_r_ds, disp_l), img_l)
+        img_r_warp = _generate_image_left(img_r_ds, disp_l)
+        img_r_warp = interpolate2d_as(img_r_warp, img_l)
         img_diff = _reconstruction_error(img_l, img_r_warp, self.ssim_w)
         img_diff[~left_occ].detach_()
 
@@ -213,10 +215,10 @@ class Loss(nn.Module):
             if mask_disp_diff1.sum() == 0:
                 mask_disp_diff2 = torch.ones_like(mask_disp_diff2).detach()
 
-            # depth_loss1 = disp_diff1[mask_disp_diff1 * left_occ1].mean()
-            # depth_loss2 = disp_diff2[mask_disp_diff2 * left_occ2].mean()
-            depth_loss1 = disp_diff1[left_occ1].mean()
-            depth_loss2 = disp_diff2[left_occ2].mean()
+            depth_loss1 = disp_diff1[mask_disp_diff1 * left_occ1].mean()
+            depth_loss2 = disp_diff2[mask_disp_diff2 * left_occ2].mean()
+            # depth_loss1 = disp_diff1[left_occ1].mean()
+            # depth_loss2 = disp_diff2[left_occ2].mean()
             depth_loss = depth_loss1 + depth_loss2
 
             occ_f = pose_occ_f * sf_occ_f * left_occ1
@@ -248,10 +250,8 @@ class Loss(nn.Module):
                     occ_b = occ_b * mask_l2
                 flow_loss1 = (flow_diffs1 * occ_f.float()).sum(dim=1, keepdim=True).mean()
                 flow_loss2 = (flow_diffs2 * occ_b.float()).sum(dim=1, keepdim=True).mean()
-                pose_diff1[~occ_f].detach_()
-                sf_diff1[~occ_f].detach_()
-                pose_diff2[~occ_b].detach_()
-                sf_diff2[~occ_b].detach_()
+                flow_diffs1[~occ_f].detach_()
+                flow_diffs1[~occ_b].detach_()
 
             flow_loss = flow_loss1 + flow_loss2
 
