@@ -6,7 +6,7 @@ import numpy as np
 from .loss_utils import _disp2depth_kitti_K, _adaptive_disocc_detection, _generate_image_left, _reconstruction_error
 from .inverse_warp import pose_vec2mat, pose2flow
 from .interpolation import interpolate2d_as
-from .sceneflow_util import projectSceneFlow2Flow
+from .sceneflow_util import projectSceneFlow2Flow, intrinsic_scale
 
 ### Helper functions ###
 
@@ -102,9 +102,9 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
 
     assert (writer is not None), "tensorboard writer not provided"
 
-    img_l1 = input_dict['input_l1_aug'].detach()
-    img_l2 = input_dict['input_l2_aug'].detach()
-    img_r2 = input_dict['input_r2_aug'].detach()
+    img_l1 = input_dict['input_l1'].detach()
+    img_l2 = input_dict['input_l2'].detach()
+    img_r2 = input_dict['input_r2'].detach()
     K = input_dict['input_k_l2_aug'].detach()
     disp_l1 = interpolate2d_as(output_dict['disps_l1'][0].detach(), img_l1)
     disp_l2 = interpolate2d_as(output_dict['disps_l2'][0].detach(), img_l1)
@@ -167,3 +167,29 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     writer.add_images('sf_occ', sf_occ_b, epoch)
 
     return
+
+
+class Warp_SceneFlow(nn.Module):
+    def __init__(self):
+        super(Warp_SceneFlow, self).__init__()
+ 
+    def forward(self, x, sceneflow, disp, k1, input_size):
+
+        b, _, h_x, w_x = x.size()
+        disp = interpolate2d_as(disp, x) * w_x
+
+        local_scale = torch.zeros_like(input_size)
+        local_scale[:, 0] = h_x
+        local_scale[:, 1] = w_x
+        rel_scale = local_scale / input_size
+        k1_s = intrinsic_scale(k1, rel_scale[:, 0], rel_scale[:, 1])
+
+        backproject = BackprojectDepth(b, h_x, w_x).to(device=x.device)
+        project = Project3D(b, h_x, w_x).to(device=x.device)
+        depth = _disp2depth_kitti_K(disp, k1_s[:, 0, 0])
+
+        cam_points = backproject(depth, torch.inverse(k1_s), mode='sf')
+        grid = project(cam_points, k1_s, sf=sceneflow, mode='sf')
+        x_warp = tf.grid_sample(x, grid, padding_mode="border")
+
+        return x_warp

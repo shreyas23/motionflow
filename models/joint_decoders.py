@@ -70,9 +70,9 @@ class JointContextNetwork(nn.Module):
 
         x_out = self.convs(x)
         sf = self.conv_sf(x_out)
-        disp1 = self.conv_disp(x_out) * 0.3
+        disp1 = self.conv_disp(x_out)
 
-        disp1.register_hook(lambda grad: print("disp1_context", grad.mean()))
+        # disp1.register_hook(lambda grad: print("disp1_context", grad.mean()))
 
         # pose_out = self.convs_pose(x_out)
         # pred_pose = pose_out.mean(3).mean(2) * 0.01

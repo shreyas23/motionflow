@@ -9,11 +9,11 @@ from .disp_decoders import DispDecoder
 from .pose_decoders import PoseExpNet, PoseNet, PoseDecoder
 from .sf_decoders import SFDecoder
 from .joint_decoders import JointContextNetwork
-from .modules_sceneflow import WarpingLayer_SF
+# from .modules_sceneflow import WarpingLayer_SF
 from .correlation_package.correlation import Correlation
 
 from .common import Conv, UpConv
-from utils.helpers import invert_pose
+from utils.helpers import invert_pose, Warp_SceneFlow
 from utils.sceneflow_util import flow_horizontal_flip, post_processing
 from utils.interpolation import interpolate2d_as
 from .modules_sceneflow import upsample_outputs_as
@@ -34,7 +34,7 @@ class Model(nn.Module):
         self.pose_decoder = PoseDecoder(self.encoder_chs, 2)
 
         self.sf_out_chs = 32
-        self.warping_layer_sf = WarpingLayer_SF()
+        self.warping_layer_sf = Warp_SceneFlow()
         self.sf_layers = nn.ModuleList()
         self.upconv_layers = nn.ModuleList()
 
@@ -142,12 +142,6 @@ class Model(nn.Module):
 
         ## Left
         output_dict = self.run_pwc(input_dict, x1_features, x2_features, input_dict['input_k_l1_aug'], input_dict['input_k_l2_aug'])
-        for i, l in enumerate(output_dict['disps_l1']):
-            if torch.isnan(l).any() or torch.isinf(l).any():
-                print(f"disps_l1: {i}")
-        for i, l in enumerate(output_dict['disps_l2']):
-            if torch.isnan(l).any() or torch.isinf(l).any():
-                print(f"disps_l2: {i}")
 
         pose_vec_f = self.pose_decoder([x1_features, x2_features]).squeeze(dim=1)
         output_dict["pose_f"], output_dict["pose_b"] = invert_pose(pose_vec_f)

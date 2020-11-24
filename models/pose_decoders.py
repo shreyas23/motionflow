@@ -127,9 +127,27 @@ class PoseDecoder(nn.Module):
         self.convs[("pose", 1)] = nn.Conv2d(256, 256, 3, stride, 1)
         self.convs[("pose", 2)] = nn.Conv2d(256, 6 * num_frames_to_predict_for, 1)
 
-        self.relu = nn.ReLU()
+        # self.relu = nn.ReLU()
+        self.relu = nn.LeakyReLU()
 
         self.net = nn.ModuleList(list(self.convs.values()))
+
+        self.init_weights()
+
+
+    def init_weights(self):
+        for layer in self.modules():
+            if isinstance(layer, nn.Conv2d) or isinstance(layer, nn.ConvTranspose2d):
+                nn.init.kaiming_normal_(layer.weight)
+                if layer.bias is not None:
+                    nn.init.constant_(layer.bias, 0)
+
+            elif isinstance(layer, nn.LeakyReLU):
+                pass
+
+            elif isinstance(layer, nn.Sequential):
+                pass
+
 
     def forward(self, input_features):
         last_features = [f[-1] for f in input_features]
@@ -143,12 +161,7 @@ class PoseDecoder(nn.Module):
             if i != 2:
                 feats = self.relu(feats)
 
-        out = feats.mean(3).mean(2)
+        out = feats.mean(3).mean(2) * 0.01
+        out = out.view(-1, self.num_frames_to_predict_for, 6)
 
-        out = 0.01 * out.view(-1, self.num_frames_to_predict_for, 6)
-
-        # axisangle = out[..., :3]
-        # translation = out[..., 3:]
-
-        # return axisangle, translation
         return out

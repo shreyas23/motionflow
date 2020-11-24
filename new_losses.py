@@ -11,6 +11,7 @@ from utils.loss_utils import _SSIM, _reconstruction_error, _disp2depth_kitti_K
 from utils.loss_utils import _adaptive_disocc_detection, _adaptive_disocc_detection_disp
 from utils.sceneflow_util import projectSceneFlow2Flow
 from utils.inverse_warp import pose2flow
+from utils.sceneflow_util import intrinsic_scale
 
 class Loss(nn.Module):
     def __init__(self, args):
@@ -56,8 +57,10 @@ class Loss(nn.Module):
         img_l/img_r: stereo images
         """
 
-        img_r_warp = _generate_image_left(img_r, disp_l) 
-        img_diff = _reconstruction_error(img_l, img_r_warp, self.ssim_w)
+        img_r_ds = interpolate2d_as(img_r, disp_l)
+        img_r_warp = _generate_image_left(img_r_ds, disp_l) 
+        img_r_warp_us = interpolate2d_as(img_r_warp, img_l)
+        img_diff = _reconstruction_error(img_l, img_r_warp_us, self.ssim_w)
 
         # occlusion detection
         left_occ = _adaptive_disocc_detection_disp(disp_r).detach()
@@ -65,7 +68,10 @@ class Loss(nn.Module):
         # Smoothness loss
         mean_disp = disp_l.mean(2, True).mean(3, True)
         norm_disp = disp_l / (mean_disp + 1e-7)
-        smooth_loss = disp_smooth_loss(norm_disp, img_l) / (2 ** scale)
+        img_l_ds = interpolate2d_as(img_l, norm_disp)
+        smooth_loss = disp_smooth_loss(norm_disp, img_l_ds) / (2 ** scale)
+
+        left_occ = interpolate2d_as(left_occ.float(), img_l).bool()
 
         return img_diff, left_occ, smooth_loss
     
@@ -79,8 +85,10 @@ class Loss(nn.Module):
         """
 
         b, _, h, w = disp.shape
-        disp = disp * w
         depth = _disp2depth_kitti_K(disp, K[:, 0, 0])
+
+        # downsample image to estimated scale for warping
+        src_ds = interpolate2d_as(src, disp)
 
         if mode == 'pose':
             assert (T is not None), "T cannot be None when mode=pose"
@@ -93,10 +101,16 @@ class Loss(nn.Module):
         proj = Project3D(b, h, w).to(device=disp.device)
 
         occ_mask = _adaptive_disocc_detection(of).detach()
+
         cam_points = back_proj(depth, torch.inverse(K), mode=mode)
         grid = proj(cam_points, K, T=T, sf=sf, mode=mode)
-        ref_warp = tf.grid_sample(src, grid, padding_mode="border")
-        img_diff = _reconstruction_error(tgt, ref_warp, self.ssim_w)
+        ref_warp = tf.grid_sample(src_ds, grid, padding_mode="border")
+        
+        # upsample warped image back to input resolution for diff 
+        ref_warp_us = interpolate2d_as(ref_warp, tgt)
+        occ_mask = interpolate2d_as(occ_mask.float(), tgt).bool()
+
+        img_diff = _reconstruction_error(tgt, ref_warp_us, self.ssim_w)
 
         return img_diff, occ_mask
 
@@ -105,12 +119,14 @@ class Loss(nn.Module):
         flow_loss_sum = 0
         disp_sm_sum = 0
 
-        img_l1 = target['input_l1_aug']
-        img_l2 = target['input_l2_aug']
-        img_r1 = target['input_r1_aug']
-        img_r2 = target['input_r2_aug']
+        img_l1 = target['input_l1_orig']
+        img_l2 = target['input_l2_orig']
+        img_r1 = target['input_r1_orig']
+        img_r2 = target['input_r2_orig']
         K_l1 = target['input_k_l1_aug']
         K_l2 = target['input_k_l2_aug']
+
+        aug_size = target['aug_size']
 
         disps_l1 = output['disps_l1']
         disps_l2 = output['disps_l2']
@@ -127,12 +143,19 @@ class Loss(nn.Module):
 
         num_scales = len(disps_l1)
         for s in range(num_scales):
-            flow_f = interpolate2d_as(flows_f[s], img_l1)
-            flow_b = interpolate2d_as(flows_b[s], img_l1)
-            disp_l1 = interpolate2d_as(disps_l1[s], img_l1)
-            disp_l2 = interpolate2d_as(disps_l2[s], img_l1)
-            disp_r1 = interpolate2d_as(disps_r1[s], img_l1)
-            disp_r2 = interpolate2d_as(disps_r2[s], img_l1)
+            # flow_f = interpolate2d_as(flows_f[s], img_l1)
+            # flow_b = interpolate2d_as(flows_b[s], img_l1)
+            # disp_l1 = interpolate2d_as(disps_l1[s], img_l1)
+            # disp_l2 = interpolate2d_as(disps_l2[s], img_l1)
+            # disp_r1 = interpolate2d_as(disps_r1[s], img_l1)
+            # disp_r2 = interpolate2d_as(disps_r2[s], img_l1)
+
+            flow_f = flows_f[s]
+            flow_b = flows_b[s]
+            disp_l1 = disps_l1[s]
+            disp_l2 = disps_l2[s]
+            disp_r1 = disps_r1[s]
+            disp_r2 = disps_r2[s]
 
             if self.args.use_mask:
                 mask_l1 = interpolate2d_as(masks_l1[s], img_l1)
@@ -155,13 +178,27 @@ class Loss(nn.Module):
             disp_diff2, left_occ2, loss_disp_sm2 = self.depth_loss(disp_l2, disp_r2, img_l2, img_r2, s)
             loss_disp_sm = (loss_disp_sm1 + loss_disp_sm2) * self.disp_sm_w
 
+            # un-normalize disparity
+            b, _, h, w = disp_l1.shape 
+            disp_l1 = disp_l1 * w
+            disp_l2 = disp_l2 * w
+
+            local_scale = torch.zeros_like(aug_size)
+            local_scale[:, 0] = h
+            local_scale[:, 1] = w
+
+            rel_scale = local_scale / aug_size
+
+            K_l1_s = intrinsic_scale(K_l1, rel_scale[:, 0], rel_scale[:, 1])
+            K_l2_s = intrinsic_scale(K_l2, rel_scale[:, 0], rel_scale[:, 1])
+
             # pose diffs
-            pose_diff1, pose_occ_b = self.flow_loss(disp_l1, img_l2, img_l1, K_l1, T=pose_f, mode='pose')
-            pose_diff2, pose_occ_f = self.flow_loss(disp_l2, img_l1, img_l2, K_l2, T=pose_b, mode='pose')
+            pose_diff1, pose_occ_b = self.flow_loss(disp_l1, img_l2, img_l1, K_l1_s, T=pose_f, mode='pose')
+            pose_diff2, pose_occ_f = self.flow_loss(disp_l2, img_l1, img_l2, K_l2_s, T=pose_b, mode='pose')
 
             # sf diffs
-            sf_diff1, sf_occ_b = self.flow_loss(disp_l1, img_l2, img_l1, K_l1, sf=flow_f, mode='sf')
-            sf_diff2, sf_occ_f = self.flow_loss(disp_l2, img_l1, img_l2, K_l2, sf=flow_b, mode='sf')
+            sf_diff1, sf_occ_b = self.flow_loss(disp_l1, img_l2, img_l1, K_l1_s, sf=flow_f, mode='sf')
+            sf_diff2, sf_occ_f = self.flow_loss(disp_l2, img_l1, img_l2, K_l2_s, sf=flow_b, mode='sf')
 
             # min(pose, sf)
             flow_diffs1 = torch.cat([pose_diff1, sf_diff1], dim=1)
@@ -172,21 +209,16 @@ class Loss(nn.Module):
             mask_disp_diff1 = (disp_diff1 <= min_flow_diff1).detach()
             mask_disp_diff2 = (disp_diff2 <= min_flow_diff2).detach()
 
-            # print("-----------------")
-            # print(mask_disp_diff1.sum())
-            # print(mask_disp_diff2.sum())
-            # print("-----------------")
-
             if mask_disp_diff1.sum() == 0:
                 mask_disp_diff1 = torch.ones_like(mask_disp_diff1).detach()
             
             if mask_disp_diff1.sum() == 0:
                 mask_disp_diff2 = torch.ones_like(mask_disp_diff2).detach()
 
-            # depth_loss1 = disp_diff1[mask_disp_diff1 * left_occ1].mean()
-            # depth_loss2 = disp_diff2[mask_disp_diff2 * left_occ2].mean()
-            depth_loss1 = disp_diff1[left_occ1].mean()
-            depth_loss2 = disp_diff2[left_occ2].mean()
+            depth_loss1 = disp_diff1[mask_disp_diff1 * left_occ1].mean()
+            depth_loss2 = disp_diff2[mask_disp_diff2 * left_occ2].mean()
+            # depth_loss1 = disp_diff1[left_occ1].mean()
+            # depth_loss2 = disp_diff2[left_occ2].mean()
             depth_loss = depth_loss1 + depth_loss2
 
             occ_f = pose_occ_f * sf_occ_f * left_occ1
