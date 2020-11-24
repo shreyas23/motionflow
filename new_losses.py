@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as tf
 
 from sys import exit
+import matplotlib.pyplot as plt
 
 from utils.interpolation import interpolate2d_as
 from utils.helpers import BackprojectDepth, Project3D
@@ -47,7 +48,8 @@ class Loss(nn.Module):
 
         self.use_flow_mask = args.use_flow_mask
 
-        self.scale_weights = [4.0, 2.0, 1.0, 1.0, 1.0]
+        # self.scale_weights = [4.0, 2.0, 1.0, 1.0, 1.0]
+        self.scale_weights = [1.0, 1.0, 1.0, 1.0, 1.0]
 
     def depth_loss(self, disp_l, disp_r, img_l, img_r, scale):
         """ Calculate the difference between the src and tgt images 
@@ -58,20 +60,18 @@ class Loss(nn.Module):
         """
 
         img_r_ds = interpolate2d_as(img_r, disp_l)
-        img_r_warp = _generate_image_left(img_r_ds, disp_l) 
-        img_r_warp_us = interpolate2d_as(img_r_warp, img_l)
-        img_diff = _reconstruction_error(img_l, img_r_warp_us, self.ssim_w)
+
+        img_r_warp = interpolate2d_as(_generate_image_left(img_r_ds, disp_l), img_l)
+        img_diff = _reconstruction_error(img_l, img_r_warp, self.ssim_w)
 
         # occlusion detection
-        left_occ = _adaptive_disocc_detection_disp(disp_r).detach()
+        left_occ = interpolate2d_as(_adaptive_disocc_detection_disp(disp_r).float(), img_l).detach().bool()
 
         # Smoothness loss
         mean_disp = disp_l.mean(2, True).mean(3, True)
         norm_disp = disp_l / (mean_disp + 1e-7)
         img_l_ds = interpolate2d_as(img_l, norm_disp)
         smooth_loss = disp_smooth_loss(norm_disp, img_l_ds) / (2 ** scale)
-
-        left_occ = interpolate2d_as(left_occ.float(), img_l).bool()
 
         return img_diff, left_occ, smooth_loss
     
@@ -143,13 +143,6 @@ class Loss(nn.Module):
 
         num_scales = len(disps_l1)
         for s in range(num_scales):
-            # flow_f = interpolate2d_as(flows_f[s], img_l1)
-            # flow_b = interpolate2d_as(flows_b[s], img_l1)
-            # disp_l1 = interpolate2d_as(disps_l1[s], img_l1)
-            # disp_l2 = interpolate2d_as(disps_l2[s], img_l1)
-            # disp_r1 = interpolate2d_as(disps_r1[s], img_l1)
-            # disp_r2 = interpolate2d_as(disps_r2[s], img_l1)
-
             flow_f = flows_f[s]
             flow_b = flows_b[s]
             disp_l1 = disps_l1[s]
@@ -205,6 +198,8 @@ class Loss(nn.Module):
             flow_diffs2 = torch.cat([pose_diff2, sf_diff2], dim=1)
             min_flow_diff1, _ = flow_diffs1.min(dim=1, keepdim=True)
             min_flow_diff2, _ = flow_diffs2.min(dim=1, keepdim=True)
+            min_flow_diff1.detach_()
+            min_flow_diff2.detach_()
 
             mask_disp_diff1 = (disp_diff1 <= min_flow_diff1).detach()
             mask_disp_diff2 = (disp_diff2 <= min_flow_diff2).detach()
@@ -215,11 +210,13 @@ class Loss(nn.Module):
             if mask_disp_diff1.sum() == 0:
                 mask_disp_diff2 = torch.ones_like(mask_disp_diff2).detach()
 
-            depth_loss1 = disp_diff1[mask_disp_diff1 * left_occ1].mean()
-            depth_loss2 = disp_diff2[mask_disp_diff2 * left_occ2].mean()
-            # depth_loss1 = disp_diff1[left_occ1].mean()
-            # depth_loss2 = disp_diff2[left_occ2].mean()
+            # depth_loss1 = disp_diff1[mask_disp_diff1 * left_occ1].mean()
+            # depth_loss2 = disp_diff2[mask_disp_diff2 * left_occ2].mean()
+            depth_loss1 = disp_diff1[left_occ1].mean()
+            depth_loss2 = disp_diff2[left_occ2].mean()
             depth_loss = depth_loss1 + depth_loss2
+            disp_diff1[~left_occ1].detach_()
+            disp_diff2[~left_occ2].detach_()
 
             occ_f = pose_occ_f * sf_occ_f * left_occ1
             occ_b = pose_occ_b * sf_occ_b * left_occ2
@@ -231,9 +228,17 @@ class Loss(nn.Module):
             if self.flow_reduce_mode == 'min':
                 flow_loss1 = min_flow_diff1[occ_f].mean()
                 flow_loss2 = min_flow_diff2[occ_b].mean()
+                pose_diff1[~occ_f].detach_()
+                sf_diff1[~occ_f].detach_()
+                pose_diff2[~occ_b].detach_()
+                sf_diff2[~occ_b].detach_()
             elif self.flow_reduce_mode == 'avg':
                 flow_loss1 = flow_diffs1.mean(dim=1, keepdim=True)[occ_f].mean()
                 flow_loss2 = flow_diffs2.mean(dim=1, keepdim=True)[occ_b].mean()
+                pose_diff1[~occ_f].detach_()
+                sf_diff1[~occ_f].detach_()
+                pose_diff2[~occ_b].detach_()
+                sf_diff2[~occ_b].detach_()
             elif self.flow_reduce_mode == 'sum':
                 occ_f = torch.cat([pose_occ_f, sf_occ_f], dim=1) * left_occ1
                 occ_b = torch.cat([pose_occ_b, sf_occ_b], dim=1) * left_occ2
@@ -242,6 +247,10 @@ class Loss(nn.Module):
                     occ_b = occ_b * mask_l2
                 flow_loss1 = (flow_diffs1 * occ_f.float()).sum(dim=1, keepdim=True).mean()
                 flow_loss2 = (flow_diffs2 * occ_b.float()).sum(dim=1, keepdim=True).mean()
+                pose_diff1[~occ_f].detach_()
+                sf_diff1[~occ_f].detach_()
+                pose_diff2[~occ_b].detach_()
+                sf_diff2[~occ_b].detach_()
 
             flow_loss = flow_loss1 + flow_loss2
 

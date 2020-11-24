@@ -173,7 +173,7 @@ def _disp2depth_kitti_K(disp, fx, min_depth=1e-3, max_depth=80):
     mask = (disp > 0).float()
     depth = fx.unsqueeze(1).unsqueeze(
         1).unsqueeze(1) * 0.54 / (disp + (1.0 - mask))
-    depth = torch.clamp(depth, min_depth, max_depth)
+    # depth = torch.clamp(depth, min_depth, max_depth)
 
     return depth
 
