@@ -460,8 +460,6 @@ class Augmentation_SceneFlow(Augmentation_ScaleCrop):
         example_dict["input_aug_scale"] = params_scale
 
         example_dict["input_l1_aug"] = im_l1
-        print(im_l1)
-        exit()
         example_dict["input_l2_aug"] = im_l2
         example_dict["input_r1_aug"] = im_r1
         example_dict["input_r2_aug"] = im_r2
