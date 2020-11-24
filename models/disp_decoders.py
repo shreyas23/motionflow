@@ -146,6 +146,7 @@ class DispDecoder(nn.Module):
             if i in self.scales:
                 out_disp = self.convs[("dispconv", i)](x)
                 out_disp = self.sigmoid(out_disp)
+                # print(f"scale = {i}", out_disp.mean().detach().item())
                 self.outputs.append(out_disp)
 
         return self.outputs

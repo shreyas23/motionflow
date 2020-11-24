@@ -59,19 +59,22 @@ class Loss(nn.Module):
         img_l/img_r: stereo images
         """
 
-        img_r_ds = interpolate2d_as(img_r, disp_l)
-
-        img_r_warp = interpolate2d_as(_generate_image_left(img_r_ds, disp_l), img_l)
-        img_diff = _reconstruction_error(img_l, img_r_warp, self.ssim_w)
-
         # occlusion detection
         left_occ = interpolate2d_as(_adaptive_disocc_detection_disp(disp_r).float(), img_l).detach().bool()
 
+        img_r_ds = interpolate2d_as(img_r, disp_l)
+        img_r_warp = interpolate2d_as(_generate_image_left(img_r_ds, disp_l), img_l)
+        img_diff = _reconstruction_error(img_l, img_r_warp, self.ssim_w)
+        img_diff[~left_occ].detach_()
+
         # Smoothness loss
-        mean_disp = disp_l.mean(2, True).mean(3, True)
-        norm_disp = disp_l / (mean_disp + 1e-7)
-        img_l_ds = interpolate2d_as(img_l, norm_disp)
-        smooth_loss = disp_smooth_loss(norm_disp, img_l_ds) / (2 ** scale)
+        # mean_disp = disp_l.mean(2, true).mean(3, true)
+        # norm_disp = disp_l / (mean_disp + 1e-7)
+        # img_l_ds = interpolate2d_as(img_l, norm_disp)
+        # smooth_loss = disp_smooth_loss(norm_disp, img_l_ds) / (2 ** scale)
+
+        img_l_ds = interpolate2d_as(img_l, disp_l)
+        smooth_loss = _smoothness_motion_2nd(disp_l, img_l_ds).mean() / (2**scale)
 
         return img_diff, left_occ, smooth_loss
     
@@ -215,8 +218,6 @@ class Loss(nn.Module):
             depth_loss1 = disp_diff1[left_occ1].mean()
             depth_loss2 = disp_diff2[left_occ2].mean()
             depth_loss = depth_loss1 + depth_loss2
-            disp_diff1[~left_occ1].detach_()
-            disp_diff2[~left_occ2].detach_()
 
             occ_f = pose_occ_f * sf_occ_f * left_occ1
             occ_b = pose_occ_b * sf_occ_b * left_occ2
@@ -255,8 +256,8 @@ class Loss(nn.Module):
             flow_loss = flow_loss1 + flow_loss2
 
             depth_loss_sum = depth_loss_sum + (depth_loss + loss_disp_sm * self.disp_sm_w) * self.scale_weights[s]
-            disp_sm_sum = disp_sm_sum + loss_disp_sm
             flow_loss_sum = flow_loss_sum + flow_loss * self.scale_weights[s] 
+            disp_sm_sum = disp_sm_sum + loss_disp_sm
 
         loss_dict = {}
 

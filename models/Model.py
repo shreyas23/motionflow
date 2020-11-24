@@ -111,14 +111,10 @@ class Model(nn.Module):
             else:
                 disp_l1 = interpolate2d_as(disps_l1[-1], flow_f)
                 disp_l2 = interpolate2d_as(disps_l2[-1], flow_b)
-                # disp_l1 = disps_l1[-1]
-                # disp_l2 = disps_l2[-1]
-                flow_res_f, disp_l1 = self.context_network(torch.cat([x1_out, flow_f, disp_l1], dim=1))
-                flow_res_b, disp_l2 = self.context_network(torch.cat([x2_out, flow_b, disp_l2], dim=1))
+                flow_res_f = self.context_network(torch.cat([x1_out, flow_f, disp_l1], dim=1))
+                flow_res_b = self.context_network(torch.cat([x2_out, flow_b, disp_l2], dim=1))
                 flow_f = flow_f + flow_res_f
                 flow_b = flow_b + flow_res_b
-                disps_l1[-1] = disp_l1
-                disps_l2[-1] = disp_l2
 
                 sceneflows_f.append(flow_f)
                 sceneflows_b.append(flow_b)
@@ -163,8 +159,8 @@ class Model(nn.Module):
             for ii in range(0, len(output_dict_r['flows_f'])):
                 output_dict_r['flows_f'][ii] = flow_horizontal_flip(output_dict_r['flows_f'][ii])
                 output_dict_r['flows_b'][ii] = flow_horizontal_flip(output_dict_r['flows_b'][ii])
-                output_dict_r['disps_l1'][ii] = torch.flip(output_dict_r['disps_l1'][ii], dims=[3])
-                output_dict_r['disps_l2'][ii] = torch.flip(output_dict_r['disps_l2'][ii], dims=[3])
+                output_dict_r['disps_l1'][ii] = torch.flip(output_dict_r['disps_l1'][ii], [3])
+                output_dict_r['disps_l2'][ii] = torch.flip(output_dict_r['disps_l2'][ii], [3])
 
             output_dict['output_dict_r'] = output_dict_r
 
