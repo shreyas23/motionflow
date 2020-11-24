@@ -147,7 +147,7 @@ class DispDecoder(nn.Module):
                 out_disp = self.convs[("dispconv", i)](x)
                 out_disp = self.sigmoid(out_disp) * 0.3
                 # print(f"scale = {i}", out_disp.mean().detach().item())
-                out_disp.register_hook(lambda grad: print(grad.mean()))
+                # out_disp.register_hook(lambda grad: print(grad.mean()))
                 self.outputs.append(out_disp)
 
         return self.outputs
