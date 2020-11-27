@@ -1,5 +1,5 @@
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
-                 --exp_dir="test_new_model" \
+                 --exp_dir="resnet_split_min" \
                  --exp_name="" \
                  --dataset_name="KITTI_EIGEN" \
                  --num_examples=-1 \
