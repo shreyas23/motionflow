@@ -272,6 +272,8 @@ def train(gpu, args):
             exp_name = args.exp_name
 
         log_dir = os.path.join(log_dir, exp_name)
+        if gpu == 0:
+            print(f"All logs will be stored at: {log_dir}")
         writer = SummaryWriter(log_dir) if gpu == 0 else None
     
         if gpu == 0:
