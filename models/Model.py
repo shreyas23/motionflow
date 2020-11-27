@@ -9,7 +9,7 @@ from .disp_decoders import DispDecoder
 from .pose_decoders import PoseExpNet, PoseNet, PoseDecoder
 from .sf_decoders import SFDecoder
 from .joint_decoders import JointContextNetwork
-# from .modules_sceneflow import WarpingLayer_SF
+from .modules_sceneflow import WarpingLayer_SF
 from .correlation_package.correlation import Correlation
 
 from .common import Conv, UpConv
@@ -45,7 +45,6 @@ class Model(nn.Module):
         self.corr_params = {"pad_size": self.search_range, "kernel_size": 1, "max_disp": self.search_range, "stride1": 1, "stride2": 1, "corr_multiply": 1}        
         self.dim_corr = (self.search_range * 2 + 1) ** 2
         self.leakyRELU = nn.LeakyReLU(0.1, inplace=True)
-        self.sigmoid = torch.nn.Sigmoid()
 
         for l, ch in enumerate(self.encoder_chs[::-1]):
             if l > self.output_level:
@@ -93,7 +92,6 @@ class Model(nn.Module):
             out_corr_relu_f = self.leakyRELU(out_corr_f)
             out_corr_relu_b = self.leakyRELU(out_corr_b)
 
-            # monosf estimator
             if l == 0:
                 x1_out, flow_f = self.sf_layers[l](torch.cat([out_corr_relu_f, x1], dim=1))
                 x2_out, flow_b = self.sf_layers[l](torch.cat([out_corr_relu_b, x2], dim=1))
@@ -138,7 +136,6 @@ class Model(nn.Module):
 
         ## Left
         output_dict = self.run_pwc(input_dict, x1_features, x2_features, input_dict['input_k_l1_aug'], input_dict['input_k_l2_aug'])
-
         pose_vec_f = self.pose_decoder([x1_features, x2_features]).squeeze(dim=1)
         output_dict["pose_f"], output_dict["pose_b"] = invert_pose(pose_vec_f)
 

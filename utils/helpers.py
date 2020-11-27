@@ -174,10 +174,11 @@ class Warp_SceneFlow(nn.Module):
         super(Warp_SceneFlow, self).__init__()
  
     def forward(self, x, sceneflow, disp, k1, input_size):
+        
+        _, _, _, disp_w = disp.size()
+        disp = interpolate2d_as(disp, x) * disp_w
 
-        b, _, h_x, w_x = x.size()
-        disp = interpolate2d_as(disp, x) * w_x
-
+        b, _, h_x, w_x = x.shape
         local_scale = torch.zeros_like(input_size)
         local_scale[:, 0] = h_x
         local_scale[:, 1] = w_x
@@ -190,6 +191,6 @@ class Warp_SceneFlow(nn.Module):
 
         cam_points = backproject(depth, torch.inverse(k1_s), mode='sf')
         grid = project(cam_points, k1_s, sf=sceneflow, mode='sf')
-        x_warp = tf.grid_sample(x, grid, padding_mode="border")
+        x_warp = tf.grid_sample(x, grid, padding_mode="zeros")
 
         return x_warp

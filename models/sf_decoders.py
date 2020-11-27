@@ -16,7 +16,7 @@ class SFDecoder(nn.Module):
 
         self.conv_sf = Conv(32, 3, nonlin='none')
 
-        self.init_weights()
+        # self.init_weights()
 
     def init_weights(self):
         for layer in self.modules():

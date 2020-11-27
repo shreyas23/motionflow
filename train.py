@@ -282,6 +282,7 @@ def main():
         args, model, loss, train_dataloader, optimizer, augmentations, lr_scheduler)
     print(f"\t Epoch {epoch} train loss avg:")
     pprint(train_loss_avg_dict)
+    pprint(output_dict['flows_b'][0].detach())
 
     if val_dataset is not None:
       print(f"Validation epoch: {epoch}...")

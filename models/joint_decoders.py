@@ -82,7 +82,7 @@ class JointContextNetwork(nn.Module):
         # else:
         #     mask = None
 
-        return sf#, disp1#, pred_pose, mask
+        return sf#, disp1, pred_pose, mask
 
 
 class MonoSceneFlowDecoder(nn.Module):
@@ -134,4 +134,3 @@ class ContextNetwork(nn.Module):
         disp1 = self.conv_d1(x_out) * 0.3
 
         return sf, disp1
-
