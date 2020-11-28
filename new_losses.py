@@ -292,7 +292,8 @@ class Loss(nn.Module):
             output['output_dict_r']['flows_b'][s].detach_()
             output['output_dict_r']['disps_l1'][s].detach_()
             output['output_dict_r']['disps_l2'][s].detach_()
-            output['output_dict_r']['masks_l1'][s].detach_()
-            output['output_dict_r']['masks_l2'][s].detach_()
+            if self.args.use_mask:
+                output['output_dict_r']['masks_l1'][s].detach_()
+                output['output_dict_r']['masks_l2'][s].detach_()
 
         return loss_dict

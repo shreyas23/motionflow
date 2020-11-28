@@ -1,4 +1,5 @@
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
+                 --log_dir="/ceph/checkpoints/" \
                  --exp_dir="resnet_split_avg" \
                  --exp_name="" \
                  --dataset_name="KITTI_EIGEN" \
@@ -9,7 +10,6 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --flow_reduce_mode='avg' \
                  --epochs=20 \
                  --batch_size=2 \
-                 --log_dir="/ceph/checkpoints/" \
                  --log_freq=1 \
                  --save_freq=1 \
                  --num_workers=16 \
