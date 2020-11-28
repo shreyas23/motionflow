@@ -168,7 +168,7 @@ def main():
     print(f"Using {torch.cuda.device_count()} GPUs...")
 
     os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '8888'
+    os.environ['MASTER_PORT'] = '8889'
 
     args.num_gpus = torch.cuda.device_count()
     args.world_size = args.num_gpus * args.num_nodes
