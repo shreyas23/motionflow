@@ -8,11 +8,12 @@ import matplotlib.pyplot as plt
 from utils.interpolation import interpolate2d_as
 from utils.helpers import BackprojectDepth, Project3D
 from utils.loss_utils import _generate_image_left, _generate_image_right, _smoothness_motion_2nd, disp_smooth_loss
-from utils.loss_utils import _SSIM, _reconstruction_error, _disp2depth_kitti_K
+from utils.loss_utils import _SSIM, _reconstruction_error, _disp2depth_kitti_K, logical_or
 from utils.loss_utils import _adaptive_disocc_detection, _adaptive_disocc_detection_disp
 from utils.sceneflow_util import projectSceneFlow2Flow
 from utils.inverse_warp import pose2flow
 from utils.sceneflow_util import intrinsic_scale
+
 
 class Loss(nn.Module):
     def __init__(self, args):
@@ -51,6 +52,7 @@ class Loss(nn.Module):
         # self.scale_weights = [4.0, 2.0, 1.0, 1.0, 1.0]
         self.scale_weights = [1.0, 1.0, 1.0, 1.0, 1.0]
 
+
     def depth_loss(self, disp_l, disp_r, img_l, img_r, scale):
         """ Calculate the difference between the src and tgt images 
         Inputs:
@@ -80,6 +82,7 @@ class Loss(nn.Module):
         smooth_loss = _smoothness_motion_2nd(disp_l, img_l_ds).mean() / (2**scale)
 
         return img_diff, left_occ, smooth_loss
+
     
     def flow_loss(self, disp, src, tgt, K, sf=None, T=None, mode='pose'):
         """ Calculate the difference between the src and tgt images 
@@ -110,24 +113,31 @@ class Loss(nn.Module):
 
         cam_points = back_proj(depth, torch.inverse(K), mode=mode)
         grid = proj(cam_points, K, T=T, sf=sf, mode=mode)
-        ref_warp = tf.grid_sample(src_ds, grid, padding_mode="zeros")
-        
+
         # upsample warped image back to input resolution for diff 
+        ref_warp = tf.grid_sample(src_ds, grid, padding_mode="zeros")
         ref_warp_us = interpolate2d_as(ref_warp, tgt)
         occ_mask = interpolate2d_as(occ_mask.float(), tgt).bool()
 
         img_diff = _reconstruction_error(tgt, ref_warp_us, self.ssim_w)
 
+        # TODO: add a point reconstruction loss as well
+
+        #
+
         return img_diff, occ_mask
 
-    def mask_loss(self, mask):
-        loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
+
+    def explainability_loss(self, mask):
+        loss = tf.binary_cross_entropy(mask, torch.ones_like(mask, device=mask.device))
         return loss
+
 
     def forward(self, output, target):
         depth_loss_sum = 0
         flow_loss_sum = 0
         disp_sm_sum = 0
+        exp_loss_sum = 0
 
         img_l1 = target['input_l1_orig']
         img_l2 = target['input_l2_orig']
@@ -148,8 +158,8 @@ class Loss(nn.Module):
         pose_b = output['pose_b']
 
         if self.args.use_mask:
-            masks_l1 = output['mask_l1']
-            masks_l2 = output['mask_l2']
+            masks_l1 = output['masks_l1']
+            masks_l2 = output['masks_l2']
 
         num_scales = len(disps_l1)
         for s in range(num_scales):
@@ -203,9 +213,14 @@ class Loss(nn.Module):
             sf_diff1, sf_occ_b = self.flow_loss(disp_l1, img_l2, img_l1, K_l1_s, sf=flow_f, mode='sf')
             sf_diff2, sf_occ_f = self.flow_loss(disp_l2, img_l1, img_l2, K_l2_s, sf=flow_b, mode='sf')
 
+            # explainability mask loss
             if self.args.use_mask:
+                exp_loss = (self.explainability_loss(mask_l1) + self.explainability_loss(mask_l2)) * self.mask_reg_w
                 pose_diff1 = pose_diff1 * mask_l1
                 pose_diff2 = pose_diff2 * mask_l2
+            else:
+                exp_loss = torch.tensor(0, requires_grad=False)
+
             if self.args.use_flow_mask:
                 pose_diff1 = pose_diff1 * flow_mask_l1
                 pose_diff2 = pose_diff2 * flow_mask_l2
@@ -221,22 +236,12 @@ class Loss(nn.Module):
             mask_disp_diff1 = (disp_diff1 <= min_flow_diff1).detach()
             mask_disp_diff2 = (disp_diff2 <= min_flow_diff2).detach()
 
-            # if mask_disp_diff1.sum() == 0:
-            #     mask_disp_diff1 = torch.ones_like(mask_disp_diff1).detach()
-            
-            # if mask_disp_diff1.sum() == 0:
-            #     mask_disp_diff2 = torch.ones_like(mask_disp_diff2).detach()
-
             depth_loss1 = disp_diff1[mask_disp_diff1 * left_occ1].mean()
             depth_loss2 = disp_diff2[mask_disp_diff2 * left_occ2].mean()
             depth_loss = depth_loss1 + depth_loss2
 
             occ_f = pose_occ_f * sf_occ_f * left_occ1
             occ_b = pose_occ_b * sf_occ_b * left_occ2
-
-            if self.args.use_mask:
-                occ_f = occ_f * mask_l1
-                occ_b = occ_b * mask_l2
 
             if self.flow_reduce_mode == 'min':
                 flow_loss1 = min_flow_diff1[occ_f].mean()
@@ -257,14 +262,15 @@ class Loss(nn.Module):
 
             depth_loss_sum = depth_loss_sum + (depth_loss + loss_disp_sm * self.disp_sm_w) * self.scale_weights[s]
             flow_loss_sum = flow_loss_sum + flow_loss * self.scale_weights[s] 
+            exp_loss_sum = exp_loss_sum + exp_loss * self.scale_weights[s]
             disp_sm_sum = disp_sm_sum + loss_disp_sm
 
         loss_dict = {}
-
-        loss_dict["total_loss"] = (depth_loss_sum + flow_loss_sum) / num_scales
+        loss_dict["total_loss"] = (depth_loss_sum + flow_loss_sum + exp_loss_sum) / num_scales
         loss_dict["depth_loss"] = depth_loss_sum.detach()
         loss_dict["flow_loss"] = flow_loss_sum.detach()
         loss_dict["disp_sm_loss"] = disp_sm_sum.detach()
+        loss_dict["exp_loss"] = exp_loss_sum.detach()
 
         # detach unused parameters
         for s in range(len(output['output_dict_r']['flows_f'])):
@@ -272,5 +278,7 @@ class Loss(nn.Module):
             output['output_dict_r']['flows_b'][s].detach_()
             output['output_dict_r']['disps_l1'][s].detach_()
             output['output_dict_r']['disps_l2'][s].detach_()
+            output['output_dict_r']['masks_l1'][s].detach_()
+            output['output_dict_r']['masks_l2'][s].detach_()
 
         return loss_dict

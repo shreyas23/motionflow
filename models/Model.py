@@ -40,7 +40,7 @@ class Model(nn.Module):
         self.sf_layers = nn.ModuleList()
         self.upconv_layers = nn.ModuleList()
 
-        self.context_network = JointContextNetwork(in_chs=(self.sf_out_chs + 3 + 1))
+        self.context_network = JointContextNetwork(in_chs=(self.sf_out_chs + 3 + 1 + 1))
 
         self.search_range = 4
         self.output_level = 4
@@ -114,8 +114,10 @@ class Model(nn.Module):
             else:
                 disp_l1 = interpolate2d_as(disps_l1[-1], flow_f)
                 disp_l2 = interpolate2d_as(disps_l2[-1], flow_b)
-                flow_res_f = self.context_network(torch.cat([x1_out, flow_f, disp_l1], dim=1))
-                flow_res_b = self.context_network(torch.cat([x2_out, flow_b, disp_l2], dim=1))
+                mask_l1 = interpolate2d_as(masks_l1[-1], flow_f)
+                mask_l2 = interpolate2d_as(masks_l2[-1], flow_b)
+                flow_res_f = self.context_network(torch.cat([x1_out, flow_f, disp_l1, mask_l1], dim=1))
+                flow_res_b = self.context_network(torch.cat([x2_out, flow_b, disp_l2, mask_l2], dim=1))
                 flow_f = flow_f + flow_res_f
                 flow_b = flow_b + flow_res_b
 

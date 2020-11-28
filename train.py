@@ -159,241 +159,248 @@ args = parser.parse_args()
 
 
 def main():
-  for arg in vars(args):
-    print(f"{arg}: {getattr(args, arg)}")
+    for arg in vars(args):
+        print(f"{arg}: {getattr(args, arg)}")
 
-  if args.batch_size == 1 and args.use_bn is True:
-    raise Exception
+    if args.batch_size == 1 and args.use_bn is True:
+        raise Exception
 
-  torch.autograd.set_detect_anomaly(True)
-  torch.manual_seed(args.torch_seed)
-  torch.cuda.manual_seed(args.cuda_seed)
+    torch.autograd.set_detect_anomaly(True)
+    torch.manual_seed(args.torch_seed)
+    torch.cuda.manual_seed(args.cuda_seed)
 
-  DATASET_NAME = args.dataset_name
-  DATA_ROOT = args.data_root
+    DATASET_NAME = args.dataset_name
+    DATA_ROOT = args.data_root
 
   # load the dataset/dataloader
-  print("Loading dataset and dataloaders...")
-  if DATASET_NAME == 'KITTI':
-      train_dataset = KITTI_Raw_KittiSplit_Train(args, DATA_ROOT, num_examples=args.num_examples)
-      train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=args.shuffle, num_workers=args.num_workers, pin_memory=True)
-      if args.validate:
-          val_dataset = KITTI_Raw_KittiSplit_Valid(args, DATA_ROOT)
-          val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True) if val_dataset else None
-      else:
-          val_dataset = None
-          val_dataloader = None
+    print("Loading dataset and dataloaders...")
+    if DATASET_NAME == 'KITTI':
+        train_dataset = KITTI_Raw_KittiSplit_Train(
+            args, DATA_ROOT, num_examples=args.num_examples)
+        train_dataloader = DataLoader(
+            train_dataset, args.batch_size, shuffle=args.shuffle, num_workers=args.num_workers, pin_memory=True)
+        if args.validate:
+            val_dataset = KITTI_Raw_KittiSplit_Valid(args, DATA_ROOT)
+            val_dataloader = DataLoader(
+                val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True) if val_dataset else None
+        else:
+            val_dataset = None
+            val_dataloader = None
 
-  elif DATASET_NAME == 'KITTI_EIGEN':
-      train_dataset = KITTI_Raw_EigenSplit_Train(args, DATA_ROOT, num_examples=args.num_examples)
-      train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=args.shuffle, num_workers=args.num_workers, pin_memory=True)
-      if args.validate:
-          val_dataset = KITTI_Raw_EigenSplit_Valid(args, DATA_ROOT)
-          val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True) if val_dataset else None
-      else:
-          val_dataset = None
-          val_dataloader = None
-  else:
-      raise NotImplementedError
+    elif DATASET_NAME == 'KITTI_EIGEN':
+        train_dataset = KITTI_Raw_EigenSplit_Train(
+            args, DATA_ROOT, num_examples=args.num_examples)
+        train_dataloader = DataLoader(
+            train_dataset, args.batch_size, shuffle=args.shuffle, num_workers=args.num_workers, pin_memory=True)
+        if args.validate:
+            val_dataset = KITTI_Raw_EigenSplit_Valid(args, DATA_ROOT)
+            val_dataloader = DataLoader(
+                val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True) if val_dataset else None
+        else:
+            val_dataset = None
+            val_dataloader = None
+    else:
+        raise NotImplementedError
 
-  model = Model(args).cuda()
-  loss = Loss(args).cuda()
+    model = Model(args).cuda()
+    loss = Loss(args).cuda()
 #   loss = Loss_SceneFlow_SelfSup_Separate(args).cuda()
 
   # define augmentations
-  if args.resize_only:
-      print("Augmentations: Augmentation_Resize_Only")
-      augmentations = Augmentation_Resize_Only(args, photometric=False)
-  else:
-      print("Augmentations: Augmentation_SceneFlow")
-      augmentations = Augmentation_SceneFlow(args)
+    if args.resize_only:
+        print("Augmentations: Augmentation_Resize_Only")
+        augmentations = Augmentation_Resize_Only(args, photometric=False)
+    else:
+        print("Augmentations: Augmentation_SceneFlow")
+        augmentations = Augmentation_SceneFlow(args)
 
   # load the model
-  print("Loding model and augmentations and placing on gpu...")
+    print("Loding model and augmentations and placing on gpu...")
 
-  if args.cuda:
-    loss = loss.cuda()
-    if augmentations is not None:
-        augmentations = augmentations.cuda()
+    if args.cuda:
+        loss = loss.cuda()
+        if augmentations is not None:
+            augmentations = augmentations.cuda()
+
+        device = torch.device("cuda:0")
+        model = model.to(device=device)
+
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+
+    num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"The model has {num_params} learnable parameters")
+
+    # load optimizer and lr scheduler
+    optimizer = Adam(model.parameters(), lr=args.lr, betas=[
+                    args.momentum, args.beta], weight_decay=args.weight_decay)
+
+    if args.lr_sched_type == 'plateau':
+        print("Using plateau lr schedule")
+        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, factor=args.lr_gamma, verbose=True, mode='min', patience=10)
+    elif args.lr_sched_type == 'step':
+        print("Using step lr schedule")
+        milestones = []
+        lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
+            optimizer, milestones=milestones, gamma=args.lr_gamma)
+    elif args.lr_sched_type == 'none':
+        lr_scheduler = None
     
-    device = torch.device("cuda:0")
-    model = model.to(device=device)
+    # set up logging
+    if not args.no_logging:
+        if not os.path.isdir(args.log_dir):
+            os.mkdir(args.log_dir)
+        log_dir = os.path.join(args.log_dir, args.exp_dir)
+        if not os.path.isdir(log_dir):
+            os.mkdir(log_dir)
+        if args.exp_name == "":
+            exp_name = datetime.datetime.now().strftime("%H%M%S-%Y%m%d")
+        else:
+            exp_name = args.exp_name
+        log_dir = os.path.join(log_dir, exp_name)
+        writer = SummaryWriter(log_dir)
 
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+    if args.ckpt != "" and args.use_pretrained:
+        state_dict = torch.load(args.ckpt)['state_dict']
+        new_state_dict = OrderedDict()
+        for k, v in state_dict.items():
+            name = k[7:]
+            new_state_dict[name] = v
+        model.load_state_dict(new_state_dict)
+    elif args.start_epoch > 0:
+        load_epoch = args.start_epoch - 1
+        ckpt_fp = os.path.join(log_dir, f"{load_epoch}.ckpt")
 
-  num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-  print(f"The model has {num_params} learnable parameters")
+        print(f"Loading model from {ckpt_fp}...")
 
-  # load optimizer and lr scheduler
-  optimizer = Adam(model.parameters(), lr=args.lr, betas=[
-                   args.momentum, args.beta], weight_decay=args.weight_decay)
-
-  if args.lr_sched_type == 'plateau':
-    print("Using plateau lr schedule")
-    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, factor=args.lr_gamma, verbose=True, mode='min', patience=10)
-  elif args.lr_sched_type == 'step':
-    print("Using step lr schedule")
-    milestones = []
-    lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
-        optimizer, milestones=milestones, gamma=args.lr_gamma)
-  elif args.lr_sched_type == 'none':
-    lr_scheduler = None
-
-  # set up logging
-  if not args.no_logging:
-    if not os.path.isdir(args.log_dir):
-      os.mkdir(args.log_dir)
-    log_dir = os.path.join(args.log_dir, args.exp_dir)
-    if not os.path.isdir(log_dir):
-      os.mkdir(log_dir)
-    if args.exp_name == "":
-      exp_name = datetime.datetime.now().strftime("%H%M%S-%Y%m%d")
-    else:
-      exp_name = args.exp_name
-    log_dir = os.path.join(log_dir, exp_name)
-    writer = SummaryWriter(log_dir)
-
-  if args.ckpt != "" and args.use_pretrained:
-    state_dict = torch.load(args.ckpt)['state_dict']
-    new_state_dict = OrderedDict()
-    for k, v in state_dict.items():
-      name = k[7:]
-      new_state_dict[name] = v
-    model.load_state_dict(new_state_dict)
-  elif args.start_epoch > 0:
-    load_epoch = args.start_epoch - 1
-    ckpt_fp = os.path.join(log_dir, f"{load_epoch}.ckpt")
-
-    print(f"Loading model from {ckpt_fp}...")
-
-    ckpt = torch.load(ckpt_fp)
-    assert (ckpt['epoch'] ==
-            load_epoch), "epoch from state dict does not match with args"
-    model.load_state_dict(ckpt)
+        ckpt = torch.load(ckpt_fp)
+        assert (ckpt['epoch'] ==
+                load_epoch), "epoch from state dict does not match with args"
+        model.load_state_dict(ckpt)
 
     model.train()
 
-  # run training loop
-  for epoch in range(args.start_epoch, args.epochs + 1):
-    print(f"Training epoch: {epoch}...")
-    train_loss_avg_dict, output_dict, input_dict = train_one_epoch(
-        args, model, loss, train_dataloader, optimizer, augmentations, lr_scheduler)
-    print(f"\t Epoch {epoch} train loss avg:")
-    pprint(train_loss_avg_dict)
-    pprint(output_dict['flows_b'][0].detach())
+    # run training loop
+    for epoch in range(args.start_epoch, args.epochs + 1):
+        print(f"Training epoch: {epoch}...")
+        train_loss_avg_dict, output_dict, input_dict = train_one_epoch(
+            args, model, loss, train_dataloader, optimizer, augmentations, lr_scheduler)
+        print(f"\t Epoch {epoch} train loss avg:")
+        pprint(train_loss_avg_dict)
+        pprint(output_dict['flows_b'][0].detach())
 
     if val_dataset is not None:
-      print(f"Validation epoch: {epoch}...")
-      val_loss_avg = eval(args, model, loss, val_dataloader, augmentations)
-      print(f"\t Epoch {epoch} val loss avg: {val_loss_avg}")
+        print(f"Validation epoch: {epoch}...")
+        val_loss_avg = eval(args, model, loss, val_dataloader, augmentations)
+        print(f"\t Epoch {epoch} val loss avg: {val_loss_avg}")
 
     if args.lr_sched_type == 'plateau':
-      lr_scheduler.step(train_loss_avg_dict['total_loss'])
+        lr_scheduler.step(train_loss_avg_dict['total_loss'])
     elif args.lr_sched_type == 'step':
-      lr_scheduler.step(epoch)
+        lr_scheduler.step(epoch)
 
     # save model
     if not args.no_logging:
-      for k, v in train_loss_avg_dict.items():
-        writer.add_scalar(f'loss/train/{k}', train_loss_avg_dict[k], epoch)
-      if epoch % args.log_freq == 0:
-        visualize_output(args, input_dict, output_dict, epoch, writer)
+        for k, v in train_loss_avg_dict.items():
+            writer.add_scalar(f'loss/train/{k}', train_loss_avg_dict[k], epoch)
+        if epoch % args.log_freq == 0:
+            visualize_output(args, input_dict, output_dict, epoch, writer)
 
-      fp = os.path.join(log_dir, f"{epoch}.ckpt")
+        fp = os.path.join(log_dir, f"{epoch}.ckpt")
 
-      if args.save_freq > 0:
-        if epoch % args.save_freq == 0:
-          torch.save(model.state_dict(), fp)
-      elif epoch == args.epochs:
-        torch.save(model.state_dict(), fp)
+        if args.save_freq > 0:
+            if epoch % args.save_freq == 0:
+                torch.save(model.state_dict(), fp)
+        elif epoch == args.epochs:
+            torch.save(model.state_dict(), fp)
 
-  if not args.no_logging:
-    writer.flush()
+    if not args.no_logging:
+        writer.flush()
 
 
 def step(args, data_dict, model, loss, augmentations, optimizer):
-  # Get input and target tensor keys
-  input_keys = list(filter(lambda x: "input" in x, data_dict.keys()))
-  target_keys = list(filter(lambda x: "target" in x, data_dict.keys()))
-  tensor_keys = input_keys + target_keys
+    # Get input and target tensor keys
+    input_keys = list(filter(lambda x: "input" in x, data_dict.keys()))
+    target_keys = list(filter(lambda x: "target" in x, data_dict.keys()))
+    tensor_keys = input_keys + target_keys
 
-  # transfer to cuda
-  if args.cuda:
-    for k, v in data_dict.items():
-      if k in tensor_keys:
-        data_dict[k] = v.cuda(non_blocking=True)
+    # transfer to cuda
+    if args.cuda:
+        for k, v in data_dict.items():
+            if k in tensor_keys:
+                data_dict[k] = v.cuda(non_blocking=True)
 
-  if augmentations is not None:
-    with torch.no_grad():
-      data_dict = augmentations(data_dict)
+    if augmentations is not None:
+        with torch.no_grad():
+            data_dict = augmentations(data_dict)
 
-  for k, t in data_dict.items():
-    if k in input_keys:
-      data_dict[k] = t.requires_grad_(True)
-    if k in target_keys:
-      data_dict[k] = t.requires_grad_(False)
+    for k, t in data_dict.items():
+        if k in input_keys:
+            data_dict[k] = t.requires_grad_(True)
+        if k in target_keys:
+            data_dict[k] = t.requires_grad_(False)
 
-  output_dict = model(data_dict)
-  loss_dict = loss(output_dict, data_dict)
+    output_dict = model(data_dict)
+    loss_dict = loss(output_dict, data_dict)
 
-  return loss_dict, output_dict
+    return loss_dict, output_dict
 
 
 def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_scheduler):
 
-  loss_dict_avg = None
-
-  for data in tqdm(dataloader):
-    loss_dict, output_dict = step(
-        args, data, model, loss, augmentations, optimizer)
+    loss_dict_avg = None
     
+    for data in tqdm(dataloader):
+        loss_dict, output_dict = step(
+            args, data, model, loss, augmentations, optimizer)
+
     if loss_dict_avg is None:
-        loss_dict_avg = {k:0 for k in loss_dict.keys()}
+        loss_dict_avg = {k: 0 for k in loss_dict.keys()}
 
     # calculate gradients and then do Adam step
     optimizer.zero_grad()
     total_loss = loss_dict['total_loss']
     total_loss.backward()
     if args.grad_clip_norm > 0:
-      torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip_norm)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip_norm)
     if args.grad_clip_value > 0:
-      torch.nn.utils.clip_grad_value_(model.parameters(), args.grad_clip_value)
+        torch.nn.utils.clip_grad_value_(model.parameters(), args.grad_clip_value)
     optimizer.step()
 
     for key in loss_dict.keys():
-      loss_dict_avg[key] += loss_dict[key].detach().item()
+        loss_dict_avg[key] += loss_dict[key].detach().item()
 
-  n = len(dataloader)
-  for key in loss_dict_avg.keys():
-    loss_dict_avg[key] /= n
+    n = len(dataloader)
+    for key in loss_dict_avg.keys():
+        loss_dict_avg[key] /= n
 
-  return loss_dict_avg, output_dict, data
+    return loss_dict_avg, output_dict, data
 
 
 def eval(args, model, loss, dataloader, augmentations):
-  val_loss_sum = 0.
+    val_loss_sum = 0.
 
-  for data_dict in tqdm(dataloader):
-    with torch.no_grad():
-      # Get input and target tensor keys
-      input_keys = list(filter(lambda x: "input" in x, data_dict.keys()))
-      target_keys = list(filter(lambda x: "target" in x, data_dict.keys()))
-      tensor_keys = input_keys + target_keys
+    for data_dict in tqdm(dataloader):
+        with torch.no_grad():
+            # Get input and target tensor keys
+            input_keys = list(filter(lambda x: "input" in x, data_dict.keys()))
+            target_keys = list(filter(lambda x: "target" in x, data_dict.keys()))
+            tensor_keys = input_keys + target_keys
 
-      # Possibly transfer to Cuda
-      if args.cuda:
-        for k, v in data_dict.items():
-          if k in tensor_keys:
-            data_dict[k] = v.cuda(non_blocking=True)
-      data_dict = augmentations(data_dict)
-      output_dict = model(data_dict)
-      loss_dict = loss(output_dict, data_dict)
-      val_loss_sum += loss_dict['total_loss']
+        # Possibly transfer to Cuda
+        if args.cuda:
+            for k, v in data_dict.items():
+                if k in tensor_keys:
+                    data_dict[k] = v.cuda(non_blocking=True)
+        data_dict = augmentations(data_dict)
+        output_dict = model(data_dict)
+        loss_dict = loss(output_dict, data_dict)
+        val_loss_sum += loss_dict['total_loss']
 
-  val_loss_avg = val_loss_sum / len(dataloader)
-  return val_loss_avg
+    val_loss_avg = val_loss_sum / len(dataloader)
+    return val_loss_avg
+
 
 if __name__ == '__main__':
-  main()
+    main()

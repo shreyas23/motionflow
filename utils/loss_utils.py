@@ -7,6 +7,10 @@ from models.forwardwarp_package.forward_warp import forward_warp
 # Loss Utils
 ###############################################
 
+def logical_or(a, b):
+    return 1 - ((1 - a) * (1 -b))
+
+
 def _reconstruction_error(tgt_img, ref_img_warped, ssim_w):
     diff = (_elementwise_l1(tgt_img, ref_img_warped) * (1.0 - ssim_w) +
             _SSIM(tgt_img, ref_img_warped) * ssim_w).mean(dim=1, keepdim=True)
