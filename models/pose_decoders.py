@@ -131,7 +131,7 @@ class PoseDecoder(nn.Module):
 
         self.net = nn.ModuleList(list(self.convs.values()))
 
-        self.init_weights()
+        # self.init_weights()
 
 
     def init_weights(self):

@@ -131,8 +131,6 @@ parser.add_argument('--use_bn', type=bool, default=False,
                     help="whether to use batch-norm in training procedure")
 parser.add_argument('--use_mask', type=bool, default=False,
                     help="whether to use consensus mask in training procedure")
-parser.add_argument('--use_flow_mask', type=bool, default=False,
-                    help='only do resize augmentation on input data')
 parser.add_argument('--pt_encoder', type=bool, default=True,
                     help='only do resize augmentation on input data')
 parser.add_argument('--use_ppm', type=bool, default=False,
@@ -142,6 +140,10 @@ parser.add_argument('--num_scales', type=int, default=4,
 
 # loss params
 parser.add_argument('--flow_reduce_mode', type=str, default="min",
+                    help='only do resize augmentation on input data')
+parser.add_argument('--use_disp_min', type=bool, default=False,
+                    help='only do resize augmentation on input data')
+parser.add_argument('--use_flow_mask', type=bool, default=False,
                     help='only do resize augmentation on input data')
 
 # etc.

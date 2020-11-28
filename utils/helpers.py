@@ -16,12 +16,6 @@ def upsample(x):
     return tf.interpolate(x, scale_factor=2, mode="nearest")
 
 
-def sample_grid(x, grid):
-    """ Samples grid with border padding (uses border values when value is outside range [-1, 1])
-    """
-    tf.grid_sample(x, grid, padding_mode='border')
-
-
 def invert_pose(pose):
     pose_mat = pose_vec2mat(pose)
     R = pose_mat[:, :3, :3].transpose(1, 2)
@@ -108,6 +102,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     K = input_dict['input_k_l2_aug'].detach()
     disp_l1 = interpolate2d_as(output_dict['disps_l1'][0].detach(), img_l1)
     disp_l2 = interpolate2d_as(output_dict['disps_l2'][0].detach(), img_l1)
+    mask_l2 = interpolate2d_as(output_dict['masks_l2'][0].detach(), img_l1)
     flow_b = interpolate2d_as(output_dict['flows_b'][0].detach(), img_l1)
     pose_b = output_dict['pose_b'].detach()
 
@@ -137,7 +132,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     # pose warp
     cam_points = back_proj(depth, torch.inverse(K), mode='pose')
     grid = proj(cam_points, K, T=pose_b, sf=None, mode='pose')
-    ref_warp = tf.grid_sample(img_l1, grid, mode="bilinear", padding_mode="border")
+    ref_warp = tf.grid_sample(img_l1, grid, mode="bilinear", padding_mode="zeros")
     writer.add_images('pose_warp', ref_warp, epoch)
 
     # pose occ map
@@ -154,7 +149,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     # sf warp
     cam_points = back_proj(depth, torch.inverse(K), mode='sf')
     grid = proj(cam_points, K, T=None, sf=flow_b, mode='sf')
-    ref_warp = tf.grid_sample(img_l1, grid, mode="bilinear", padding_mode="border")
+    ref_warp = tf.grid_sample(img_l1, grid, mode="bilinear", padding_mode="zeros")
     writer.add_images('sf_warp', ref_warp, epoch)
 
     # sf err
@@ -165,6 +160,9 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     flow_f = projectSceneFlow2Flow(K, output_dict['flows_f'][0].detach(), disp_l1)
     sf_occ_b = _adaptive_disocc_detection(flow_f)
     writer.add_images('sf_occ', sf_occ_b, epoch)
+
+    # motion mask
+    writer.add_images('mask', mask_l2, epoch)
 
     return
 

@@ -108,6 +108,8 @@ parser.add_argument('--pt_encoder', type=bool, default=True,
                     help='only do resize augmentation on input data')
 parser.add_argument('--use_flow_mask', type=bool, default=False,
                     help='only do resize augmentation on input data')
+parser.add_argument('--use_disp_min', type=bool, default=False,
+                    help='only do resize augmentation on input data')
 
 # learning params
 parser.add_argument('--lr', type=float, default=2e-4,
@@ -259,6 +261,7 @@ def main():
         else:
             exp_name = args.exp_name
         log_dir = os.path.join(log_dir, exp_name)
+        print(f"All logs will be stored at {log_dir}")
         writer = SummaryWriter(log_dir)
 
     if args.ckpt != "" and args.use_pretrained:
@@ -290,33 +293,32 @@ def main():
         pprint(train_loss_avg_dict)
         pprint(output_dict['flows_b'][0].detach())
 
-    if val_dataset is not None:
-        print(f"Validation epoch: {epoch}...")
-        val_loss_avg = eval(args, model, loss, val_dataloader, augmentations)
-        print(f"\t Epoch {epoch} val loss avg: {val_loss_avg}")
+        if val_dataset is not None:
+            print(f"Validation epoch: {epoch}...")
+            val_loss_avg = eval(args, model, loss, val_dataloader, augmentations)
+            print(f"\t Epoch {epoch} val loss avg: {val_loss_avg}")
 
-    if args.lr_sched_type == 'plateau':
-        lr_scheduler.step(train_loss_avg_dict['total_loss'])
-    elif args.lr_sched_type == 'step':
-        lr_scheduler.step(epoch)
+        if args.lr_sched_type == 'plateau':
+            lr_scheduler.step(train_loss_avg_dict['total_loss'])
+        elif args.lr_sched_type == 'step':
+            lr_scheduler.step(epoch)
 
-    # save model
-    if not args.no_logging:
-        for k, v in train_loss_avg_dict.items():
-            writer.add_scalar(f'loss/train/{k}', train_loss_avg_dict[k], epoch)
-        if epoch % args.log_freq == 0:
-            visualize_output(args, input_dict, output_dict, epoch, writer)
+        if not args.no_logging:
+            for k, v in train_loss_avg_dict.items():
+                writer.add_scalar(f'loss/train/{k}', train_loss_avg_dict[k], epoch)
+            if epoch % args.log_freq == 0:
+                visualize_output(args, input_dict, output_dict, epoch, writer)
 
-        fp = os.path.join(log_dir, f"{epoch}.ckpt")
+            fp = os.path.join(log_dir, f"{epoch}.ckpt")
 
-        if args.save_freq > 0:
-            if epoch % args.save_freq == 0:
+            if args.save_freq > 0:
+                if epoch % args.save_freq == 0:
+                    torch.save(model.state_dict(), fp)
+            elif epoch == args.epochs:
                 torch.save(model.state_dict(), fp)
-        elif epoch == args.epochs:
-            torch.save(model.state_dict(), fp)
 
-    if not args.no_logging:
-        writer.flush()
+        if not args.no_logging:
+            writer.flush()
 
 
 def step(args, data_dict, model, loss, augmentations, optimizer):

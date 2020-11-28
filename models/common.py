@@ -6,7 +6,7 @@ import numpy as np
 from utils.interpolation import interpolate2d_as
 from utils.sceneflow_util import pixel2pts_ms, pts2pixel_pose_ms, intrinsic_scale, disp2depth_kitti
 from utils.inverse_warp import inverse_warp
-from utils.helpers import upsample, sample_grid
+from utils.helpers import upsample
 
 
 class UpConv(nn.Module):
@@ -23,7 +23,7 @@ class UpConv(nn.Module):
 class Conv(nn.Module):
     """ Conv layer with options for padding and ELU/LeakyReLU nonlinearity
     """
-    def __init__(self, in_chs, out_chs, kernel_size=3, stride=1, dilation=1, nonlin='leakyrelu', pad_mode='zeros', use_bn=False, bias=True):
+    def __init__(self, in_chs, out_chs, kernel_size=3, stride=1, dilation=1, nonlin='leakyrelu', pad_mode='reflection', use_bn=False, bias=True):
         super(Conv, self).__init__()
 
         nonlin_dict = {

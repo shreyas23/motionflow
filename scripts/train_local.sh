@@ -16,5 +16,6 @@ python3 train.py --data_root="/external/datasets/kitti_data_jpg/" \
                  --num_workers=8 \
                  --disp_sm_w=1.0 \
                  --use_mask=True \
+                 --use_disp_min=True \
                  --mask_reg_w=0.2 #\
                 #  --no_logging=True
