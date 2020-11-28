@@ -8,6 +8,7 @@ from .encoders import ResnetEncoder
 from .disp_decoders import DispDecoder
 from .pose_decoders import PoseExpNet, PoseNet, PoseDecoder
 from .sf_decoders import SFDecoder
+from .mask_decoders import MaskDecoder
 from .joint_decoders import JointContextNetwork
 from .modules_sceneflow import WarpingLayer_SF
 from .correlation_package.correlation import Correlation
@@ -31,6 +32,7 @@ class Model(nn.Module):
         self.encoder_chs = self.encoder.num_ch_enc
 
         self.disp_decoder = DispDecoder(num_ch_enc=self.encoder_chs, scales=range(5))
+        self.mask_decoder = MaskDecoder(num_ch_enc=self.encoder_chs, scales=range(5))
         self.pose_decoder = PoseDecoder(self.encoder_chs, 2)
 
         self.sf_out_chs = 32
@@ -64,6 +66,9 @@ class Model(nn.Module):
         # disparities
         disps_l1 = self.disp_decoder(x1_features)
         disps_l2 = self.disp_decoder(x2_features)
+        
+        masks_l1 = self.mask_decoder(x1_features)
+        masks_l2 = self.mask_decoder(x2_features)
 
         x1_features = [input_dict['input_l1_aug']] + x1_features
         x2_features = [input_dict['input_l2_aug']] + x2_features
@@ -123,6 +128,9 @@ class Model(nn.Module):
 
         output_dict["disps_l1"] = upsample_outputs_as(disps_l1[::-1], x1_features)
         output_dict["disps_l2"] = upsample_outputs_as(disps_l2[::-1], x1_features)
+
+        output_dict["masks_l1"] = upsample_outputs_as(masks_l1[::-1], x1_features)
+        output_dict["masks_l2"] = upsample_outputs_as(masks_l2[::-1], x1_features)
         
         return output_dict
 
@@ -158,6 +166,8 @@ class Model(nn.Module):
                 output_dict_r['flows_b'][ii] = flow_horizontal_flip(output_dict_r['flows_b'][ii])
                 output_dict_r['disps_l1'][ii] = torch.flip(output_dict_r['disps_l1'][ii], [3])
                 output_dict_r['disps_l2'][ii] = torch.flip(output_dict_r['disps_l2'][ii], [3])
+                output_dict_r['masks_l1'][ii] = torch.flip(output_dict_r['masks_l1'][ii], [3])
+                output_dict_r['masks_l2'][ii] = torch.flip(output_dict_r['masks_l2'][ii], [3])
 
             output_dict['output_dict_r'] = output_dict_r
 

@@ -120,6 +120,10 @@ class Loss(nn.Module):
 
         return img_diff, occ_mask
 
+    def mask_loss(self, mask):
+        loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
+        return loss
+
     def forward(self, output, target):
         depth_loss_sum = 0
         flow_loss_sum = 0
