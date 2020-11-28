@@ -222,10 +222,9 @@ class Loss(nn.Module):
                 exp_loss = torch.tensor(0, requires_grad=False)
 
             if self.args.use_flow_mask:
-                pose_diff1 = pose_diff1 * flow_mask_l1
-                pose_diff2 = pose_diff2 * flow_mask_l2
+                flow_diff1 = flow_diff1 * flow_mask_l1
+                flow_diff2 = flow_diff2 * flow_mask_l2
 
-            # min(pose, sf)
             flow_diffs1 = torch.cat([pose_diff1, sf_diff1], dim=1)
             flow_diffs2 = torch.cat([pose_diff2, sf_diff2], dim=1)
             min_flow_diff1, _ = flow_diffs1.min(dim=1, keepdim=True)
@@ -233,11 +232,14 @@ class Loss(nn.Module):
             min_flow_diff1.detach_()
             min_flow_diff2.detach_()
 
-            mask_disp_diff1 = (disp_diff1 <= min_flow_diff1).detach()
-            mask_disp_diff2 = (disp_diff2 <= min_flow_diff2).detach()
+            # mask_disp_diff1 = (disp_diff1 <= min_flow_diff1).detach()
+            # mask_disp_diff2 = (disp_diff2 <= min_flow_diff2).detach()
 
-            depth_loss1 = disp_diff1[mask_disp_diff1 * left_occ1].mean()
-            depth_loss2 = disp_diff2[mask_disp_diff2 * left_occ2].mean()
+            # depth_loss1 = disp_diff1[mask_disp_diff1 * left_occ1].mean()
+            # depth_loss2 = disp_diff2[mask_disp_diff2 * left_occ2].mean()
+
+            depth_loss1 = disp_diff1[left_occ1].mean()
+            depth_loss2 = disp_diff2[left_occ2].mean()
             depth_loss = depth_loss1 + depth_loss2
 
             occ_f = pose_occ_f * sf_occ_f * left_occ1
