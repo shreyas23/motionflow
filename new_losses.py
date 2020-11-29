@@ -224,8 +224,8 @@ class Loss(nn.Module):
 
             # calculate min disparity diff across (L+1 and R)
             if self.use_disp_min:
-                mask_disp_diff1 = (disp_diff1 <= min_flow_diff1).detach()
-                mask_disp_diff2 = (disp_diff2 <= min_flow_diff2).detach()
+                mask_disp_diff1 = (disp_diff1 < min_flow_diff1).detach()
+                mask_disp_diff2 = (disp_diff2 < min_flow_diff2).detach()
                 disp_mask1 = left_occ1 * mask_disp_diff1
                 disp_mask2 = left_occ2 * mask_disp_diff2
             else:
