@@ -14,6 +14,7 @@ from utils.sceneflow_util import projectSceneFlow2Flow
 from utils.inverse_warp import pose2flow
 from utils.sceneflow_util import intrinsic_scale
 
+eps = 1e-8
 
 class Loss(nn.Module):
     def __init__(self, args):
@@ -119,7 +120,7 @@ class Loss(nn.Module):
 
 
     def explainability_loss(self, mask):
-        loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
+        loss = tf.binary_cross_entropy(mask + eps, torch.ones_like(mask))
         return loss
 
 

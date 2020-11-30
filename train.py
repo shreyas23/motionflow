@@ -1,4 +1,3 @@
-
 import gc
 import os
 import json
@@ -75,7 +74,7 @@ def train(args):
         train_dataset = KITTI_Raw_EigenSplit_Train(args, DATA_ROOT, num_examples=args.num_examples)
         train_dataloader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True)
         if args.validate:
-            val_dataset = KITTI_Raw_EigenSplit_Valid(args, DATA_ROOT, num_examples=2)
+            val_dataset = KITTI_Raw_EigenSplit_Valid(args, DATA_ROOT)
             val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True) if val_dataset else None
         else:
             val_dataset = None

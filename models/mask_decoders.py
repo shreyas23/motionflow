@@ -71,7 +71,7 @@ class MaskDecoder(nn.Module):
             x = self.convs[("upconv", i, 1)](x)
             if i in self.scales:
                 out_disp = self.convs[("dispconv", i)](x)
-                out_disp = self.sigmoid(out_disp) * 0.3
+                out_disp = self.sigmoid(out_disp)
                 self.outputs.append(out_disp)
 
         return self.outputs

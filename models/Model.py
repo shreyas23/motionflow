@@ -32,8 +32,9 @@ class Model(nn.Module):
         self.encoder_chs = self.encoder.num_ch_enc
 
         self.disp_decoder = DispDecoder(num_ch_enc=self.encoder_chs, scales=range(5))
-        self.mask_decoder = MaskDecoder(num_ch_enc=self.encoder_chs, scales=range(5))
         self.pose_decoder = PoseDecoder(self.encoder_chs, 2)
+        if args.use_mask:
+            self.mask_decoder = MaskDecoder(num_ch_enc=self.encoder_chs, scales=range(5))
 
         self.sf_out_chs = 32
         self.warping_layer_sf = Warp_SceneFlow()
