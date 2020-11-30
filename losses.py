@@ -14,7 +14,7 @@ from utils.sceneflow_util import projectSceneFlow2Flow
 from utils.inverse_warp import pose2flow
 from utils.sceneflow_util import intrinsic_scale
 
-eps = 1e-8
+eps = 1e-7
 
 class Loss(nn.Module):
     def __init__(self, args):
@@ -120,7 +120,7 @@ class Loss(nn.Module):
 
 
     def explainability_loss(self, mask):
-        loss = tf.binary_cross_entropy(mask + eps, torch.ones_like(mask))
+        loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
         return loss
 
 
@@ -196,17 +196,20 @@ class Loss(nn.Module):
             K_l2_s = intrinsic_scale(K_l2, rel_scale[:, 0], rel_scale[:, 1])
 
             # pose diffs
-            pose_diff1, pose_occ_b, (pose_pts1, pose_grid1) = self.flow_loss(disp_l1, img_l2, img_l1, K_l1_s, T=pose_f, mode='pose')
-            pose_diff2, pose_occ_f, (pose_pts2, pose_grid2) = self.flow_loss(disp_l2, img_l1, img_l2, K_l2_s, T=pose_b, mode='pose')
+            pose_diff1, pose_occ_b, (_, pose_grid1) = self.flow_loss(disp_l1, img_l2, img_l1, K_l1_s, T=pose_f, mode='pose')
+            pose_diff2, pose_occ_f, (_, pose_grid2) = self.flow_loss(disp_l2, img_l1, img_l2, K_l2_s, T=pose_b, mode='pose')
 
             # sf diffs
-            sf_diff1, sf_occ_b, (sf_pts1, sf_grid1)  = self.flow_loss(disp_l1, img_l2, img_l1, K_l1_s, sf=flow_f, mode='sf')
-            sf_diff2, sf_occ_f, (sf_pts2, sf_grid2)  = self.flow_loss(disp_l2, img_l1, img_l2, K_l2_s, sf=flow_b, mode='sf')                
+            sf_diff1, sf_occ_b, (pts1, sf_grid1)  = self.flow_loss(disp_l1, img_l2, img_l1, K_l1_s, sf=flow_f, mode='sf')
+            sf_diff2, sf_occ_f, (pts2, sf_grid2)  = self.flow_loss(disp_l2, img_l1, img_l2, K_l2_s, sf=flow_b, mode='sf')                
 
             ## 3D motion smoothness loss
-            flow_f_us = interpolate2d_as(flow_f, img_l1)
-            flow_b_us = interpolate2d_as(flow_b, img_l1)
-            loss_flow_sm = (_smoothness_motion_2nd(flow_f_us, img_l1, beta=10.0).mean() + _smoothness_motion_2nd(flow_b_us, img_l2, beta=10.0).mean()) / (2 ** s)
+            img_l1_ds = interpolate2d_as(img_l1, flow_f)
+            img_l2_ds = interpolate2d_as(img_l2, flow_b)
+            pts_norm1 = torch.norm(pts1, p=2, dim=1, keepdim=True)
+            pts_norm2 = torch.norm(pts2, p=2, dim=1, keepdim=True)
+            loss_flow_sm = ( (_smoothness_motion_2nd(flow_f, img_l1_ds, beta=10.0) / (pts_norm1 + 1e-8)).mean() + \
+                (_smoothness_motion_2nd(flow_b, img_l2_ds, beta=10.0) / (pts_norm2 + 1e-8)).mean() ) / (2 ** s)
             loss_flow_sm = loss_flow_sm * self.flow_sm_w
 
             """ DEPTH LOSS """
@@ -273,24 +276,14 @@ class Loss(nn.Module):
             pose_diff2[~pose_occ_b].detach_()
             sf_diff2[~sf_occ_b].detach_()
 
-            depth_loss_sum = depth_loss_sum + (depth_loss + loss_disp_sm * self.disp_sm_w) * self.scale_weights[s]
+            depth_loss_sum = depth_loss_sum + (depth_loss + loss_disp_sm) * self.scale_weights[s]
             flow_loss_sum = flow_loss_sum + (flow_loss + loss_flow_sm) * self.scale_weights[s] 
             mask_loss_sum = mask_loss_sum + mask_loss * self.scale_weights[s]
             flow_sm_sum = flow_sm_sum + loss_flow_sm
             disp_sm_sum = disp_sm_sum + loss_disp_sm
 
-        if self.args.use_mask:
-            f_loss = flow_loss_sum.detach()
-            m_loss = mask_loss_sum.detach()
-            max_val = max(f_loss, m_loss)
-            f_weight = max_val / f_loss
-            m_weight = max_val / m_loss
-        else:
-            f_weight = 1.0
-            m_weight = 1.0
-
         loss_dict = {}
-        loss_dict["total_loss"] = (depth_loss_sum + flow_loss_sum * f_weight + mask_loss_sum * m_weight) / num_scales
+        loss_dict["total_loss"] = (depth_loss_sum + flow_loss_sum + mask_loss_sum) / num_scales
         loss_dict["depth_loss"] = depth_loss_sum.detach()
         loss_dict["flow_loss"] = flow_loss_sum.detach()
         loss_dict["flow_smooth_loss"] = flow_sm_sum.detach()
