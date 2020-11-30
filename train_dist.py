@@ -26,8 +26,9 @@ from augmentations import Augmentation_SceneFlow, Augmentation_Resize_Only
 
 from datasets.kitti_raw_monosf import KITTI_Raw_KittiSplit_Train, KITTI_Raw_KittiSplit_Valid, KITTI_Raw_EigenSplit_Train, KITTI_Raw_EigenSplit_Valid
 
+from models.JointModel import JointModel
 from models.Model import Model
-from new_losses import Loss
+from losses import Loss
 
 from utils.helpers import visualize_output
 from utils.inverse_warp import flow_warp, pose2flow, inverse_warp, pose_vec2mat
@@ -68,7 +69,7 @@ parser.add_argument('--ckpt', type=str, default="",
 
 # module params
 parser.add_argument('--model_name', type=str,
-                    default="scenenet", help="name of model")
+                    default="separate", help="name of model")
 parser.add_argument('--encoder_name', type=str, default="pwc",
                     help="which encoder to use for Scene Net")
 parser.add_argument('--decoder_type', type=str, default="full",
@@ -201,7 +202,11 @@ def train(gpu, args):
 
     print(f"Loading model onto gpu: {gpu}")
 
-    model = Model(args).cuda(device=gpu)
+    if args.model_name == 'joint':
+        model = JointModel(args).cuda(device=gpu)
+    else:
+        model = Model(args).cuda(device=gpu)
+
     loss = Loss(args).cuda(device=gpu)
 
     if args.use_bn:
@@ -320,11 +325,16 @@ def train(gpu, args):
         if gpu == 0:
             print(f"\t Epoch {epoch} train loss avg:")
             pprint(train_loss_avg_dict)
+            print("\n")
 
-            if val_dataset is not None:
+            if args.validate:
                 print(f"Validation epoch: {epoch}...\n")
-                val_loss_avg_dict = eval(args, model, loss, val_dataloader, val_augmentations)
-                print(f"\t Epoch {epoch} val loss avg: {val_loss_avg_dict}\n")
+                val_loss_avg_dict, val_output_dict, val_input_dict = eval(args, model, loss, val_dataloader, val_augmentations)
+                print(f"\t Epoch {epoch} train loss avg:")
+                pprint(train_loss_avg_dict)
+                print("\n")
+            else:
+                val_output_dict, val_input_dict = None, None
 
         if args.lr_sched_type == 'plateau':
             lr_scheduler.step(train_loss_avg_dict['total_loss'])
@@ -336,7 +346,7 @@ def train(gpu, args):
             if gpu == 0:
                 for k, v in train_loss_avg_dict.items():
                     writer.add_scalar(f'loss/train/{k}', v.item(), epoch)
-                if val_dataset is not None:
+                if args.validate:
                     for k, v in val_loss_avg_dict.items():
                         writer.add_scalar(f'loss/val/{k}', v.item(), epoch)
 
@@ -346,6 +356,10 @@ def train(gpu, args):
 
                 if epoch % args.log_freq == 0:
                     visualize_output(args, input_dict, output_dict, epoch, writer)
+
+                    if args.validate:
+                        visualize_output(args, val_input_dict, val_output_dict, epoch, writer)
+
                     writer.flush()
 
             if args.save_freq > 0:
@@ -460,7 +474,7 @@ def eval(args, model, loss, dataloader, augmentations):
     for key in loss_dict_avg.keys():
         loss_dict_avg[key] /= n
 
-    return loss_dict_avg
+    return loss_dict_avg, data_dict, output_dict
 
 if __name__ == '__main__':
   main()
