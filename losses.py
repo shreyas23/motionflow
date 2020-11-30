@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from utils.interpolation import interpolate2d_as
 from utils.helpers import BackprojectDepth, Project3D
 from utils.loss_utils import _generate_image_left, _generate_image_right, _smoothness_motion_2nd, disp_smooth_loss
-from utils.loss_utils import _SSIM, _reconstruction_error, _disp2depth_kitti_K, logical_or
+from utils.loss_utils import _SSIM, _reconstruction_error, _disp2depth_kitti_K, logical_or, _elementwise_epe
 from utils.loss_utils import _adaptive_disocc_detection, _adaptive_disocc_detection_disp
 from utils.sceneflow_util import projectSceneFlow2Flow
 from utils.inverse_warp import pose2flow
@@ -21,7 +21,6 @@ class Loss(nn.Module):
 
         self.args = args
 
-        self.flow_min_w = args.flow_min_w
         self.ssim_w = args.ssim_w
         self.use_disp_min = args.use_disp_min
         self.flow_reduce_mode = args.flow_reduce_mode
@@ -29,22 +28,16 @@ class Loss(nn.Module):
         # dis weights
         self.disp_sm_w = args.disp_sm_w
 
-        #sf wights
-        self.sf_3d_pts = args.sf_pts_w
-        self.sf_3d_sm = args.sf_sm_w
-
-        # pos weights
-        self.pose_pts_w = args.pose_pts_w
-        self.pose_sm_w = args.pose_sm_w
+        #flow wights
+        self.flow_pts_w = args.flow_pts_w
+        self.flow_sm_w = args.flow_sm_w
 
         # mas weights
         self.mask_reg_w = args.mask_reg_w
-        self.mask_sm_w = args.mask_sm_w
         self.mask_cons_w = args.mask_cons_w
         self.flow_diff_thresh = args.flow_diff_thresh
 
         # conistency weights 
-        self.mask_lr_w = args.mask_lr_w
         self.disp_lr_w = args.disp_lr_w
         self.static_cons_w = args.static_cons_w
 
@@ -133,8 +126,9 @@ class Loss(nn.Module):
     def forward(self, output, target):
         depth_loss_sum = 0
         flow_loss_sum = 0
+        flow_sm_sum = 0
         disp_sm_sum = 0
-        exp_loss_sum = 0
+        mask_loss_sum = 0
 
         img_l1 = target['input_l1_orig']
         img_l2 = target['input_l2_orig']
@@ -208,6 +202,12 @@ class Loss(nn.Module):
             sf_diff1, sf_occ_b, (sf_pts1, sf_grid1)  = self.flow_loss(disp_l1, img_l2, img_l1, K_l1_s, sf=flow_f, mode='sf')
             sf_diff2, sf_occ_f, (sf_pts2, sf_grid2)  = self.flow_loss(disp_l2, img_l1, img_l2, K_l2_s, sf=flow_b, mode='sf')                
 
+            ## 3D motion smoothness loss
+            flow_f_us = interpolate2d_as(flow_f, img_l1)
+            flow_b_us = interpolate2d_as(flow_b, img_l1)
+            loss_flow_sm = (_smoothness_motion_2nd(flow_f_us, img_l1, beta=10.0).mean() + _smoothness_motion_2nd(flow_b_us, img_l2, beta=10.0).mean()) / (2 ** s)
+            loss_flow_sm = loss_flow_sm * self.flow_sm_w
+
             """ DEPTH LOSS """
             # calculate min disparity diff across (L+1 and R)
             if self.use_disp_min:
@@ -232,22 +232,24 @@ class Loss(nn.Module):
 
             """ MASK LOSS """
             if self.args.use_mask:
-                exp_loss = (self.explainability_loss(mask_l1) + self.explainability_loss(mask_l2)) * self.mask_reg_w
+                mask_loss = (self.explainability_loss(mask_l1) + self.explainability_loss(mask_l2)) * self.mask_reg_w
                 pose_diff1 = pose_diff1 * mask_l1
                 pose_diff2 = pose_diff2 * mask_l2
                 if self.args.use_flow_mask:
                     flow_diff1 = flow_diff1 * flow_mask_l1
                     flow_diff2 = flow_diff2 * flow_mask_l2
             else:
-                exp_loss = torch.tensor(0, requires_grad=False)
+                mask_loss = torch.tensor(0, requires_grad=False)
 
             pose_occ_f = pose_occ_f * left_occ1
             sf_occ_f = sf_occ_f * left_occ1
             pose_occ_b = pose_occ_b * left_occ2
             sf_occ_b = sf_occ_b * left_occ2
 
+            """ FLOW LOSS """
             # do not use min reduction for now... 
             if self.flow_reduce_mode == 'min':
+                assert (not self.args.use_mask), "Cannot use min flow reduction while using explainability mask."
                 flow_diffs1 = torch.cat([pose_diff1, sf_diff1], dim=1)
                 flow_diffs2 = torch.cat([pose_diff2, sf_diff2], dim=1)
                 min_flow_diff1, _ = flow_diffs1.min(dim=1, keepdim=True)
@@ -263,24 +265,36 @@ class Loss(nn.Module):
                 flow_loss1 = pose_diff1.mean(dim=1, keepdim=True)[pose_occ_f].mean() + sf_diff1.mean(dim=1, keepdim=True)[sf_occ_f].mean()
                 flow_loss2 = pose_diff2.mean(dim=1, keepdim=True)[pose_occ_b].mean() + sf_diff2.mean(dim=1, keepdim=True)[sf_occ_b].mean()
 
+            flow_loss = flow_loss1 + flow_loss2
+
             pose_diff1[~pose_occ_f].detach_()
             sf_diff1[~sf_occ_f].detach_()
             pose_diff2[~pose_occ_b].detach_()
             sf_diff2[~sf_occ_b].detach_()
 
-            flow_loss = flow_loss1 + flow_loss2
-
             depth_loss_sum = depth_loss_sum + (depth_loss + loss_disp_sm * self.disp_sm_w) * self.scale_weights[s]
-            flow_loss_sum = flow_loss_sum + flow_loss * self.scale_weights[s] 
-            exp_loss_sum = exp_loss_sum + exp_loss * self.scale_weights[s]
+            flow_loss_sum = flow_loss_sum + (flow_loss + loss_flow_sm) * self.scale_weights[s] 
+            mask_loss_sum = mask_loss_sum + mask_loss * self.scale_weights[s]
+            flow_sm_sum = flow_sm_sum + loss_flow_sm
             disp_sm_sum = disp_sm_sum + loss_disp_sm
 
+        if self.args.use_mask:
+            f_loss = flow_loss_sum.detach()
+            m_loss = mask_loss_sum.detach()
+            max_val = max(f_loss, m_loss)
+            f_weight = max_val / f_loss
+            m_weight = max_val / m_loss
+        else:
+            f_weight = 1.0
+            m_weight = 1.0
+
         loss_dict = {}
-        loss_dict["total_loss"] = (depth_loss_sum + flow_loss_sum + exp_loss_sum) / num_scales
+        loss_dict["total_loss"] = (depth_loss_sum + flow_loss_sum * f_weight + mask_loss_sum * m_weight) / num_scales
         loss_dict["depth_loss"] = depth_loss_sum.detach()
         loss_dict["flow_loss"] = flow_loss_sum.detach()
+        loss_dict["flow_smooth_loss"] = flow_sm_sum.detach()
         loss_dict["disp_sm_loss"] = disp_sm_sum.detach()
-        loss_dict["exp_loss"] = exp_loss_sum.detach()
+        loss_dict["exp_loss"] = mask_loss_sum.detach()
 
         # detach unused parameters
         for s in range(len(output['output_dict_r']['flows_f'])):
