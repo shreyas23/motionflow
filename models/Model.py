@@ -9,7 +9,7 @@ from .disp_decoders import DispDecoder
 from .pose_decoders import PoseExpNet, PoseNet, PoseDecoder
 from .sf_decoders import SFDecoder
 from .mask_decoders import MaskDecoder
-from .joint_decoders import JointContextNetwork
+from .decoders import ContextNetworkSF
 from .modules_sceneflow import WarpingLayer_SF
 from .correlation_package.correlation import Correlation
 
@@ -40,7 +40,7 @@ class Model(nn.Module):
         self.sf_layers = nn.ModuleList()
         self.upconv_layers = nn.ModuleList()
 
-        self.context_network = JointContextNetwork(in_chs=(self.sf_out_chs + 3 + 1 + int(self.args.use_mask)))
+        self.context_network = ContextNetworkSF(in_chs=(self.sf_out_chs + 3 + 1 + int(self.args.use_mask)))
 
         self.search_range = 4
         self.output_level = 4
