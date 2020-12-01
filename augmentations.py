@@ -298,11 +298,11 @@ class Augmentation_Resize_Only(nn.Module):
             k_r1 = _intrinsic_scale(example_dict["input_k_r1"], sx, sy)
             k_r2 = _intrinsic_scale(example_dict["input_k_r2"], sx, sy)
 
-        example_dict["input_l1_orig"] = im_l1
-        example_dict["input_l2_orig"] = im_l2
+        example_dict["input_l1"] = im_l1
+        example_dict["input_l2"] = im_l2
         if self._isRight:
-            example_dict["input_r1_orig"] = im_r1
-            example_dict["input_r2_orig"] = im_r2
+            example_dict["input_r1"] = im_r1
+            example_dict["input_r2"] = im_r2
 
         if self._photometric and torch.rand(1) > 0.5:
             if self._isRight:
@@ -450,11 +450,6 @@ class Augmentation_SceneFlow(Augmentation_ScaleCrop):
         k_l2 = k_l2.squeeze(1)
         k_r1 = k_r1.squeeze(1)
         k_r2 = k_r2.squeeze(1)
-
-        example_dict["input_l1_orig"] = im_l1
-        example_dict["input_l2_orig"] = im_l2
-        example_dict["input_r1_orig"] = im_r1
-        example_dict["input_r2_orig"] = im_r2
 
         if self._photometric and torch.rand(1) > 0.5:
             im_l1, im_l2, im_r1, im_r2 = self._photo_augmentation(

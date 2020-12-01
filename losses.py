@@ -129,10 +129,10 @@ class Loss(nn.Module):
         disp_sm_sum = 0
         mask_loss_sum = 0
 
-        img_l1 = target['input_l1_orig']
-        img_l2 = target['input_l2_orig']
-        img_r1 = target['input_r1_orig']
-        img_r2 = target['input_r2_orig']
+        img_l1 = target['input_l1']
+        img_l2 = target['input_l2']
+        img_r1 = target['input_r1']
+        img_r2 = target['input_r2']
         K_l1 = target['input_k_l1_aug']
         K_l2 = target['input_k_l2_aug']
 
@@ -268,8 +268,8 @@ class Loss(nn.Module):
                 flow_loss1 = min_flow_diff1[occ_f].mean()
                 flow_loss2 = min_flow_diff2[occ_b].mean()
             elif self.flow_reduce_mode == 'avg':
-                flow_loss1 = (pose_diff1.mean(dim=1, keepdim=True)[pose_occ_f].mean() + sf_diff1.mean(dim=1, keepdim=True)[sf_occ_f].mean()) / 2.0
-                flow_loss2 = (pose_diff2.mean(dim=1, keepdim=True)[pose_occ_b].mean() + sf_diff2.mean(dim=1, keepdim=True)[sf_occ_b].mean()) / 2.0
+                flow_loss1 = ((pose_diff1 * pose_occ_f.float()) + (sf_diff1 * sf_occ_f.float())).mean(dim=1).mean()
+                flow_loss2 = ((pose_diff2 * pose_occ_b.float()) + (sf_diff2 * sf_occ_b.float())).mean(dim=1).mean()
             elif self.flow_reduce_mode == 'sum':
                 flow_loss1 = pose_diff1.mean(dim=1, keepdim=True)[pose_occ_f].mean() + sf_diff1.mean(dim=1, keepdim=True)[sf_occ_f].mean()
                 flow_loss2 = pose_diff2.mean(dim=1, keepdim=True)[pose_occ_b].mean() + sf_diff2.mean(dim=1, keepdim=True)[sf_occ_b].mean()
@@ -287,20 +287,8 @@ class Loss(nn.Module):
             flow_sm_sum = flow_sm_sum + loss_flow_sm
             disp_sm_sum = disp_sm_sum + loss_disp_sm
 
-        if self.args.use_mask:
-            # f_loss = flow_loss_sum.detach()
-            # m_loss = mask_loss_sum.detach()
-            # max_val = max(f_loss, m_loss)
-            # f_weight = max_val / f_loss
-            # m_weight = max_val / m_loss
-            f_weight = 1.0
-            m_weight = 1.0
-        else:
-            f_weight = 1.0
-            m_weight = 1.0
-
         loss_dict = {}
-        loss_dict["total_loss"] = (depth_loss_sum + flow_loss_sum * f_weight + mask_loss_sum * m_weight) / num_scales
+        loss_dict["total_loss"] = (depth_loss_sum + flow_loss_sum + mask_loss_sum) / num_scales
         loss_dict["depth_loss"] = depth_loss_sum.detach()
         loss_dict["flow_loss"] = flow_loss_sum.detach()
         loss_dict["flow_smooth_loss"] = flow_sm_sum.detach()
