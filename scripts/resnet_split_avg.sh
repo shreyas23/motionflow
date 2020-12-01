@@ -18,4 +18,4 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --disp_sm_w=0.2 \
                  --flow_sm_w=200 \
                  --mask_sm_w=0.1 \
-                 --mask_reg_w=0.05
+                 --mask_reg_w=0.01
