@@ -232,6 +232,8 @@ class Loss(nn.Module):
 
             depth_loss1 = disp_diff1[disp_mask1].mean()
             depth_loss2 = disp_diff2[disp_mask2].mean()
+            disp_diff1[~disp_mask1].detach_()
+            disp_diff2[~disp_mask2].detach_()
             depth_loss = depth_loss1 + depth_loss2
 
             """ MASK LOSS """
