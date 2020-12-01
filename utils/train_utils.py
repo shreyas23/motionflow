@@ -1,5 +1,63 @@
 import torch
 from tqdm import tqdm
+import torch
+import torch.nn as nn
+from torch.utils.data import DistributedSampler
+from torch.utils.data import Dataset, DataLoader
+from torch.utils.tensorboard import SummaryWriter
+from torch.nn.parallel import DistributedDataParallel
+
+from augmentations import Augmentation_SceneFlow, Augmentation_Resize_Only
+from datasets.kitti_raw_monosf import KITTI_Raw_KittiSplit_Train, KITTI_Raw_KittiSplit_Valid
+from datasets.kitti_raw_monosf import KITTI_Raw_EigenSplit_Train, KITTI_Raw_EigenSplit_Valid
+from models.JointModel import JointModel
+from models.Model import Model
+from losses import Loss
+
+
+def get_model(args):
+    if args.model_name == 'joint':
+        model = JointModel(args)
+    else:
+        model = Model(args)
+
+    return model
+
+
+def get_loss(args, gpu):
+
+    loss = Loss(args).cuda(device=gpu)
+
+    return loss
+
+def get_augmentations(args):
+    train_augmentations = Augmentation_SceneFlow(args)
+    val_augmentations = Augmentation_Resize_Only(args)
+
+    return train_augmentations, val_augmentations
+
+
+def get_dataset(args, gpu):
+    DATASET_NAME = args.dataset_name
+    DATA_ROOT = args.data_root
+
+    if DATASET_NAME == 'KITTI':
+        train_dataset = KITTI_Raw_KittiSplit_Train(args, DATA_ROOT, num_examples=args.num_examples)
+        if args.validate and gpu == 0:
+            val_dataset = KITTI_Raw_KittiSplit_Valid(args, DATA_ROOT)
+        else:
+            val_dataset = None
+
+    elif DATASET_NAME == 'KITTI_EIGEN':
+        train_dataset = KITTI_Raw_EigenSplit_Train(args, DATA_ROOT, num_examples=args.num_examples)
+        if args.validate and gpu == 0:
+            val_dataset = KITTI_Raw_EigenSplit_Valid(args, DATA_ROOT)
+        else:
+            val_dataset = None
+    else:
+        raise NotImplementedError
+
+    return train_dataset, val_dataset
 
 
 def step(args, data_dict, model, loss, augmentations, optimizer, gpu):

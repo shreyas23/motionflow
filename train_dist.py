@@ -112,9 +112,19 @@ def train(gpu, args):
     else:
         raise NotImplementedError
 
+    # train_dataset, val_dataset = get_dataset(args, gpu)
+
+    # if args.num_gpus > 1:
+    #     train_sampler = DistributedSampler(train_dataset, num_replicas=args.world_size, rank=rank, shuffle=True)
+    # else:
+    #     train_sampler = None
+    # train_dataloader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True, sampler=train_sampler, shuffle=(train_sampler is None))
+    # val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True) if val_dataset else None
+
     # define augmentations
     train_augmentations = Augmentation_SceneFlow(args)
     val_augmentations = Augmentation_Resize_Only(args)
+
     if args.cuda:
         train_augmentations = train_augmentations.cuda(device=gpu)
         val_augmentations = val_augmentations.cuda(device=gpu)

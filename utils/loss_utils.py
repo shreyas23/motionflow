@@ -70,7 +70,7 @@ def _apply_disparity(img, disp):
     flow_field = torch.stack((x_base + x_shifts, y_base), dim=3)
     # In grid_sample coordinates are assumed to be between -1 and 1
     output = tf.grid_sample(img, 2 * flow_field - 1,
-                            mode='bilinear', padding_mode='zeros')
+                            mode='bilinear', padding_mode='border')
 
     return output
 
