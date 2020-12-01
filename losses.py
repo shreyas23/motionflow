@@ -144,13 +144,13 @@ class Loss(nn.Module):
         disps_r2 = output['output_dict_r']['disps_l2']
         flows_f = output['flows_f']
         flows_b = output['flows_b']
-        pose_f = output['pose_f']
-        pose_b = output['pose_b']
+        poses_f = output['pose_f']
+        poses_b = output['pose_b']
 
         if self.args.use_mask:
             masks_l1 = output['masks_l1']
             masks_l2 = output['masks_l2']
-
+        
         num_scales = len(disps_l1)
         for s in range(num_scales):
             flow_f = flows_f[s]
@@ -159,6 +159,13 @@ class Loss(nn.Module):
             disp_l2 = disps_l2[s]
             disp_r1 = disps_r1[s]
             disp_r2 = disps_r2[s]
+
+            if len(poses_b) > 1:
+                pose_f = poses_f[s]
+                pose_b = poses_b[s]
+            else:
+                pose_f = poses_f
+                pose_b = poses_b
 
             if self.args.use_mask:
                 mask_l1 = interpolate2d_as(masks_l1[s], img_l1)

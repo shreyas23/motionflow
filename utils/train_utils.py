@@ -98,4 +98,4 @@ def evaluate(args, model, loss, dataloader, augmentations):
     for key in loss_dict_avg.keys():
         loss_dict_avg[key] /= n
 
-    return loss_dict_avg, data_dict, output_dict
+    return loss_dict_avg, output_dict, data_dict 

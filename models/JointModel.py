@@ -25,7 +25,7 @@ class JointModel(nn.Module):
     def __init__(self, args):
         super(JointModel, self).__init__()
 
-        self._args = args
+        self.args = args
         self.search_range = 4
         self.output_level = 4
         self.num_levels = 7
@@ -45,7 +45,7 @@ class JointModel(nn.Module):
         
         self.out_ch_size = 32 
 
-        for l, ch in enumerate(self.num_chs[::-1]):
+        for l, ch in enumerate(self.encoder_chs[::-1]):
             if l > self.output_level:
                 break
             if l == 0:
@@ -63,12 +63,12 @@ class JointModel(nn.Module):
 
         self.sigmoid = torch.nn.Sigmoid()
 
-        # self.initialize_weights()
+        self.initialize_weights()
 
     def initialize_weights(self):
         for layer in self.modules():
             if isinstance(layer, nn.Conv2d) or isinstance(layer, nn.ConvTranspose2d):
-                nn.init.kaiming_normal_(layer.weight)
+                # nn.init.kaiming_normal_(layer.weight)
                 if layer.bias is not None:
                     nn.init.constant_(layer.bias, 0)
 
@@ -99,7 +99,7 @@ class JointModel(nn.Module):
         masks_1 = []
         masks_2 = []
 
-        for l, (x1, x2) in enumerate(zip(x1_pyramid, x2_pyramid)):
+        for l, (x1, x2) in enumerate(zip(x1_pyramid[::-1], x2_pyramid[::-1])):
 
             # warping
             if l == 0:
@@ -172,8 +172,8 @@ class JointModel(nn.Module):
                 poses_b.append(pose_mat_b)
 
             else:
-                flow_res_f, disp_l1, mask_l1, pose_f_res = self.context_networks(torch.cat([x1_out, flow_f, disp_l1, pose_f_out, mask_l1], dim=1))
-                flow_res_b, disp_l2, mask_l2, pose_b_res = self.context_networks(torch.cat([x2_out, flow_b, disp_l2, pose_b_out, mask_l2], dim=1))
+                flow_res_f, disp_l1, pose_f_res, mask_l1 = self.context_networks(torch.cat([x1_out, flow_f, disp_l1, pose_f_out, mask_l1], dim=1))
+                flow_res_b, disp_l2, pose_b_res, mask_l2 = self.context_networks(torch.cat([x2_out, flow_b, disp_l2, pose_b_out, mask_l2], dim=1))
                 flow_f = flow_f + flow_res_f
                 flow_b = flow_b + flow_res_b
                 pose_mat_f = add_pose(pose_mat_f, pose_f_res)
@@ -190,14 +190,15 @@ class JointModel(nn.Module):
 
                 break
 
-        x1_rev = x1_pyramid[::-1]
+        x1_rev = x1_pyramid
 
-        output_dict['flow_f'] = upsample_outputs_as(sceneflows_f[::-1], x1_rev)
-        output_dict['flow_b'] = upsample_outputs_as(sceneflows_b[::-1], x1_rev)
-        output_dict['disp_l1'] = upsample_outputs_as(disps_1[::-1], x1_rev)
-        output_dict['disp_l2'] = upsample_outputs_as(disps_2[::-1], x1_rev)
-        output_dict['mask_l1'] = upsample_outputs_as(masks_1[::-1], x1_rev)
-        output_dict['mask_l2'] = upsample_outputs_as(masks_2[::-1], x1_rev)
+        output_dict['flows_f'] = upsample_outputs_as(sceneflows_f[::-1], x1_rev)
+        output_dict['flows_b'] = upsample_outputs_as(sceneflows_b[::-1], x1_rev)
+        output_dict['disps_l1'] = upsample_outputs_as(disps_1[::-1], x1_rev)
+        output_dict['disps_l2'] = upsample_outputs_as(disps_2[::-1], x1_rev)
+        if self.args.use_mask:
+            output_dict['masks_l1'] = upsample_outputs_as(masks_1[::-1], x1_rev)
+            output_dict['masks_l2'] = upsample_outputs_as(masks_2[::-1], x1_rev)
         output_dict["pose_f"] = poses_f[::-1]
         output_dict["pose_b"] = poses_b[::-1]
 
@@ -214,7 +215,7 @@ class JointModel(nn.Module):
         ## Right
         ## ss: train val 
         ## ft: train 
-        if self.training or (not self._args.evaluation):
+        if self.training or (not self.args.evaluation):
             input_r1_flip = torch.flip(input_dict['input_r1_aug'], [3])
             input_r2_flip = torch.flip(input_dict['input_r2_aug'], [3])
             k_r1_flip = input_dict["input_k_r1_flip_aug"]
@@ -222,20 +223,21 @@ class JointModel(nn.Module):
 
             output_dict_r = self.run_pwc(input_dict, input_r1_flip, input_r2_flip, k_r1_flip, k_r2_flip)
 
-            for ii in range(0, len(output_dict_r['flow_f'])):
-                output_dict_r['flow_f'][ii] = flow_horizontal_flip(output_dict_r['flow_f'][ii])
-                output_dict_r['flow_b'][ii] = flow_horizontal_flip(output_dict_r['flow_b'][ii])
-                output_dict_r['disp_l1'][ii] = torch.flip(output_dict_r['disp_l1'][ii], [3])
-                output_dict_r['disp_l2'][ii] = torch.flip(output_dict_r['disp_l2'][ii], [3])
-                output_dict_r['mask_l1'][ii] = torch.flip(output_dict_r['mask_l1'][ii], [3])
-                output_dict_r['mask_l2'][ii] = torch.flip(output_dict_r['mask_l2'][ii], [3])
+            for ii in range(0, len(output_dict_r['flows_f'])):
+                output_dict_r['flows_f'][ii] = flow_horizontal_flip(output_dict_r['flows_f'][ii])
+                output_dict_r['flows_b'][ii] = flow_horizontal_flip(output_dict_r['flows_b'][ii])
+                output_dict_r['disps_l1'][ii] = torch.flip(output_dict_r['disps_l1'][ii], [3])
+                output_dict_r['disps_l2'][ii] = torch.flip(output_dict_r['disps_l2'][ii], [3])
+                if self.args.use_mask:
+                    output_dict_r['masks_l1'][ii] = torch.flip(output_dict_r['masks_l1'][ii], [3])
+                    output_dict_r['masks_l2'][ii] = torch.flip(output_dict_r['masks_l2'][ii], [3])
 
             output_dict['output_dict_r'] = output_dict_r
 
         ## Post Processing 
         ## ss:           eval
         ## ft: train val eval
-        if self._args.evaluation:
+        if self.args.evaluation:
 
             input_l1_flip = torch.flip(input_dict['input_l1_aug'], [3])
             input_l2_flip = torch.flip(input_dict['input_l2_aug'], [3])
