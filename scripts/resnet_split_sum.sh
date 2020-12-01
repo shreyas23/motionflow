@@ -9,7 +9,6 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --lr_gamma=0.5 \
                  --lr_sched_type='step' \
                  --flow_reduce_mode='sum' \
-                 --use_mask=True \
                  --use_disp_min=True \
                  --epochs=25 \
                  --batch_size=2 \
