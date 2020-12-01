@@ -114,7 +114,14 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     if args.use_mask:
         mask_l2 = interpolate2d_as(output_dict['masks_l2'][0].detach(), img_l1)
     flow_b = interpolate2d_as(output_dict['flows_b'][0].detach(), img_l1)
-    pose_b = output_dict['pose_b'].detach()
+    poses_b = output_dict['pose_b']
+    poses_f = output_dict['pose_f']
+    if len(poses_b) > 1:
+        pose_f = poses_f[0].detach()
+        pose_b = poses_b[0].detach()
+    else:
+        pose_f = poses_f.detach()
+        pose_b = poses_b.detach()
 
     # input
     writer.add_images('input_l1', img_l1, epoch)
@@ -147,7 +154,6 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
 
     # pose occ map
     depth_l1 = _disp2depth_kitti_K(disp_l2, K[:, 0, 0])
-    pose_f = output_dict['pose_f'].detach()
     pose_flow = pose2flow(depth_l1.squeeze(dim=1), None, K, torch.inverse(K), pose_mat=pose_f)
     pose_occ_b = _adaptive_disocc_detection(pose_flow)
     writer.add_images('pose_occ', pose_occ_b, epoch)
