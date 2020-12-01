@@ -111,7 +111,8 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     K = input_dict['input_k_l2_aug'].detach()
     disp_l1 = interpolate2d_as(output_dict['disps_l1'][0].detach(), img_l1)
     disp_l2 = interpolate2d_as(output_dict['disps_l2'][0].detach(), img_l1)
-    mask_l2 = interpolate2d_as(output_dict['masks_l2'][0].detach(), img_l1)
+    if args.use_mask:
+        mask_l2 = interpolate2d_as(output_dict['masks_l2'][0].detach(), img_l1)
     flow_b = interpolate2d_as(output_dict['flows_b'][0].detach(), img_l1)
     pose_b = output_dict['pose_b'].detach()
 
@@ -171,7 +172,8 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     writer.add_images('sf_occ', sf_occ_b, epoch)
 
     # motion mask
-    writer.add_images('mask', mask_l2, epoch)
+    if args.use_mask:
+        writer.add_images('mask', mask_l2, epoch)
 
     return
 

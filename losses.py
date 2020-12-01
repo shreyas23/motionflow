@@ -10,6 +10,7 @@ from utils.helpers import BackprojectDepth, Project3D
 from utils.loss_utils import _generate_image_left, _generate_image_right, _smoothness_motion_2nd, disp_smooth_loss
 from utils.loss_utils import _SSIM, _reconstruction_error, _disp2depth_kitti_K, logical_or, _elementwise_epe
 from utils.loss_utils import _adaptive_disocc_detection, _adaptive_disocc_detection_disp
+from utils.loss_utils import _gradient_x_2nd, _gradient_y_2nd
 from utils.sceneflow_util import projectSceneFlow2Flow
 from utils.inverse_warp import pose2flow
 from utils.sceneflow_util import intrinsic_scale
@@ -35,13 +36,15 @@ class Loss(nn.Module):
 
         # mas weights
         self.mask_reg_w = args.mask_reg_w
-        self.mask_cons_w = args.mask_cons_w
-        self.flow_diff_thresh = args.flow_diff_thresh
+        self.mask_sm_w = args.mask_reg_w
 
         # conistency weights 
         self.disp_lr_w = args.disp_lr_w
         self.static_cons_w = args.static_cons_w
+        self.mask_cons_w = args.mask_cons_w
+        self.flow_diff_thresh = args.flow_diff_thresh
 
+        self.use_mask = args.use_mask
         self.use_flow_mask = args.use_flow_mask
 
         # self.scale_weights = [4.0, 2.0, 1.0, 1.0, 1.0]
@@ -67,13 +70,6 @@ class Loss(nn.Module):
         img_diff[~left_occ].detach_()
 
         img_l_ds = interpolate2d_as(img_l, disp_l)
-
-        # Smoothness loss
-        # mean_disp = disp_l.mean(2, True).mean(3, True)
-        # norm_disp = disp_l / (mean_disp + 1e-7)
-        # img_l_ds = interpolate2d_as(img_l, norm_disp)
-        # smooth_loss = disp_smooth_loss(norm_disp, img_l_ds) / (2 ** scale)
-
         smooth_loss = _smoothness_motion_2nd(disp_l, img_l_ds).mean() / (2**scale)
 
         return img_diff, left_occ, smooth_loss
@@ -118,10 +114,12 @@ class Loss(nn.Module):
 
         return img_diff, occ_mask, (cam_points, grid)
 
+    
+    def mask_loss(self, mask):
+        reg_loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
+        sm_loss = (_gradient_x_2nd(mask).abs() + _gradient_y_2nd(mask).abs()).mean()
 
-    def explainability_loss(self, mask):
-        loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
-        return loss
+        return reg_loss, sm_loss
 
 
     def forward(self, output, target):
@@ -238,7 +236,12 @@ class Loss(nn.Module):
 
             """ MASK LOSS """
             if self.args.use_mask:
-                mask_loss = (self.explainability_loss(mask_l1) + self.explainability_loss(mask_l2)) * self.mask_reg_w
+                mask_reg_loss1, mask_sm_loss1 = self.mask_loss(mask_l1)
+                mask_loss1 = mask_reg_loss1 * self.mask_reg_w + mask_sm_loss1 * self.mask_sm_w
+                mask_reg_loss2, mask_sm_loss2 = self.mask_loss(mask_l2)
+                mask_loss2 = mask_reg_loss2 * self.mask_reg_w + mask_sm_loss2 * self.mask_sm_w
+                mask_loss = mask_loss1 + mask_loss2
+                # mask_loss = (self.mask_loss(mask_l1) + self.mask_loss(mask_l2)) * self.mask_reg_w
                 pose_diff1 = pose_diff1 * mask_l1
                 pose_diff2 = pose_diff2 * mask_l2
                 if self.args.use_flow_mask:
@@ -284,13 +287,25 @@ class Loss(nn.Module):
             flow_sm_sum = flow_sm_sum + loss_flow_sm
             disp_sm_sum = disp_sm_sum + loss_disp_sm
 
+        if self.args.use_mask:
+            # f_loss = flow_loss_sum.detach()
+            # m_loss = mask_loss_sum.detach()
+            # max_val = max(f_loss, m_loss)
+            # f_weight = max_val / f_loss
+            # m_weight = max_val / m_loss
+            f_weight = 1.0
+            m_weight = 1.0
+        else:
+            f_weight = 1.0
+            m_weight = 1.0
+
         loss_dict = {}
-        loss_dict["total_loss"] = (depth_loss_sum + flow_loss_sum + mask_loss_sum) / num_scales
+        loss_dict["total_loss"] = (depth_loss_sum + flow_loss_sum * f_weight + mask_loss_sum * m_weight) / num_scales
         loss_dict["depth_loss"] = depth_loss_sum.detach()
         loss_dict["flow_loss"] = flow_loss_sum.detach()
         loss_dict["flow_smooth_loss"] = flow_sm_sum.detach()
         loss_dict["disp_sm_loss"] = disp_sm_sum.detach()
-        loss_dict["exp_loss"] = mask_loss_sum.detach()
+        loss_dict["mask_loss"] = mask_loss_sum.detach()
 
         # detach unused parameters
         for s in range(len(output['output_dict_r']['flows_f'])):
