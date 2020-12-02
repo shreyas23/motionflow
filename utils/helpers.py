@@ -116,7 +116,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     flow_b = interpolate2d_as(output_dict['flows_b'][0].detach(), img_l1)
     poses_b = output_dict['pose_b']
     poses_f = output_dict['pose_f']
-    if len(poses_b) > 1:
+    if isinstance(poses_b, list) and isinstance(poses_f, list):
         pose_f = poses_f[0].detach()
         pose_b = poses_b[0].detach()
     else:
