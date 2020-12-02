@@ -20,10 +20,8 @@ from models.JointModel import JointModel
 from models.Model import Model
 from losses import Loss
 
-from utils.helpers import visualize_output
-
 from params import Params
-from utils.train_utils import step, evaluate, train_one_epoch
+from utils.train_utils import step, evaluate, train_one_epoch, visualize_output
 
 args = Params().args
 

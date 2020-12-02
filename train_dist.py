@@ -25,10 +25,8 @@ from models.JointModel import JointModel
 from models.Model import Model
 from losses import Loss
 
-from utils.helpers import visualize_output
-
 from params import Params
-from utils.train_utils import step, evaluate, train_one_epoch
+from utils.train_utils import step, evaluate, train_one_epoch, visualize_output
 
 args = Params().args
 
@@ -210,8 +208,8 @@ def train(gpu, args):
             if args.validate:
                 print(f"Validation epoch: {epoch}...\n")
                 val_loss_avg_dict, val_output_dict, val_input_dict = evaluate(args, model, loss, val_dataloader, val_augmentations)
-                print(f"\t Epoch {epoch} train loss avg:")
-                pprint(train_loss_avg_dict)
+                print(f"\t Epoch {epoch} val loss avg:")
+                pprint(val_loss_avg_dict)
                 print("\n")
             else:
                 val_output_dict, val_input_dict = None, None
