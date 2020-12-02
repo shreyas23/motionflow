@@ -152,7 +152,7 @@ def train(gpu, args):
             os.makedirs(log_dir, exist_ok=True)
 
         if args.exp_name == "":
-            exp_name = datetime.datetime.now().strftime("%d%m%y-%I%M%S")
+            exp_name = datetime.datetime.now().strftime("%I:%M:%S-%d/%m/%y")
         else:
             exp_name = args.exp_name
 
@@ -246,7 +246,7 @@ def train(gpu, args):
 
             if args.save_freq > 0:
                 if epoch % args.save_freq == 0:
-
+                    
                     dist.barrier()
 
                     # configure map_location properly
@@ -255,6 +255,9 @@ def train(gpu, args):
                         torch.load(fp, map_location=map_location)['model'])
                     optimizer.load_state_dict(
                         torch.load(fp, map_location=map_location)['optimizer'])
+
+                    print(f"Loaded the saved model onto gpu: {gpu}")
+
         gc.collect()
 
     cleanup_env()

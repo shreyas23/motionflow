@@ -136,8 +136,8 @@ def evaluate(args, model, loss, dataloader, augmentations):
     model.eval()
     loss_dict_avg = None
 
-    for data_dict in tqdm(dataloader):
-        with torch.no_grad():
+    with torch.no_grad():
+        for data_dict in tqdm(dataloader):
             # Get input and target tensor keys
             input_keys = list(filter(lambda x: "input" in x, data_dict.keys()))
             target_keys = list(filter(lambda x: "target" in x, data_dict.keys()))
@@ -148,6 +148,7 @@ def evaluate(args, model, loss, dataloader, augmentations):
                 for k, v in data_dict.items():
                     if k in tensor_keys:
                         data_dict[k] = v.cuda(non_blocking=True)
+
             data_dict = augmentations(data_dict)
             output_dict = model(data_dict)
             loss_dict = loss(output_dict, data_dict)
@@ -158,9 +159,9 @@ def evaluate(args, model, loss, dataloader, augmentations):
             for key in loss_dict.keys():
                 loss_dict_avg[key] += loss_dict[key].detach()
 
-    n = len(dataloader)
-    for key in loss_dict_avg.keys():
-        loss_dict_avg[key] /= n
+        n = len(dataloader)
+        for key in loss_dict_avg.keys():
+            loss_dict_avg[key] /= n
 
     return loss_dict_avg, output_dict, data_dict 
 
