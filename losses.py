@@ -86,7 +86,6 @@ class Loss(nn.Module):
 
         if mode == 'pose':
             assert (T is not None), "T cannot be None when mode=pose"
-            print(T.shape)
             of = pose2flow(depth.squeeze(dim=1), None, K, torch.inverse(K), pose_mat=T)
         elif mode == 'sf':
             assert (sf is not None), "sf cannot be None when mode=sf"
