@@ -187,7 +187,7 @@ class Loss(nn.Module):
             disp_r1_us = interpolate2d_as(disp_r1, img_l1)
             disp_r2_us = interpolate2d_as(disp_r2, img_l2)
 
-            if len(poses_b) > 1:
+            if isinstance(poses_f, list) and isinstance(poses_b, list):
                 pose_f = poses_f[s]
                 pose_b = poses_b[s]
             else:
