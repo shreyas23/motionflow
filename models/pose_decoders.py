@@ -127,7 +127,7 @@ class PoseDecoder(nn.Module):
         self.convs[("pose", 1)] = nn.Conv2d(256, 256, 3, stride, 1)
         self.convs[("pose", 2)] = nn.Conv2d(256, 6 * num_frames_to_predict_for, 1)
 
-        self.relu = nn.ReLU()
+        self.relu = nn.LeakyReLU(negative_slope=0.1)
 
         self.net = nn.ModuleList(list(self.convs.values()))
 
@@ -137,7 +137,7 @@ class PoseDecoder(nn.Module):
     def init_weights(self):
         for layer in self.modules():
             if isinstance(layer, nn.Conv2d) or isinstance(layer, nn.ConvTranspose2d):
-                # nn.init.kaiming_normal_(layer.weight)
+                nn.init.kaiming_normal_(layer.weight)
                 if layer.bias is not None:
                     nn.init.constant_(layer.bias, 0)
 

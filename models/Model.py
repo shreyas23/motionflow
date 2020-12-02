@@ -17,6 +17,7 @@ from .common import Conv, UpConv
 from utils.helpers import invert_pose, Warp_SceneFlow
 from utils.sceneflow_util import flow_horizontal_flip, post_processing
 from utils.interpolation import interpolate2d_as
+from utils.inverse_warp import pose_vec2mat
 from .modules_sceneflow import upsample_outputs_as
 
 
@@ -155,7 +156,9 @@ class Model(nn.Module):
         ## Left
         output_dict = self.run_pwc(input_dict, x1_features, x2_features, input_dict['input_k_l1_aug'], input_dict['input_k_l2_aug'])
         pose_vec_f = self.pose_decoder([x1_features, x2_features]).squeeze(dim=1)
-        output_dict["pose_f"], output_dict["pose_b"] = invert_pose(pose_vec_f)
+        pose_mat_f = pose_vec2mat(pose_vec_f)
+        output_dict["pose_f"] = pose_mat_f
+        output_dict["pose_b"] = invert_pose(pose_mat_f)
 
         ## Right
         ## ss: train val 

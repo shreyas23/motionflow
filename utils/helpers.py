@@ -24,12 +24,11 @@ def upsample(x):
     return tf.interpolate(x, scale_factor=2, mode="nearest")
 
 
-def invert_pose(pose):
-    pose_mat = pose_vec2mat(pose)
+def invert_pose(pose_mat):
     R = pose_mat[:, :3, :3].transpose(1, 2)
     t = pose_mat[:, :3, -1:] * -1
 
-    return pose_mat, torch.cat([R, torch.matmul(R, t)], dim=-1)
+    return torch.cat([R, torch.matmul(R, t)], dim=-1)
 
 
 class BackprojectDepth(nn.Module):

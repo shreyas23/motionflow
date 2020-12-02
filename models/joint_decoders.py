@@ -25,6 +25,8 @@ class JointDecoder(nn.Module):
         if use_mask:
             self.convs_mask = Conv(conv_chs[-1], 1, nonlin='none')
 
+        nn.init.kaiming_normal_(self.conv_d1.conv[0].weight)
+
     def forward(self, x):
         x_out = self.convs(x)
         sf = self.conv_sf(x_out)
@@ -60,9 +62,15 @@ class JointContextNetwork(nn.Module):
             Conv(32, 1, nonlin='none'), 
             torch.nn.Sigmoid()
         )
+
         self.convs_pose = Conv(32, num_refs * 6, kernel_size=1, nonlin='none')
         if self.use_mask:
-            self.convs_mask = Conv(32, 1, nonlin='none')
+            self.convs_mask = nn.Sequential(
+                Conv(32, 1, nonlin='none'), 
+                torch.nn.Sigmoid()
+            )
+        
+        nn.init.kaiming_normal_(self.conv_d1[0].conv[0].weight)
 
     def forward(self, x):
 
