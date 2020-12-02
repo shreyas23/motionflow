@@ -2,6 +2,7 @@ import torch
 from tqdm import tqdm
 import torch
 import torch.nn as nn
+import torch.nn.functional as tf
 from torch.utils.data import DistributedSampler
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
@@ -14,6 +15,11 @@ from models.JointModel import JointModel
 from models.Model import Model
 from losses import Loss
 
+from .loss_utils import _disp2depth_kitti_K, _adaptive_disocc_detection, _generate_image_left, _reconstruction_error
+from .inverse_warp import pose_vec2mat, pose2flow
+from .interpolation import interpolate2d_as
+from .sceneflow_util import projectSceneFlow2Flow, intrinsic_scale
+from .helpers import BackprojectDepth, Project3D
 
 def get_model(args):
     if args.model_name == 'joint':
@@ -157,3 +163,87 @@ def evaluate(args, model, loss, dataloader, augmentations):
         loss_dict_avg[key] /= n
 
     return loss_dict_avg, output_dict, data_dict 
+
+
+def visualize_output(args, input_dict, output_dict, epoch, writer):
+
+    assert (writer is not None), "tensorboard writer not provided"
+
+    img_l1 = input_dict['input_l1'].detach()
+    img_l2 = input_dict['input_l2'].detach()
+    img_r2 = input_dict['input_r2'].detach()
+    K = input_dict['input_k_l2_aug'].detach()
+    disp_l1 = interpolate2d_as(output_dict['disps_l1'][0].detach(), img_l1)
+    disp_l2 = interpolate2d_as(output_dict['disps_l2'][0].detach(), img_l1)
+    if args.use_mask:
+        mask_l2 = interpolate2d_as(output_dict['masks_l2'][0].detach(), img_l1)
+    flow_b = interpolate2d_as(output_dict['flows_b'][0].detach(), img_l1)
+    poses_b = output_dict['pose_b']
+    poses_f = output_dict['pose_f']
+    if isinstance(poses_b, list) and isinstance(poses_f, list):
+        pose_f = poses_f[0].detach()
+        pose_b = poses_b[0].detach()
+    else:
+        pose_f = poses_f.detach()
+        pose_b = poses_b.detach()
+
+    # input
+    writer.add_images('input_l1', img_l1, epoch)
+    writer.add_images('input_l2', img_l2, epoch)
+    writer.add_images('input_r2', img_r2, epoch)
+
+    # create (back)proj classes
+    b, _, h, w = img_l1.shape
+    back_proj = BackprojectDepth(b, h, w).to(device=img_l1.device)
+    proj = Project3D(b, h, w).to(device=img_l1.device)
+
+    # depth
+    disp_warp = _generate_image_left(img_r2, disp_l2) 
+    writer.add_images('disp', disp_l2, epoch)
+    writer.add_images('disp_warp', disp_warp, epoch)
+
+    b, _, h, w = disp_l1.shape
+    disp_l1 = disp_l1 * w
+    disp_l2 = disp_l2 * w
+
+    # visualize depth
+    depth = _disp2depth_kitti_K(disp_l2, K[:, 0, 0])
+    writer.add_images('depth', depth, epoch)
+
+    # pose warp
+    cam_points = back_proj(depth, torch.inverse(K), mode='pose')
+    grid = proj(cam_points, K, T=pose_b, sf=None, mode='pose')
+    ref_warp = tf.grid_sample(img_l1, grid, mode="bilinear", padding_mode="zeros")
+    writer.add_images('pose_warp', ref_warp, epoch)
+
+    # pose occ map
+    depth_l1 = _disp2depth_kitti_K(disp_l2, K[:, 0, 0])
+    pose_flow = pose2flow(depth_l1.squeeze(dim=1), None, K, torch.inverse(K), pose_mat=pose_f)
+    pose_occ_b = _adaptive_disocc_detection(pose_flow)
+    writer.add_images('pose_occ', pose_occ_b, epoch)
+
+    # pose err
+    pose_diff = _reconstruction_error(img_l2, ref_warp, 0.85)
+    writer.add_images('pose_diff', pose_diff, epoch)
+
+    # sf warp
+    cam_points = back_proj(depth, torch.inverse(K), mode='sf')
+    grid = proj(cam_points, K, T=None, sf=flow_b, mode='sf')
+    ref_warp = tf.grid_sample(img_l1, grid, mode="bilinear", padding_mode="zeros")
+    writer.add_images('sf_warp', ref_warp, epoch)
+
+    # sf err
+    sf_diff = _reconstruction_error(img_l2, ref_warp, 0.85)
+    writer.add_images('sf_diff', sf_diff, epoch)
+
+    # sf occ map
+    flow_f = projectSceneFlow2Flow(K, output_dict['flows_f'][0].detach(), disp_l1)
+    sf_occ_b = _adaptive_disocc_detection(flow_f)
+    writer.add_images('sf_occ', sf_occ_b, epoch)
+
+    # motion mask
+    if args.use_mask:
+        writer.add_images('mask', mask_l2, epoch)
+
+    return
+

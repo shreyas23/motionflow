@@ -171,10 +171,10 @@ def train(args):
         if not args.no_logging:
             fp = os.path.join(log_dir, f"{epoch}.ckpt")
             for k, v in train_loss_avg_dict.items():
-                writer.add_scalar(f'loss/train/{k}', v.item(), epoch)
+                writer.add_scalar(f'train/{k}', v.item(), epoch)
             if args.validate:
                 for k, v in val_loss_avg_dict.items():
-                    writer.add_scalar(f'loss/val/{k}', v.item(), epoch)
+                    writer.add_scalar(f'val/{k}', v.item(), epoch)
 
             if args.save_freq > 0:
                 if epoch % args.save_freq == 0 or epoch == args.epochs:
