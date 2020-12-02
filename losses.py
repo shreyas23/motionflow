@@ -98,7 +98,6 @@ class Loss(nn.Module):
         cam_points = back_proj(depth, torch.inverse(K), mode=mode)
         grid = proj(cam_points, K, T=T, sf=sf, mode=mode)
 
-        # upsample warped image back to input resolution for diff 
         ref_warp = tf.grid_sample(src, grid, padding_mode="zeros")
         occ_mask = interpolate2d_as(occ_mask.float(), tgt).bool()
 

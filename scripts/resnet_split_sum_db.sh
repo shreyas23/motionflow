@@ -1,5 +1,5 @@
-python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
-                 --log_dir="/ceph/checkpoints/" \
+python3 train_dist.py --data_root="/data/field/KITTI/kitti_jpg" \
+                 --log_dir="/data/field/KITTI/checkpoints/" \
                  --exp_dir="resnet_split_sum" \
                  --exp_name="" \
                  --log_freq=1 \
