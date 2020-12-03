@@ -29,7 +29,7 @@ class Model(nn.Module):
         self.args = args
         self.num_scales = args.num_scales
 
-        self.encoder = ResnetEncoder(num_layers=18, pretrained=args.pt_encoder, num_input_images=1)
+        self.encoder = ResnetEncoder(args, num_layers=18, pretrained=args.pt_encoder, num_input_images=1)
         self.encoder_chs = self.encoder.num_ch_enc
 
         self.disp_decoder = DispDecoder(num_ch_enc=self.encoder_chs, scales=range(5))

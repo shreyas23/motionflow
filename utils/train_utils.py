@@ -189,6 +189,9 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
         pose_f = poses_f.detach()
         pose_b = poses_b.detach()
 
+    writer.add_text('pose_f', str(pose_f.cpu().detach().numpy()), epoch)
+    writer.add_text('pose_b', str(pose_b.cpu().detach().numpy()), epoch)
+
     # input
     writer.add_images('input_l1', img_l1, epoch)
     writer.add_images('input_l2', img_l2, epoch)
@@ -219,7 +222,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     writer.add_images('pose_warp', ref_warp, epoch)
 
     # pose occ map
-    depth_l1 = _disp2depth_kitti_K(disp_l2, K[:, 0, 0])
+    depth_l1 = _disp2depth_kitti_K(disp_l1, K[:, 0, 0])
     pose_flow = pose2flow(depth_l1.squeeze(dim=1), None, K, torch.inverse(K), pose_mat=pose_f)
     pose_occ_b = _adaptive_disocc_detection(pose_flow)
     writer.add_images('pose_occ', pose_occ_b, epoch)
@@ -242,6 +245,10 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     flow_f = projectSceneFlow2Flow(K, output_dict['flows_f'][0].detach(), disp_l1)
     sf_occ_b = _adaptive_disocc_detection(flow_f)
     writer.add_images('sf_occ', sf_occ_b, epoch)
+
+    pts = cam_points.permute(0, 2, 3, 1).reshape(b, h*w, 3)
+    colors = img_l2.permute(0, 2, 3, 1).reshape(b, h*w, 3)
+    writer.add_mesh(tag='pc_l2', vertices=pts, colors=colors)
 
     # motion mask
     if args.use_mask:

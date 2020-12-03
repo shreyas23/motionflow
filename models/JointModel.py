@@ -32,7 +32,7 @@ class JointModel(nn.Module):
         
         self.leakyRELU = nn.LeakyReLU(0.1, inplace=True)
 
-        self.encoder = ResnetEncoder(num_layers=18, pretrained=args.pt_encoder, num_input_images=1)
+        self.encoder = ResnetEncoder(args, num_layers=18, pretrained=args.pt_encoder, num_input_images=1)
         self.encoder_chs = self.encoder.num_ch_enc
 
         self.warping_layer_sf = Warp_SceneFlow()
@@ -141,20 +141,24 @@ class JointModel(nn.Module):
             # monosf estimator
             if l == 0:
                 x1_out, flow_f, disp_l1, mask_l1, pose_f, pose_f_out = self.flow_estimators[l](torch.cat([out_corr_relu_f, out_corr_pose_relu_f, x1], dim=1))
-                x2_out, flow_b, disp_l2, mask_l2, pose_b, pose_b_out = self.flow_estimators[l](torch.cat([out_corr_relu_b, out_corr_pose_relu_b, x2], dim=1))
+                x2_out, flow_b, disp_l2, mask_l2, _, pose_b_out = self.flow_estimators[l](torch.cat([out_corr_relu_b, out_corr_pose_relu_b, x2], dim=1))
                 pose_mat_f = pose_vec2mat(pose_f)
-                pose_mat_b = pose_vec2mat(pose_b)
+                pose_mat_b = invert_pose(pose_mat_f)
+                # pose_mat_b = pose_vec2mat(pose_b)
             else:
                 x1_out, flow_f_res, disp_l1, mask_l1, pose_f_res, pose_f_out = self.flow_estimators[l](torch.cat([
                     out_corr_relu_f, out_corr_pose_relu_f, x1, x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
-                x2_out, flow_b_res, disp_l2, mask_l2, pose_b_res, pose_b_out = self.flow_estimators[l](torch.cat([
+                x2_out, flow_b_res, disp_l2, mask_l2, _, pose_b_out = self.flow_estimators[l](torch.cat([
                     out_corr_relu_b, out_corr_pose_relu_b, x2, x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
 
                 flow_f = flow_f + flow_f_res
                 flow_b = flow_b + flow_b_res
 
-                pose_mat_f = add_pose(pose_mat_f, pose_f_res)
-                pose_mat_b = add_pose(pose_mat_b, pose_b_res)
+                pose_mat_f_res = pose_vec2mat(pose_f_res)
+                pose_mat_b_res = invert_pose(pose_mat_f_res)
+                pose_mat_f = add_pose(pose_mat_f, pose_mat_f_res)
+                pose_mat_b = add_pose(pose_mat_b, pose_mat_b_res)
+                # pose_mat_b = add_pose(pose_mat_b, pose_b_res)
 
             # upsampling or post-processing
             if l != self.output_level:
@@ -173,11 +177,14 @@ class JointModel(nn.Module):
 
             else:
                 flow_res_f, disp_l1, pose_f_res, mask_l1 = self.context_networks(torch.cat([x1_out, flow_f, disp_l1, pose_f_out, mask_l1], dim=1))
-                flow_res_b, disp_l2, pose_b_res, mask_l2 = self.context_networks(torch.cat([x2_out, flow_b, disp_l2, pose_b_out, mask_l2], dim=1))
+                flow_res_b, disp_l2, _, mask_l2 = self.context_networks(torch.cat([x2_out, flow_b, disp_l2, pose_b_out, mask_l2], dim=1))
                 flow_f = flow_f + flow_res_f
                 flow_b = flow_b + flow_res_b
-                pose_mat_f = add_pose(pose_mat_f, pose_f_res)
-                pose_mat_b = add_pose(pose_mat_b, pose_b_res)
+
+                pose_mat_f_res = pose_vec2mat(pose_f_res)
+                pose_mat_b_res = invert_pose(pose_mat_f_res)
+                pose_mat_f = add_pose(pose_mat_f, pose_mat_f_res)
+                pose_mat_b = add_pose(pose_mat_b, pose_mat_b_res)
 
                 sceneflows_f.append(flow_f)
                 sceneflows_b.append(flow_b)

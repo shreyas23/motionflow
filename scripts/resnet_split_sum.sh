@@ -1,6 +1,6 @@
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --log_root="/ceph/checkpoints/" \
-                 --exp_dir="resnet_split_sum_c2f" \
+                 --exp_dir="resnet_split_sum" \
                  --exp_name="" \
                  --log_freq=1 \
                  --save_freq=1 \
@@ -14,7 +14,6 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --lr_gamma=0.5 \
                  --lr_sched_type='step' \
                  --flow_reduce_mode='sum' \
-                 --use_mask=True \
                  --use_disp_min=True \
                  --disp_sm_w=0.2 \
                  --flow_sm_w=200 \

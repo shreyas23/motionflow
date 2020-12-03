@@ -32,8 +32,8 @@ rsa==4.6
 scikit-image==0.17.2
 scipy==1.4.1
 six==1.15.0
-tensorboard==2.2.2
-tensorboard-plugin-wit==1.6.0.post3
+tensorboard
+tensorboard-plugin-wit
 tifffile==2020.6.3
 torch==1.2.0
 torchvision==0.4.0
