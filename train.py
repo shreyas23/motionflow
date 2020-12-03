@@ -107,7 +107,7 @@ def train(args):
 
     # set up logging
     if not args.no_logging:
-        log_dir = os.path.join(args.log_dir, args.exp_dir)
+        log_dir = os.path.join(args.log_root, args.exp_dir)
         os.makedirs(log_dir, exist_ok=True)
 
         if args.exp_name == "":
