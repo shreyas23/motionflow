@@ -385,8 +385,9 @@ class Loss(nn.Module):
         loss_dict["disp_sm_loss"] = disp_sm_sum.detach()
         loss_dict["mask_loss"] = mask_loss_sum.detach()
 
-        output['census_masks_l1'] = census_masks_l1
-        output['census_masks_l2'] = census_masks_l2
+        if self.args.use_mask:
+            output['census_masks_l1'] = census_masks_l1
+            output['census_masks_l2'] = census_masks_l2
 
         # detach unused parameters
         for s in range(len(output['output_dict_r']['flows_f'])):
