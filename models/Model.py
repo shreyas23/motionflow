@@ -14,7 +14,7 @@ from .modules_sceneflow import WarpingLayer_SF
 from .correlation_package.correlation import Correlation
 
 from .common import Conv, UpConv
-from utils.helpers import invert_pose, Warp_SceneFlow
+from utils.helpers import invert_pose, Warp_SceneFlow, add_pose, Warp_Pose
 from utils.sceneflow_util import flow_horizontal_flip, post_processing
 from utils.interpolation import interpolate2d_as
 from utils.inverse_warp import pose_vec2mat
@@ -39,8 +39,12 @@ class Model(nn.Module):
 
         self.sf_out_chs = 32
         self.warping_layer_sf = Warp_SceneFlow()
+        self.warping_layer_pose = Warp_Pose()
         self.sf_layers = nn.ModuleList()
         self.upconv_layers = nn.ModuleList()
+
+        if args.do_pose_c2f:
+            self.pose_layers = nn.ModuleList()
 
         self.context_network = ContextNetworkSF(in_chs=(self.sf_out_chs + 3 + 1 + int(self.args.use_mask)))
 
@@ -60,6 +64,39 @@ class Model(nn.Module):
                 self.upconv_layers.append(UpConv(self.sf_out_chs, self.sf_out_chs, 3, 2))
 
             self.sf_layers.append(SFDecoder(num_ch_in))
+
+            if args.do_pose_c2f:
+                self.pose_layers.append(PoseDecoder(num_ch_enc=[ch], num_input_features=2))
+
+
+    def run_pose_c2f(self, input_dict, x1_features, x2_features, disps_l1, disps_l2, k1, k2):
+
+        # coarse -> fine
+        poses_f = []
+
+        for l, (x1, x2) in enumerate(zip(x1_features[::-1], x2_features[::-1])):
+
+            # warping
+            if l == 0:
+                x2_warp_pose = x2
+            else:
+                x2_warp_pose = self.warping_layer_pose(x2, pose_mat_f, disps_l1[l], k1, input_dict['aug_size'])
+
+            # monosf estimator
+            if l == 0:
+                pose_f = self.pose_layers[l]([[x1], [x2_warp_pose]]).squeeze(dim=1)
+                pose_mat_f = pose_vec2mat(pose_f)
+            else:
+                pose_f_res = self.pose_layers[l]([[x1], [x2_warp_pose]]).squeeze(dim=1)
+                pose_mat_f = add_pose(pose_mat_f, pose_f_res)
+
+            # upsampling or post-processing
+            poses_f.append(pose_mat_f)
+            if l == self.output_level:
+                break
+            
+        return poses_f
+
 
     def run_pwc(self, input_dict, x1_features, x2_features, k1, k2):
 
@@ -155,10 +192,16 @@ class Model(nn.Module):
 
         ## Left
         output_dict = self.run_pwc(input_dict, x1_features, x2_features, input_dict['input_k_l1_aug'], input_dict['input_k_l2_aug'])
-        pose_vec_f = self.pose_decoder([x1_features, x2_features]).squeeze(dim=1)
-        pose_mat_f = pose_vec2mat(pose_vec_f)
-        output_dict["pose_f"] = pose_mat_f
-        output_dict["pose_b"] = invert_pose(pose_mat_f)
+        if self.args.do_pose_c2f:
+            poses_f = self.run_pose_c2f(input_dict, x1_features, x2_features, output_dict['disps_l1'], output_dict['disps_l2'], input_dict['input_k_l1_aug'], input_dict['input_k_l2_aug'])
+            poses_b = [invert_pose(pose) for pose in poses_f]
+            output_dict['pose_f'] = poses_f[::-1]
+            output_dict['pose_b'] = poses_b[::-1]
+        else:
+            pose_vec_f = self.pose_decoder([x1_features, x2_features]).squeeze(dim=1)
+            pose_mat_f = pose_vec2mat(pose_vec_f)
+            output_dict["pose_f"] = pose_mat_f
+            output_dict["pose_b"] = invert_pose(pose_mat_f)
 
         ## Right
         ## ss: train val 

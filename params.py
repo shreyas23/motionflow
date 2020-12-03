@@ -43,6 +43,7 @@ class Params:
         self.parser.add_argument('--use_bn', type=bool, default=False, help="whether to use batch-norm in training procedure")
         self.parser.add_argument('--use_ppm', type=bool, default=False, help="whether to use consensus mask in training procedure")
         self.parser.add_argument('--num_scales', type=int, default=4, help="whether to use consensus mask in training procedure")
+        self.parser.add_argument('--do_pose_c2f', type=bool, default=False, help="whether to use consensus mask in training procedure")
 
         # dataset params
         self.parser.add_argument('--dataset_name', default='KITTI', help='KITTI or Eigen')
