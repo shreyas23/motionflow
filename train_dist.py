@@ -152,7 +152,7 @@ def train(gpu, args):
             os.makedirs(log_dir, exist_ok=True)
 
         if args.exp_name == "":
-            exp_name = datetime.datetime.now().strftime("%I:%M:%S-%d/%m/%y")
+            exp_name = datetime.datetime.now().strftime("%I:%M:%S-%d-%m-%y")
         else:
             exp_name = args.exp_name
 

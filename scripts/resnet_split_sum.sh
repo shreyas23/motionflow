@@ -1,13 +1,14 @@
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --log_dir="/ceph/checkpoints/" \
                  --exp_dir="resnet_split_sum" \
-                 --exp_name="021220-121955" \
+                 --exp_name="" \
+                 --ckpt="021220-121955" \
                  --log_freq=1 \
                  --save_freq=1 \
                  --dataset_name="KITTI_EIGEN" \
                  --num_examples=-1 \
-                 --start_epoch=4 \
-                 --epochs=22 \
+                 --start_epoch=3 \
+                 --epochs=23 \
                  --batch_size=2 \
                  --lr=1e-4 \
                  --lr_gamma=0.5 \
