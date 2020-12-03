@@ -41,6 +41,18 @@ def main():
 
     args.num_gpus = torch.cuda.device_count()
     args.world_size = args.num_gpus * args.num_nodes
+
+    # set up logging
+    log_dir = os.path.join(args.log_root, args.exp_dir)
+    os.makedirs(log_dir, exist_ok=True)
+
+    if args.exp_name == "":
+        exp_name = datetime.datetime.now().strftime("%I:%M:%S-%m-%d-%y")
+    else:
+        exp_name = args.exp_name
+    args.log_dir = os.path.join(log_dir, exp_name)
+    print(f"All logs will be stored at: {args.log_dir}")
+
     mp.spawn(train, nprocs=args.num_gpus, args=(args,))
 
 
@@ -147,24 +159,11 @@ def train(gpu, args):
 
     # set up logging
     if not args.no_logging:
-        log_dir = os.path.join(args.log_dir, args.exp_dir)
-        if gpu == 0:
-            os.makedirs(log_dir, exist_ok=True)
 
-        if args.exp_name == "":
-            exp_name = datetime.datetime.now().strftime("%I:%M:%S-%d-%m-%y")
-        else:
-            exp_name = args.exp_name
-
-        log_dir = os.path.join(log_dir, exp_name)
-
-        if gpu == 0:
-            print(f"All logs will be stored at: {log_dir}")
-
-        writer = SummaryWriter(log_dir) if gpu == 0 else None
+        writer = SummaryWriter(args.log_dir) if gpu == 0 else None
     
         if gpu == 0:
-            with open(os.path.join(log_dir, 'args.txt'), 'w') as f:
+            with open(os.path.join(args.log_dir, 'args.txt'), 'w') as f:
                 json.dump(args.__dict__, f, indent=2)
 
     curr_epoch = args.start_epoch
@@ -178,7 +177,7 @@ def train(gpu, args):
             torch.load(args.ckpt, map_location=map_location)['optimizer'])
     elif args.start_epoch > 1:
         load_epoch = args.start_epoch - 1
-        ckpt_fp = os.path.join(log_dir, f"{load_epoch}.ckpt")
+        ckpt_fp = os.path.join(args.log_dir, f"{load_epoch}.ckpt")
         print(f"Loading model from {ckpt_fp} onto gpu: {gpu}")
         map_location = {'cuda:%d' % 0: 'cuda:%d' % rank}
         model.load_state_dict(
@@ -220,7 +219,7 @@ def train(gpu, args):
             lr_scheduler.step(epoch)
 
         if not args.no_logging:
-            fp = os.path.join(log_dir, f"{epoch}.ckpt")
+            fp = os.path.join(args.log_dir, f"{epoch}.ckpt")
             if gpu == 0:
                 for k, v in train_loss_avg_dict.items():
                     writer.add_scalar(f'train/{k}', v.item(), epoch)

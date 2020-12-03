@@ -19,7 +19,7 @@ class Params:
         self.parser.add_argument('--cuda', type=bool, default=True, help='use gpu?')
         self.parser.add_argument('--no_logging', type=bool, default=False,
                             help="are you logging this experiment?")
-        self.parser.add_argument('--log_dir', type=str, default="/external/cnet/checkpoints",
+        self.parser.add_argument('--log_root', type=str, default="/external/cnet/checkpoints",
                             help="are you logging this experiment?")
         self.parser.add_argument('--log_freq', type=int, default=1, help='how often to log statistics')
         self.parser.add_argument('--save_freq', type=int, default=1, help='how often to save model state dict')
