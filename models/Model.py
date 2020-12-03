@@ -88,7 +88,8 @@ class Model(nn.Module):
                 pose_mat_f = pose_vec2mat(pose_f)
             else:
                 pose_f_res = self.pose_layers[l]([[x1], [x2_warp_pose]]).squeeze(dim=1)
-                pose_mat_f = add_pose(pose_mat_f, pose_f_res)
+                pose_mat_f_res = pose_vec2mat(pose_f_res)
+                pose_mat_f = add_pose(pose_mat_f, pose_mat_f_res)
 
             # upsampling or post-processing
             poses_f.append(pose_mat_f)
