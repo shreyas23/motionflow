@@ -53,7 +53,12 @@ def main():
     args.log_dir = os.path.join(log_dir, exp_name)
     print(f"All logs will be stored at: {args.log_dir}")
 
+    with open(os.path.join(args.log_dir, 'args.txt'), 'w') as f:
+        json.dump(args.__dict__, f, indent=2)
+
     mp.spawn(train, nprocs=args.num_gpus, args=(args,))
+
+    return
 
 
 def cleanup_env():
@@ -159,12 +164,7 @@ def train(gpu, args):
 
     # set up logging
     if not args.no_logging:
-
         writer = SummaryWriter(args.log_dir) if gpu == 0 else None
-    
-        if gpu == 0:
-            with open(os.path.join(args.log_dir, 'args.txt'), 'w') as f:
-                json.dump(args.__dict__, f, indent=2)
 
     curr_epoch = args.start_epoch
 
