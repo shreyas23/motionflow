@@ -1,6 +1,6 @@
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --log_root="/ceph/checkpoints/" \
-                 --exp_dir="resnet_split_sum" \
+                 --exp_dir="pwc_joint_sum" \
                  --exp_name="" \
                  --log_freq=1 \
                  --save_freq=1 \
@@ -19,6 +19,6 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --disp_sm_w=0.2 \
                  --flow_sm_w=200 \
                  --mask_sm_w=0.0 \
-                 --mask_reg_w=0.2 \
+                 --mask_reg_w=0.0 \
                  --flow_pts_w=0.0 \
                  --mask_cons_w=0.0
