@@ -16,6 +16,7 @@ from models.Model import Model
 from losses import Loss
 
 from .loss_utils import _disp2depth_kitti_K, _adaptive_disocc_detection, _generate_image_left, _reconstruction_error
+from .loss_utils import _adaptive_disocc_detection_disp
 from .inverse_warp import pose_vec2mat, pose2flow
 from .interpolation import interpolate2d_as
 from .sceneflow_util import projectSceneFlow2Flow, intrinsic_scale
@@ -176,6 +177,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     K = input_dict['input_k_l2_aug'].detach()
     disp_l1 = interpolate2d_as(output_dict['disps_l1'][0].detach(), img_l1)
     disp_l2 = interpolate2d_as(output_dict['disps_l2'][0].detach(), img_l1)
+    disp_r2 = interpolate2d_as(output_dict['output_dict_r']['disps_l2'][0].detach(), img_l1)
     if args.use_mask:
         mask_l2 = interpolate2d_as(output_dict['masks_l2'][0].detach(), img_l1)
         census_mask_l2 = interpolate2d_as(output_dict['census_masks_l2'][0].detach(), img_l1)
@@ -206,6 +208,10 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     disp_warp = _generate_image_left(img_r2, disp_l2) 
     writer.add_images('disp', disp_l2, epoch)
     writer.add_images('disp_warp', disp_warp, epoch)
+    disp_diff = _reconstruction_error(img_l2, disp_warp, 0.85)
+    writer.add_images('disp_diff', disp_diff, epoch)
+    disp_occ = _adaptive_disocc_detection_disp(disp_r2)
+    writer.add_images('disp_occ', disp_occ, epoch)
 
     b, _, h, w = disp_l1.shape
     disp_l1 = disp_l1 * w
@@ -246,9 +252,9 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     sf_occ_b = _adaptive_disocc_detection(flow_f)
     writer.add_images('sf_occ', sf_occ_b, epoch)
 
-    pts = cam_points.permute(0, 2, 3, 1).reshape(b, h*w, 3)
-    colors = img_l2.permute(0, 2, 3, 1).reshape(b, h*w, 3)
-    writer.add_mesh(tag='pc_l2', vertices=pts, colors=colors)
+    # pts = cam_points.permute(0, 2, 3, 1).reshape(b, h*w, 3)
+    # colors = img_l2.permute(0, 2, 3, 1).reshape(b, h*w, 3)
+    # writer.add_mesh(tag='pc_l2', vertices=pts, colors=colors)
 
     # motion mask
     if args.use_mask:
