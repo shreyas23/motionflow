@@ -6,7 +6,7 @@ import torch.nn.functional as tf
 import logging 
 
 from utils.interpolation import interpolate2d_as
-from utils.sceneflow_util import pixel2pts_ms, pts2pixel_ms
+from utils.sceneflow_util import pixel2pts_ms, pts2pixel_ms, pixel2pts_ms_depth, pts2pixel_pose_ms
 
 def get_grid(x):
     grid_H = torch.linspace(-1.0, 1.0, x.size(3)).view(1, 1, 1, x.size(3)).expand(x.size(0), 1, x.size(2), x.size(3))
@@ -80,6 +80,32 @@ class WarpingLayer_SF(nn.Module):
 
         pts1, k1_scale = pixel2pts_ms(k1, disp, local_scale / input_size)
         _, _, coord1 = pts2pixel_ms(k1_scale, pts1, sceneflow, [h_x, w_x])
+
+        grid = coord1.transpose(1, 2).transpose(2, 3)
+        x_warp = tf.grid_sample(x, grid)
+
+        mask = torch.ones_like(x, requires_grad=False)
+        mask = tf.grid_sample(mask, grid)
+        mask = (mask >= 1.0).float()
+
+        return x_warp * mask
+
+
+class WarpingLayer_Pose(nn.Module):
+    def __init__(self):
+        super(WarpingLayer_Pose, self).__init__()
+ 
+    def forward(self, x, pose, disp, k1, input_size):
+
+        _, _, h_x, w_x = x.size()
+        disp = interpolate2d_as(disp, x) * w_x
+
+        local_scale = torch.zeros_like(input_size)
+        local_scale[:, 0] = h_x
+        local_scale[:, 1] = w_x
+
+        pts1, k1_scale = pixel2pts_ms(k1, disp, local_scale / input_size)
+        _, coord1 = pts2pixel_pose_ms(k1_scale, pts1, None, [h_x, w_x], pose_mat=pose)
 
         grid = coord1.transpose(1, 2).transpose(2, 3)
         x_warp = tf.grid_sample(x, grid)

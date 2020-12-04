@@ -221,6 +221,10 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     depth = _disp2depth_kitti_K(disp_l2, K[:, 0, 0])
     writer.add_images('depth', depth, epoch)
 
+    # static err map
+    static_diff = _reconstruction_error(img_l2, img_l1, 0.85)
+    writer.add_images('static_diff', static_diff, epoch)
+
     # pose warp
     cam_points = back_proj(depth, torch.inverse(K), mode='pose')
     grid = proj(cam_points, K, T=pose_b, sf=None, mode='pose')

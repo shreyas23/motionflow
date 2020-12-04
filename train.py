@@ -49,10 +49,11 @@ def train(args):
 
     if args.model_name == 'joint':
         model = JointModel(args).cuda()
+        from old_losses import Loss_SceneFlow_SelfSup_JointIter
+        loss = Loss_SceneFlow_SelfSup_JointIter(args).cuda()
     else:
-        model = Model(args).cuda()
-
-    loss = Loss(args).cuda()
+        model = Model(args).cuda() 
+        loss = Loss(args).cuda()
 
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"The model has {num_params} learnable parameters")

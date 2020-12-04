@@ -9,6 +9,7 @@ import torch.utils.model_zoo as model_zoo
 import numpy as np
 import logging
 
+from .common import Conv
 
 class FeatureExtractor(nn.Module):
     def __init__(self, num_chs, use_bn=False):
@@ -18,8 +19,8 @@ class FeatureExtractor(nn.Module):
 
         for l, (ch_in, ch_out) in enumerate(zip(num_chs[:-1], num_chs[1:])):
             layer = nn.Sequential(
-                conv(ch_in, ch_out, stride=2, use_bn=use_bn),
-                conv(ch_out, ch_out, use_bn=use_bn)
+                Conv(ch_in, ch_out, stride=2, use_bn=use_bn),
+                Conv(ch_out, ch_out, use_bn=use_bn)
             )
             self.convs.append(layer)
 
@@ -28,8 +29,7 @@ class FeatureExtractor(nn.Module):
         for conv in self.convs:
             x = conv(x)
             feature_pyramid.append(x)
-
-        return feature_pyramid[::-1]
+        return feature_pyramid
 
 
 class ResNetMultiImageInput(models.ResNet):
