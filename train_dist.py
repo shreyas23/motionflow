@@ -230,6 +230,7 @@ def train(gpu, args):
 
                 if args.save_freq > 0:
                     if epoch % args.save_freq == 0 or epoch == args.epochs:
+                        print(f"Saving model for epoch: {epoch} to: {fp}")
                         torch.save({'model': model.state_dict(), 'optimizer': optimizer.state_dict()}, fp)
 
                 if epoch % args.log_freq == 0:
@@ -255,8 +256,6 @@ def train(gpu, args):
                         torch.load(fp, map_location=map_location)['model'])
                     optimizer.load_state_dict(
                         torch.load(fp, map_location=map_location)['optimizer'])
-
-                    print(f"Loaded the saved model onto gpu: {gpu}")
 
         gc.collect()
 
