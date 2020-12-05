@@ -177,7 +177,10 @@ class Loss(nn.Module):
             census_masks_l1 = []
             census_masks_l2 = []
         
+        assert(len(disps_l1) == len(flows_f))
+        assert(len(disps_l2) == len(flows_b))
         num_scales = len(disps_l1)
+
         for s in range(num_scales):
             flow_f = flows_f[s]
             flow_b = flows_b[s]
