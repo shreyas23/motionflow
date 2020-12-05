@@ -228,7 +228,7 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
     def __init__(self, args):
         super(Loss_SceneFlow_SelfSup_JointIter, self).__init__()
         self._args = args
-        self._weights = [4.0, 2.0, 1.0, 1.0, 1.0, 1.0]
+        self._weights = [4.0, 2.0, 1.0, 1.0, 1.0]
 
         self._ssim_w = 0.85
 
@@ -241,7 +241,6 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
 
         # pose weights
         self._pose_pts_w = args.flow_pts_w
-        self._pose_sm_w = 0.0
 
         # mask weights
         self._mask_reg_w = args.mask_reg_w
@@ -254,7 +253,6 @@ class Loss_SceneFlow_SelfSup_JointIter(nn.Module):
         self._disp_lr_w = 0.0
         self._static_cons_w = args.static_cons_w
         self._use_flow_mask = args.use_flow_mask
-        self._fb_w = 0.0
 
 
     def depth_loss_left_img(self, disp_l, disp_r, img_l_aug, img_r_aug, ii):

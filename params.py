@@ -63,12 +63,12 @@ class Params:
 
         # weight params
         self.parser.add_argument('--ssim_w', type=float, default=0.85, help='mask consensus weight')
-        self.parser.add_argument('--flow_pts_w', type=float, default=0.2, help='mask consensus weight')
+        self.parser.add_argument('--flow_pts_w', type=float, default=0.0, help='mask consensus weight')
         self.parser.add_argument('--flow_sm_w', type=float, default=200, help='mask consensus weight')
-        self.parser.add_argument('--disp_sm_w', type=float, default=1e-3, help='mask consensus weight')
+        self.parser.add_argument('--disp_sm_w', type=float, default=0.2, help='mask consensus weight')
         self.parser.add_argument('--disp_lr_w', type=float, default=0.0, help='mask consensus weight')
-        self.parser.add_argument('--mask_sm_w', type=float, default=1.0, help='mask consensus weight')
-        self.parser.add_argument('--mask_reg_w', type=float, default=0.2, help='mask consensus weight')
+        self.parser.add_argument('--mask_sm_w', type=float, default=0.0, help='mask consensus weight')
+        self.parser.add_argument('--mask_reg_w', type=float, default=0.0, help='mask consensus weight')
         self.parser.add_argument('--static_cons_w', type=float, default=0.0, help='mask consensus weight')
         self.parser.add_argument('--mask_cons_w', type=float, default=0.0, help='mask consensus weight')
         self.parser.add_argument('--flow_diff_thresh', type=float, default=1e-3, help='mask consensus weight')

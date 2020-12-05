@@ -309,7 +309,7 @@ class JointModel(nn.Module):
 
         self._args = args
         self.search_range = 4
-        self.output_level = 5
+        self.output_level = 4
         self.num_levels = 7
         
         self.leakyRELU = nn.LeakyReLU(0.1, inplace=True)
@@ -353,7 +353,7 @@ class JointModel(nn.Module):
         logging.info("Initializing weights")
         for layer in self.modules():
             if isinstance(layer, nn.Conv2d) or isinstance(layer, nn.ConvTranspose2d):
-                nn.init.kaiming_uniform_(layer.weight)
+                nn.init.kaiming_normal_(layer.weight)
                 if layer.bias is not None:
                     nn.init.constant_(layer.bias, 0)
 
@@ -362,6 +362,11 @@ class JointModel(nn.Module):
 
             elif isinstance(layer, nn.Sequential):
                 pass
+
+        for decoder in self.flow_estimators:
+            nn.init.kaiming_uniform_(decoder.conv_pose.conv[0].weight)
+        
+        nn.init.kaiming_uniform_(self.context_networks.conv_pose.conv[0].weight)
 
     def run_pwc(self, input_dict, x1_raw, x2_raw, k1, k2):
             

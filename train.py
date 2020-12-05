@@ -49,11 +49,10 @@ def train(args):
 
     if args.model_name == 'joint':
         model = JointModel(args).cuda()
-        from old_losses import Loss_SceneFlow_SelfSup_JointIter
-        loss = Loss_SceneFlow_SelfSup_JointIter(args).cuda()
     else:
         model = Model(args).cuda() 
-        loss = Loss(args).cuda()
+
+    loss = Loss(args).cuda()
 
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"The model has {num_params} learnable parameters")
@@ -100,7 +99,7 @@ def train(args):
             optimizer, factor=args.lr_gamma, verbose=True, mode='min', patience=1)
     elif args.lr_sched_type == 'step':
         print("Using step lr schedule")
-        milestones = [10, 15]
+        milestones = []
         lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
             optimizer, milestones=milestones, gamma=args.lr_gamma)
     elif args.lr_sched_type == 'none':

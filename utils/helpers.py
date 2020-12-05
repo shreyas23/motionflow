@@ -31,7 +31,7 @@ def invert_pose(pose_mat):
 
 
 class BackprojectDepth(nn.Module):
-    """Layer to transform a depth image into a point cloud
+    """ Module to transform a depth image into a point cloud
     """
     def __init__(self, batch_size, height, width):
         super(BackprojectDepth, self).__init__()
