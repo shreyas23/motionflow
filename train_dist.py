@@ -48,7 +48,7 @@ def main():
     os.makedirs(log_dir, exist_ok=True)
 
     if args.exp_name == "":
-        exp_name = datetime.datetime.now().strftime("%I:%M:%S-%m-%d-%y")
+        exp_name = datetime.datetime.now().strftime("%I-%M-%S-%m-%d-%y")
     else:
         exp_name = args.exp_name
     args.log_dir = os.path.join(log_dir, exp_name)
