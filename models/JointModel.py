@@ -364,9 +364,9 @@ class JointModel(nn.Module):
                 pass
 
         for decoder in self.flow_estimators:
-            nn.init.kaiming_uniform_(decoder.conv_pose.conv[0].weight)
+            nn.init.xavier_uniform_(decoder.conv_pose.conv[0].weight)
         
-        nn.init.kaiming_uniform_(self.context_networks.conv_pose.conv[0].weight)
+        nn.init.xavier_uniform_(self.context_networks.conv_pose.conv[0].weight)
 
     def run_pwc(self, input_dict, x1_raw, x2_raw, k1, k2):
             
