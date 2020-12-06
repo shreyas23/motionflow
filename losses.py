@@ -81,7 +81,7 @@ class Loss(nn.Module):
 
         b, _, h, w = disp.shape
         depth = _disp2depth_kitti_K(disp, K[:, 0, 0])
-
+        
         if mode == 'pose':
             assert (T is not None), "T cannot be None when mode=pose"
             of = pose2flow(depth.squeeze(dim=1), None, K, torch.inverse(K), pose_mat=T)
@@ -106,31 +106,34 @@ class Loss(nn.Module):
         reg_loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
         sm_loss = (_gradient_x_2nd(mask).abs() + _gradient_y_2nd(mask).abs()).mean()
 
+        return reg_loss, sm_loss
+
+    def create_census_mask(self, flow_diff, pose_err, sf_err, flow_diff_thresh=1e-3):
         # mask consensus loss
         target_mask = (pose_err <= sf_err).float().detach()
         flow_similar = (flow_diff < flow_diff_thresh).float().detach()
         census_target_mask = logical_or(target_mask, flow_similar).detach()
-        census_loss = tf.binary_cross_entropy(mask, census_target_mask)
 
-        return reg_loss, sm_loss, census_loss, census_target_mask
+        return census_target_mask
 
 
-    def structure_loss(self, pts1, pts2, grid1, grid2, sf=None, T=None, mode='pose'):
+    def structure_loss(self, pts1, pts2, grid1, grid2, sf=None, T=None, mode='pose', s=None):
         b, _, h, w = pts1.shape
 
         pts_norm1 = torch.norm(pts1, p=2, dim=1, keepdim=True)
         pts_norm2 = torch.norm(pts2, p=2, dim=1, keepdim=True)
 
-        pts2_warp = tf.grid_sample(pts2, grid1, mode='bilinear', padding_mode='zeros')
-        pts1_warp = tf.grid_sample(pts1, grid2, mode='bilinear', padding_mode='zeros')
+        pts2_warp = tf.grid_sample(pts2, grid1)
+        pts1_warp = tf.grid_sample(pts1, grid2)
 
         if mode == 'sf':
             pts1_tf = pts1 + sf[0]
             pts2_tf = pts2 + sf[1]
         else:
             # homogenize points
-            pts1_cat = torch.cat([pts1.view(b, 3, -1), torch.ones(b, 1, h*w).cuda(device=pts1.device)], dim=1)
-            pts2_cat = torch.cat([pts2.view(b, 3, -1), torch.ones(b, 1, h*w).cuda(device=pts2.device)], dim=1)
+            ones = torch.ones((b, 1, h*w), requires_grad=False).cuda(device=pts1.device)
+            pts1_cat = torch.cat([pts1.view(b, 3, -1), ones], dim=1)
+            pts2_cat = torch.cat([pts2.view(b, 3, -1), ones], dim=1)
             pts1_tf = torch.bmm(T[0], pts1_cat).view(b, 3, h, w)
             pts2_tf = torch.bmm(T[1], pts2_cat).view(b, 3, h, w)
 
@@ -174,8 +177,9 @@ class Loss(nn.Module):
         if self.args.use_mask:
             masks_l1 = output['masks_l1']
             masks_l2 = output['masks_l2']
-            census_masks_l1 = []
-            census_masks_l2 = []
+
+        census_masks_l1 = []
+        census_masks_l2 = []
         
         assert(len(disps_l1) == len(flows_f))
         assert(len(disps_l2) == len(flows_b))
@@ -261,8 +265,8 @@ class Loss(nn.Module):
             loss_sf_sm = loss_sf_sm * self.flow_sm_w
 
             """ 3D STRUCTURE LOSS """
-            pose_pts_diff1, pose_pts_diff2 = self.structure_loss(pts1, pts2, pose_grid1, pose_grid2, T=[pose_f, pose_b], mode='pose')
-            sf_pts_diff1, sf_pts_diff2 = self.structure_loss(pts1, pts2, sf_grid1, sf_grid2, sf=[flow_f, flow_b], mode='sf')
+            pose_pts_diff1, pose_pts_diff2 = self.structure_loss(pts1, pts2, pose_grid1, pose_grid2, T=[pose_f, pose_b], mode='pose', s=s)
+            sf_pts_diff1, sf_pts_diff2 = self.structure_loss(pts1, pts2, sf_grid1, sf_grid2, sf=[flow_f, flow_b], mode='sf', s=s)
 
             """ DEPTH LOSS """
             if self.use_disp_min:
@@ -287,27 +291,31 @@ class Loss(nn.Module):
             disp_diff2[~disp_mask2].detach_()
             depth_loss = depth_loss1 + depth_loss2
 
+            """ CENSUS MASK """
+            pose_sf_f = pose2sceneflow(depth_l1.squeeze(dim=1), None, torch.inverse(K_l1_s), pose_mat=pose_f)
+            pose_sf_b = pose2sceneflow(depth_l2.squeeze(dim=1), None, torch.inverse(K_l2_s), pose_mat=pose_b)
+            flow_diff_f = _elementwise_epe(pose_sf_f, flow_f)
+            flow_diff_b = _elementwise_epe(pose_sf_b, flow_b)
+            census_mask_l1 = self.create_census_mask(flow_diff_f, pose_diff1, sf_diff1)
+            census_mask_l2 = self.create_census_mask(flow_diff_b, pose_diff2, sf_diff2)
+            census_masks_l1.append(census_mask_l1)
+            census_masks_l2.append(census_mask_l2)
+
             """ MASK LOSS """
             if self.args.use_mask:
-                pose_sf_f = pose2sceneflow(depth_l1.squeeze(dim=1), None, torch.inverse(K_l1_s), pose_mat=pose_f)
-                pose_sf_b = pose2sceneflow(depth_l2.squeeze(dim=1), None, torch.inverse(K_l2_s), pose_mat=pose_b)
-
-                flow_diff_f = _elementwise_epe(pose_sf_f, flow_f)
-                flow_diff_b = _elementwise_epe(pose_sf_b, flow_b)
-
-                mask_reg_loss1, mask_sm_loss1, mask_census_loss1, census_mask_l1 = self.mask_loss(mask_l1, flow_diff_f, pose_diff1, sf_diff1)
+                mask_reg_loss1, mask_sm_loss1 = self.mask_loss(mask_l1, flow_diff_f, pose_diff1, sf_diff1)
+                mask_census_loss1 = tf.binary_cross_entropy(mask_l1, census_mask_l1)
                 mask_loss1 = mask_reg_loss1 * self.mask_reg_w + \
                              mask_sm_loss1 * self.mask_sm_w + \
                              mask_census_loss1 * self.mask_cons_w
 
-                mask_reg_loss2, mask_sm_loss2, mask_census_loss2, census_mask_l2 = self.mask_loss(mask_l2, flow_diff_b, pose_diff2, sf_diff2)
+                mask_reg_loss2, mask_sm_loss2 = self.mask_loss(mask_l2, flow_diff_b, pose_diff2, sf_diff2)
+                mask_census_loss2 = tf.binary_cross_entropy(mask_l2, census_mask_l2)
                 mask_loss2 = mask_reg_loss2 * self.mask_reg_w + \
                              mask_sm_loss2 * self.mask_sm_w + \
                              mask_census_loss2 * self.mask_cons_w
 
                 mask_loss = mask_loss1 + mask_loss2
-                census_masks_l1.append(census_mask_l1)
-                census_masks_l2.append(census_mask_l2)
 
                 pose_diff1 = pose_diff1 * mask_l1
                 pose_diff2 = pose_diff2 * mask_l2
@@ -357,13 +365,16 @@ class Loss(nn.Module):
                     flow_pts_loss1 = torch.tensor(0.0, requires_grad=False)
                     flow_pts_loss2 = torch.tensor(0.0, requires_grad=False)
 
+            # calculate losses for logging
             pose_im_loss = (pose_diff1.mean(dim=1, keepdim=True)[pose_occ_f].mean() + \
                             pose_diff2.mean(dim=1, keepdim=True)[pose_occ_b].mean()).detach()
+
             pose_pts_loss = (pose_pts_diff1.mean(dim=1, keepdim=True)[pose_occ_f].mean() + \
                              pose_pts_diff2.mean(dim=1, keepdim=True)[pose_occ_b].mean()).detach()
 
             sf_im_loss = (sf_diff1.mean(dim=1, keepdim=True)[sf_occ_f].mean() + \
                           sf_diff2.mean(dim=1, keepdim=True)[sf_occ_b].mean()).detach()
+
             sf_pts_loss = (sf_pts_diff1.mean(dim=1, keepdim=True)[sf_occ_f].mean() + \
                            sf_pts_diff2.mean(dim=1, keepdim=True)[sf_occ_b].mean()).detach()
 

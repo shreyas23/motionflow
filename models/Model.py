@@ -232,36 +232,41 @@ class Model(nn.Module):
         ## Post Processing 
         ## ss:           eval
         ## ft: train val eval
-        # if self._args.evaluation:
+        if self.args.evaluation:
 
-        #     input_l1_flip = torch.flip(input_dict['input_l1_aug'], [3])
-        #     input_l2_flip = torch.flip(input_dict['input_l2_aug'], [3])
-        #     k_l1_flip = input_dict["input_k_l1_flip_aug"]
-        #     k_l2_flip = input_dict["input_k_l2_flip_aug"]
+            input_l1_flip = torch.flip(input_dict['input_l1_aug'], [3])
+            input_l2_flip = torch.flip(input_dict['input_l2_aug'], [3])
+            k_l1_flip = input_dict["input_k_l1_flip_aug"]
+            k_l2_flip = input_dict["input_k_l2_flip_aug"]
 
-        #     output_dict_flip = self.run_pwc(input_dict, input_l1_flip, input_l2_flip, k_l1_flip, k_l2_flip)
+            x1_features = self.encoder(input_l1_flip)
+            x2_features = self.encoder(input_l2_flip)
 
-        #     flow_f_pp = []
-        #     flow_b_pp = []
-        #     disp_l1_pp = []
-        #     disp_l2_pp = []
-        #     mask_l1_pp = []
-        #     mask_l2_pp = []
+            output_dict_flip = self.run_pwc(input_dict, x1_features, x2_features, k_l1_flip, k_l2_flip)
 
-        #     for ii in range(0, len(output_dict_flip['flow_f'])):
+            flow_f_pp = []
+            flow_b_pp = []
+            disp_l1_pp = []
+            disp_l2_pp = []
+            mask_l1_pp = []
+            mask_l2_pp = []
 
-        #         flow_f_pp.append(post_processing(output_dict['flow_f'][ii], flow_horizontal_flip(output_dict_flip['flow_f'][ii])))
-        #         flow_b_pp.append(post_processing(output_dict['flow_b'][ii], flow_horizontal_flip(output_dict_flip['flow_b'][ii])))
-        #         disp_l1_pp.append(post_processing(output_dict['disp_l1'][ii], torch.flip(output_dict_flip['disp_l1'][ii], [3])))
-        #         disp_l2_pp.append(post_processing(output_dict['disp_l2'][ii], torch.flip(output_dict_flip['disp_l2'][ii], [3])))
-        #         mask_l1_pp.append(post_processing(output_dict['mask_l1'][ii], torch.flip(output_dict_flip['mask_l1'][ii], [3])))
-        #         mask_l2_pp.append(post_processing(output_dict['mask_l2'][ii], torch.flip(output_dict_flip['mask_l2'][ii], [3])))
+            for ii in range(0, len(output_dict_flip['flow_f'])):
 
-        #     output_dict['flow_f_pp'] = flow_f_pp
-        #     output_dict['flow_b_pp'] = flow_b_pp
-        #     output_dict['disp_l1_pp'] = disp_l1_pp
-        #     output_dict['disp_l2_pp'] = disp_l2_pp
-        #     output_dict['mask_l1_pp'] = disp_l1_pp
-        #     output_dict['mask_l2_pp'] = disp_l2_pp
+                flow_f_pp.append(post_processing(output_dict['flow_f'][ii], flow_horizontal_flip(output_dict_flip['flow_f'][ii])))
+                flow_b_pp.append(post_processing(output_dict['flow_b'][ii], flow_horizontal_flip(output_dict_flip['flow_b'][ii])))
+                disp_l1_pp.append(post_processing(output_dict['disp_l1'][ii], torch.flip(output_dict_flip['disp_l1'][ii], [3])))
+                disp_l2_pp.append(post_processing(output_dict['disp_l2'][ii], torch.flip(output_dict_flip['disp_l2'][ii], [3])))
+                if self.args.use_mask:
+                    mask_l1_pp.append(post_processing(output_dict['mask_l1'][ii], torch.flip(output_dict_flip['mask_l1'][ii], [3])))
+                    mask_l2_pp.append(post_processing(output_dict['mask_l2'][ii], torch.flip(output_dict_flip['mask_l2'][ii], [3])))
+
+            output_dict['flow_f_pp'] = flow_f_pp
+            output_dict['flow_b_pp'] = flow_b_pp
+            output_dict['disp_l1_pp'] = disp_l1_pp
+            output_dict['disp_l2_pp'] = disp_l2_pp
+            if self.args.use_mask:
+                output_dict['mask_l1_pp'] = disp_l1_pp
+                output_dict['mask_l2_pp'] = disp_l2_pp
 
         return output_dict
