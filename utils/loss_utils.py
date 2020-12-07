@@ -7,6 +7,8 @@ from models.forwardwarp_package.forward_warp import forward_warp
 # Loss Utils
 ###############################################
 
+eps = 1e-8
+
 def logical_or(a, b):
     return 1 - ((1 - a) * (1 -b))
 
@@ -168,8 +170,7 @@ def _smoothness_motion_2nd(sf, img, beta=1):
 def _disp2depth_kitti_K(disp, fx, min_depth=1e-3, max_depth=80):
 
     mask = (disp > 0).float()
-    depth = fx.unsqueeze(1).unsqueeze(
-        1).unsqueeze(1) * 0.54 / (disp + (1.0 - mask))
+    depth = fx.unsqueeze(1).unsqueeze(1).unsqueeze(1) * 0.54 / (disp + eps + (1.0 - mask))
     depth = torch.clamp(depth, min_depth, max_depth)
 
     return depth

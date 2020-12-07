@@ -180,7 +180,9 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     disp_r2 = interpolate2d_as(output_dict['output_dict_r']['disps_l2'][0].detach(), img_l1)
     if args.use_mask:
         mask_l2 = interpolate2d_as(output_dict['masks_l2'][0].detach(), img_l1)
-        census_mask_l2 = interpolate2d_as(output_dict['census_masks_l2'][0].detach(), img_l1)
+
+    census_mask_l2 = interpolate2d_as(output_dict['census_masks_l2'][0].detach(), img_l1)
+
     flow_b = interpolate2d_as(output_dict['flows_b'][0].detach(), img_l1)
     poses_b = output_dict['pose_b']
     poses_f = output_dict['pose_f']
@@ -263,7 +265,8 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
     # motion mask
     if args.use_mask:
         writer.add_images('mask', mask_l2, epoch)
-        writer.add_images('census_mask', census_mask_l2, epoch)
+
+    writer.add_images('census_mask', census_mask_l2, epoch)
 
     return
 
