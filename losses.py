@@ -269,21 +269,14 @@ class Loss(nn.Module):
             sf_pts_diff1, sf_pts_diff2 = self.structure_loss(pts1, pts2, sf_grid1, sf_grid2, sf=[flow_f, flow_b], mode='sf', s=s)
 
             """ DEPTH LOSS """
+            disp_mask1 = left_occ1
+            disp_mask2 = left_occ2
             if self.use_disp_min:
                 # calculate min disparity diff across (L+1 and R)
-                flow_diffs1 = torch.cat([pose_diff1, sf_diff1], dim=1).detach()
-                flow_diffs2 = torch.cat([pose_diff2, sf_diff2], dim=1).detach()
-                min_flow_diff1, _ = flow_diffs1.min(dim=1, keepdim=True)
-                min_flow_diff2, _ = flow_diffs2.min(dim=1, keepdim=True)
-                min_flow_diff1.detach_()
-                min_flow_diff2.detach_()
-                mask_disp_diff1 = (disp_diff1 < min_flow_diff1).detach()
-                mask_disp_diff2 = (disp_diff2 < min_flow_diff2).detach()
-                disp_mask1 = left_occ1 * mask_disp_diff1
-                disp_mask2 = left_occ2 * mask_disp_diff2
-            else:
-                disp_mask1 = left_occ1
-                disp_mask2 = left_occ2
+                mask_disp_diff1 = (disp_diff1 < pose_diff1).detach()
+                mask_disp_diff2 = (disp_diff2 < pose_diff2).detach()
+                disp_mask1 = disp_mask1 * mask_disp_diff1
+                disp_mask2 = disp_mask2 * mask_disp_diff2
 
             depth_loss1 = disp_diff1[disp_mask1].mean()
             depth_loss2 = disp_diff2[disp_mask2].mean()
@@ -410,9 +403,8 @@ class Loss(nn.Module):
         loss_dict["disp_sm_loss"] = disp_sm_sum.detach()
         loss_dict["mask_loss"] = mask_loss_sum.detach()
 
-        if self.args.use_mask:
-            output['census_masks_l1'] = census_masks_l1
-            output['census_masks_l2'] = census_masks_l2
+        output['census_masks_l1'] = census_masks_l1
+        output['census_masks_l2'] = census_masks_l2
 
         # detach unused parameters
         for s in range(len(output['output_dict_r']['flows_f'])):

@@ -11,9 +11,8 @@ class Params:
         self.parser.add_argument("--nr", type=int, default=0)
 
         # runtime params
-        self.parser.add_argument('--data_root', help='path to dataset', required=True)
-        self.parser.add_argument('--epochs', type=int, required=True,
-                            help='number of epochs to run')
+        self.parser.add_argument('--data_root', help='path to dataset', default="/external/datasets/kitti_data_jpg")
+        self.parser.add_argument('--epochs', type=int, default=20, help='number of epochs to run')
         self.parser.add_argument('--start_epoch', type=int, default=1,
                             help='resume from checkpoint (using experiment name)')
         self.parser.add_argument('--cuda', type=bool, default=True, help='use gpu?')
@@ -76,6 +75,7 @@ class Params:
         # learning params
         self.parser.add_argument('--lr', type=float, default=1e-4, help='initial learning rate')
         self.parser.add_argument('--lr_sched_type', type=str, default="none", help="path to model checkpoint if using one")
+        self.parser.add_argument('--milestones', nargs='+', type=int)
         self.parser.add_argument('--lr_gamma', type=float, default=0.1, help='initial learning rate')
         self.parser.add_argument('--momentum', type=float, default=0.9, help='momentum for sgd or alpha param for adam')
         self.parser.add_argument('--beta', type=float, default=0.999, help='beta param for adam')

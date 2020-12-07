@@ -183,7 +183,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
 
     census_mask_l2 = interpolate2d_as(output_dict['census_masks_l2'][0].detach(), img_l1)
 
-    flow_b = interpolate2d_as(output_dict['flows_b'][0].detach(), img_l1)
+    sf_b = interpolate2d_as(output_dict['flows_b'][0].detach(), img_l1)
     poses_b = output_dict['pose_b']
     poses_f = output_dict['pose_f']
     if isinstance(poses_b, list) and isinstance(poses_f, list):
@@ -245,7 +245,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
 
     # sf warp
     cam_points = back_proj(depth, torch.inverse(K), mode='sf')
-    grid = proj(cam_points, K, T=None, sf=flow_b, mode='sf')
+    grid = proj(cam_points, K, T=None, sf=sf_b, mode='sf')
     ref_warp = tf.grid_sample(img_l1, grid, mode="bilinear", padding_mode="zeros")
     writer.add_images('sf_warp', ref_warp, epoch)
 
@@ -255,8 +255,11 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
 
     # sf occ map
     flow_f = projectSceneFlow2Flow(K, output_dict['flows_f'][0].detach(), disp_l1)
+    flow_b = projectSceneFlow2Flow(K, sf_b, disp_l2)
     sf_occ_b = _adaptive_disocc_detection(flow_f)
-    writer.add_images('sf_occ', sf_occ_b, epoch)
+    sf_occ_f = _adaptive_disocc_detection(flow_b)
+    writer.add_images('sf_occ_f', sf_occ_f, epoch)
+    writer.add_images('sf_occ_b', sf_occ_b, epoch)
 
     # pts = cam_points.permute(0, 2, 3, 1).reshape(b, h*w, 3)
     # colors = img_l2.permute(0, 2, 3, 1).reshape(b, h*w, 3)
