@@ -31,7 +31,7 @@ class JointDecoder(nn.Module):
         sf = self.conv_sf(x_out)
         disp1 = self.conv_d1(x_out)
         pose_out = self.conv_pose(x_out)
-        pred_pose = pose_out.mean(3).mean(2) * 0.01
+        pred_pose = pose_out.mean(3).mean(2) * 0.1
 
         if self.use_mask:
             mask = self.conv_mask(x_out)
@@ -75,7 +75,7 @@ class JointContextNetwork(nn.Module):
         sf = self.conv_sf(x_out)
         disp1 = self.conv_d1(x_out) * 0.3
         pose_out = self.conv_pose(x_out)
-        pred_pose = pose_out.mean(3).mean(2) * 0.01
+        pred_pose = pose_out.mean(3).mean(2) * 0.1
         if self.use_mask:
             mask = self.conv_mask(x_out)
         else:
