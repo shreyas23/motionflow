@@ -285,10 +285,14 @@ class Loss(nn.Module):
             depth_loss = depth_loss1 + depth_loss2
 
             """ CENSUS MASK """
-            pose_sf_f = pose2sceneflow(depth_l1.squeeze(dim=1), None, torch.inverse(K_l1_s), pose_mat=pose_f)
-            pose_sf_b = pose2sceneflow(depth_l2.squeeze(dim=1), None, torch.inverse(K_l2_s), pose_mat=pose_b)
-            flow_diff_f = _elementwise_epe(pose_sf_f, flow_f)
-            flow_diff_b = _elementwise_epe(pose_sf_b, flow_b)
+            # pose_sf_f = pose2sceneflow(depth_l1.squeeze(dim=1), None, torch.inverse(K_l1_s), pose_mat=pose_f)
+            # pose_sf_b = pose2sceneflow(depth_l2.squeeze(dim=1), None, torch.inverse(K_l2_s), pose_mat=pose_b)
+            pose_of_f = pose2flow(depth_l1.squeeze(dim=1), None, K_l1_s, torch.inverse(K_l1_s), pose_mat=pose_f)
+            pose_of_b = pose2flow(depth_l2.squeeze(dim=1), None, K_l2_s, torch.inverse(K_l2_s), pose_mat=pose_b)
+            of_f = projectSceneFlow2Flow(K_l1_s, flow_f, disp_l1)
+            of_b = projectSceneFlow2Flow(K_l2_s, flow_b, disp_l2)
+            flow_diff_f = _elementwise_epe(pose_of_f, of_f)
+            flow_diff_b = _elementwise_epe(pose_of_b, of_b)
             census_mask_l1 = self.create_census_mask(flow_diff_f, pose_diff1, sf_diff1)
             census_mask_l2 = self.create_census_mask(flow_diff_b, pose_diff2, sf_diff2)
             census_masks_l1.append(census_mask_l1)
