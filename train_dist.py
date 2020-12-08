@@ -87,10 +87,10 @@ def train(gpu, args):
 
     if args.model_name == 'joint':
         model = JointModel(args).cuda(device=gpu)
-        loss = Loss_SceneFlow_SelfSup_JointIter(args).cuda(device=gpu)
     else:
         model = Model(args).cuda(device=gpu)
-        loss = Loss(args).cuda(device=gpu)
+
+    loss = Loss(args).cuda(device=gpu)
 
     if args.use_bn:
         model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
