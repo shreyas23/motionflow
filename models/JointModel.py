@@ -32,11 +32,12 @@ class JointModel(nn.Module):
         
         self.leakyRELU = nn.LeakyReLU(0.1, inplace=True)
 
-        self.num_chs = [3, 32, 64, 96, 128, 192, 256]
-        self.feature_pyramid_extractor = FeatureExtractor(self.num_chs, use_bn=args.use_bn)
-
-        # self.feature_pyramid_extractor = ResnetEncoder(args, num_layers=18, pretrained=args.pt_encoder, num_input_images=1)
-        # self.num_chs = self.feature_pyramid_extractor.num_ch_enc
+        if self._args.encoder_name == "resnet":
+            self.feature_pyramid_extractor = ResnetEncoder(args, num_layers=18, pretrained=args.pt_encoder, num_input_images=1)
+            self.num_chs = self.feature_pyramid_extractor.num_ch_enc
+        else:
+            self.num_chs = [3, 32, 64, 96, 128, 192, 256]
+            self.feature_pyramid_extractor = FeatureExtractor(self.num_chs, use_bn=args.use_bn)
 
         self.warping_layer_sf = WarpingLayer_SF()
         self.warping_layer_pose = WarpingLayer_Pose()
@@ -81,9 +82,9 @@ class JointModel(nn.Module):
             elif isinstance(layer, nn.Sequential):
                 pass
 
-        for decoder in self.flow_estimators:
-            nn.init.kaiming_uniform_(decoder.conv_pose.conv[0].weight)
-        nn.init.kaiming_uniform_(self.context_networks.conv_pose.conv[0].weight)
+        # for decoder in self.flow_estimators:
+        #     nn.init.kaiming_uniform_(decoder.conv_pose.conv[0].weight)
+        # nn.init.kaiming_uniform_(self.context_networks.conv_pose.conv[0].weight)
 
     def run_pwc(self, input_dict, x1_raw, x2_raw, k1, k2):
             
@@ -209,7 +210,7 @@ class JointModel(nn.Module):
                 poses_b.append(pose_mat_b)
 
                 break
-
+        
         x1_rev = x1_pyramid
 
         output_dict['flows_f'] = upsample_outputs_as(sceneflows_f[::-1], x1_rev)

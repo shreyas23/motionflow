@@ -6,6 +6,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --save_freq=1 \
                  --dataset_name="KITTI_EIGEN" \
                  --model_name='joint' \
+                 --encoder_name='resnet' \
                  --num_examples=-1 \
                  --num_workers=16 \
                  --start_epoch=1 \
@@ -14,7 +15,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --lr=2e-4 \
                  --lr_gamma=0.5 \
                  --lr_sched_type='step' \
-                 --milestones 15 25 45 \
+                 --milestones 5 15 25 40 \
                  --flow_reduce_mode='sum' \
                  --disp_sm_w=0.1 \
                  --flow_sm_w=200 \
