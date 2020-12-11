@@ -16,10 +16,11 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --lr_gamma=0.5 \
                  --lr_sched_type='step' \
                  --milestones 5 15 25 40 \
-                 --flow_reduce_mode='sum' \
+                 --flow_reduce_mode='avg' \
                  --disp_sm_w=0.1 \
                  --flow_sm_w=200 \
                  --mask_sm_w=0.0 \
                  --mask_reg_w=0.0 \
                  --flow_pts_w=0.0 \
-                 --mask_cons_w=0.0
+                 --mask_cons_w=0.0 \
+                 --flow_diff_thresh=1e-2
