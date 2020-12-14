@@ -15,6 +15,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --lr_sched_type='step' \
                  --milestones 15 25 \
                  --flow_reduce_mode='sum' \
+                 --use_census_mask=True \
                  --disp_sm_w=0.1 \
                  --flow_sm_w=200 \
                  --mask_sm_w=0.0 \

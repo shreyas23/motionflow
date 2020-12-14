@@ -45,13 +45,13 @@ class Loss(nn.Module):
 
         self.use_mask = args.use_mask
         self.use_flow_mask = args.use_flow_mask
+        self.use_static_mask = args.use_static_mask
 
-        # self.scale_weights = [4.0, 2.0, 1.0, 1.0, 1.0]
         self.scale_weights = [1.0, 1.0, 1.0, 1.0, 1.0]
 
 
     def depth_loss(self, disp_l, disp_r, img_l, img_r, scale):
-        """ Calculate the difference between the src and tgt images 
+        """ Calculate the difference between the src and tgt images
         Inputs:
         disp_l: disparity from left to right (B, 1, H, W)
         disp_r: disparity from right to left (B, 1, H, W)
@@ -301,16 +301,18 @@ class Loss(nn.Module):
             """ MASK LOSS """
             if self.args.use_mask:
                 mask_reg_loss1, mask_sm_loss1 = self.mask_loss(mask_l1, flow_diff_f, pose_diff1, sf_diff1)
-                mask_census_loss1 = tf.binary_cross_entropy(mask_l1, census_mask_l1)
                 mask_loss1 = mask_reg_loss1 * self.mask_reg_w + \
                              mask_sm_loss1 * self.mask_sm_w + \
                              mask_census_loss1 * self.mask_cons_w
 
                 mask_reg_loss2, mask_sm_loss2 = self.mask_loss(mask_l2, flow_diff_b, pose_diff2, sf_diff2)
-                mask_census_loss2 = tf.binary_cross_entropy(mask_l2, census_mask_l2)
                 mask_loss2 = mask_reg_loss2 * self.mask_reg_w + \
                              mask_sm_loss2 * self.mask_sm_w + \
                              mask_census_loss2 * self.mask_cons_w
+
+            if self.args.use_census_mask:
+                mask_census_loss1 = tf.binary_cross_entropy(mask_l1, census_mask_l1)
+                mask_census_loss2 = tf.binary_cross_entropy(mask_l2, census_mask_l2)
 
                 mask_loss = mask_loss1 + mask_loss2
 
@@ -330,6 +332,19 @@ class Loss(nn.Module):
             sf_occ_f = sf_occ_f * left_occ1
             pose_occ_b = pose_occ_b * left_occ2
             sf_occ_b = sf_occ_b * left_occ2
+
+
+            # remove static pixels from loss calculation
+            if self.args.use_static_mask:
+                static_diff = _reconstruction_error(img_l1, img_l2, self.ssim_w)
+                pose_static_thresh1 =  pose_diff1 < static_diff
+                pose_static_thresh2 =  pose_diff2 < static_diff
+                sf_static_thresh1 =  sf_diff1 < static_diff
+                sf_static_thresh2 =  sf_diff2 < static_diff
+                pose_occ_f = pose_occ_f * pose_static_thresh1
+                sf_occ_f = sf_occ_f * sf_static_thresh1
+                pose_occ_b = pose_occ_b * pose_static_thresh2
+                sf_occ_b = sf_occ_b * sf_static_thresh2
 
             """ FLOW LOSS """
             # do not use min reduction for now... 
