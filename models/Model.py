@@ -251,22 +251,22 @@ class Model(nn.Module):
             mask_l1_pp = []
             mask_l2_pp = []
 
-            for ii in range(0, len(output_dict_flip['flow_f'])):
+            for ii in range(0, len(output_dict_flip['flows_f'])):
 
-                flow_f_pp.append(post_processing(output_dict['flow_f'][ii], flow_horizontal_flip(output_dict_flip['flow_f'][ii])))
-                flow_b_pp.append(post_processing(output_dict['flow_b'][ii], flow_horizontal_flip(output_dict_flip['flow_b'][ii])))
-                disp_l1_pp.append(post_processing(output_dict['disp_l1'][ii], torch.flip(output_dict_flip['disp_l1'][ii], [3])))
-                disp_l2_pp.append(post_processing(output_dict['disp_l2'][ii], torch.flip(output_dict_flip['disp_l2'][ii], [3])))
+                flow_f_pp.append(post_processing(output_dict['flows_f'][ii], flow_horizontal_flip(output_dict_flip['flows_f'][ii])))
+                flow_b_pp.append(post_processing(output_dict['flows_b'][ii], flow_horizontal_flip(output_dict_flip['flows_b'][ii])))
+                disp_l1_pp.append(post_processing(output_dict['disps_l1'][ii], torch.flip(output_dict_flip['disps_l1'][ii], [3])))
+                disp_l2_pp.append(post_processing(output_dict['disps_l2'][ii], torch.flip(output_dict_flip['disps_l2'][ii], [3])))
                 if self.args.use_mask:
-                    mask_l1_pp.append(post_processing(output_dict['mask_l1'][ii], torch.flip(output_dict_flip['mask_l1'][ii], [3])))
-                    mask_l2_pp.append(post_processing(output_dict['mask_l2'][ii], torch.flip(output_dict_flip['mask_l2'][ii], [3])))
+                    mask_l1_pp.append(post_processing(output_dict['masks_l1'][ii], torch.flip(output_dict_flip['masks_l1'][ii], [3])))
+                    mask_l2_pp.append(post_processing(output_dict['masks_l2'][ii], torch.flip(output_dict_flip['masks_l2'][ii], [3])))
 
-            output_dict['flow_f_pp'] = flow_f_pp
-            output_dict['flow_b_pp'] = flow_b_pp
-            output_dict['disp_l1_pp'] = disp_l1_pp
-            output_dict['disp_l2_pp'] = disp_l2_pp
+            output_dict['flows_f_pp'] = flow_f_pp
+            output_dict['flows_b_pp'] = flow_b_pp
+            output_dict['disps_l1_pp'] = disp_l1_pp
+            output_dict['disps_l2_pp'] = disp_l2_pp
             if self.args.use_mask:
-                output_dict['mask_l1_pp'] = disp_l1_pp
-                output_dict['mask_l2_pp'] = disp_l2_pp
+                output_dict['masks_l1_pp'] = disp_l1_pp
+                output_dict['masks_l2_pp'] = disp_l2_pp
 
         return output_dict

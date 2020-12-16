@@ -284,12 +284,12 @@ class JointModel(nn.Module):
                     mask_l1_pp.append(post_processing(output_dict['masks_l1'][ii], torch.flip(output_dict_flip['masks_l1'][ii], [3])))
                     mask_l2_pp.append(post_processing(output_dict['masks_l2'][ii], torch.flip(output_dict_flip['masks_l2'][ii], [3])))
 
-            output_dict['flow_f_pp'] = flow_f_pp
-            output_dict['flow_b_pp'] = flow_b_pp
-            output_dict['disp_l1_pp'] = disp_l1_pp
-            output_dict['disp_l2_pp'] = disp_l2_pp
+            output_dict['flows_f_pp'] = flow_f_pp
+            output_dict['flows_b_pp'] = flow_b_pp
+            output_dict['disps_l1_pp'] = disp_l1_pp
+            output_dict['disps_l2_pp'] = disp_l2_pp
             if self._args.use_mask:
-                output_dict['mask_l1_pp'] = disp_l1_pp
-                output_dict['mask_l2_pp'] = disp_l2_pp
+                output_dict['masks_l1_pp'] = disp_l1_pp
+                output_dict['masks_l2_pp'] = disp_l2_pp
 
         return output_dict
