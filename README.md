@@ -2,7 +2,7 @@
 
 i didn't label bc i suck
 
-input   | camera motion
+input   | camera motion  
 depth   | scene flow
 
 ![Alt Text](./frames_ds.gif)
