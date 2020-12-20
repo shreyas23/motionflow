@@ -205,14 +205,16 @@ def train(gpu, args):
             pprint(train_loss_avg_dict)
             print("\n")
 
-            if args.validate:
+        if args.validate:
+            val_loss_avg_dict, val_output_dict, val_input_dict = evaluate(args, model, loss, val_dataloader, val_augmentations)
+            # torch.distributed.reduce_multigpu(tensor=val_loss_avg_dict, op=torch.distributed.ReduceOp.MEAN)
+            if gpu == 0:
                 print(f"Validation epoch: {epoch}...\n")
-                val_loss_avg_dict, val_output_dict, val_input_dict = evaluate(args, model, loss, val_dataloader, val_augmentations)
                 print(f"\t Epoch {epoch} val loss avg:")
                 pprint(val_loss_avg_dict)
                 print("\n")
-            else:
-                val_output_dict, val_input_dict = None, None
+        else:
+            val_output_dict, val_input_dict = None, None
 
         if args.lr_sched_type == 'plateau':
             lr_scheduler.step(train_loss_avg_dict['total_loss'])
