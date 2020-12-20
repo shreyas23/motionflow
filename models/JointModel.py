@@ -69,7 +69,6 @@ class JointModel(nn.Module):
         self.initialize_weights()
 
     def initialize_weights(self):
-        logging.info("Initializing weights")
         for layer in self.modules():
             if isinstance(layer, nn.Conv2d) or isinstance(layer, nn.ConvTranspose2d):
                 nn.init.kaiming_normal_(layer.weight)
