@@ -127,10 +127,10 @@ def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_
             loss_dict_avg[key] += loss_dict[key].detach()
 
     n = len(dataloader)
-    for key in loss_dict_avg.keys():
-        loss_dict_avg[key] /= n
+    # for key in loss_dict_avg.keys():
+    #     loss_dict_avg[key] /= n
 
-    return loss_dict_avg, output_dict, data
+    return loss_dict_avg, output_dict, data, n
 
 
 def evaluate(args, model, loss, dataloader, augmentations):
@@ -161,10 +161,10 @@ def evaluate(args, model, loss, dataloader, augmentations):
                 loss_dict_avg[key] += loss_dict[key].detach()
 
         n = len(dataloader)
-        for key in loss_dict_avg.keys():
-            loss_dict_avg[key] /= n
+        # for key in loss_dict_avg.keys():
+        #     loss_dict_avg[key] /= n
 
-    return loss_dict_avg, output_dict, data_dict 
+    return loss_dict_avg, output_dict, data_dict, n
 
 
 def visualize_output(args, input_dict, output_dict, epoch, writer):

@@ -116,9 +116,10 @@ def train(gpu, args):
         train_dataset = KITTI_Raw_EigenSplit_Train(args, DATA_ROOT, num_examples=args.num_examples)
         train_sampler = DistributedSampler(train_dataset, num_replicas=args.world_size, rank=rank, shuffle=True)
         train_dataloader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True, sampler=train_sampler)
-        if args.validate and gpu ==0:
+        if args.validate:
             val_dataset = KITTI_Raw_EigenSplit_Valid(args, DATA_ROOT)
-            val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True) if val_dataset else None
+            val_sampler = DistributedSampler(val_dataset, num_replicas=args.world_size, rank=rank)
+            val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True, sampler=val_sampler) if val_dataset else None
         else:
             val_dataset = None
             val_dataloader = None
@@ -197,22 +198,55 @@ def train(gpu, args):
         if gpu == 0:
             print(f"Training epoch: {epoch}...\n")
 
-        train_loss_avg_dict, output_dict, input_dict = train_one_epoch(
+        train_loss_avg_dict, output_dict, input_dict, n = train_one_epoch(
             args, model, loss, train_dataloader, optimizer, train_augmentations, lr_scheduler, gpu)
 
-        if gpu == 0:
-            print(f"\t Epoch {epoch} train loss avg:")
-            pprint(train_loss_avg_dict)
-            print("\n")
+        with torch.no_grad():
+            n = torch.tensor(n, requires_grad=False).cuda(device=gpu)
+
+            dist.reduce(n, dst=0, op=dist.ReduceOp.SUM)
+
+            loss_names = []
+            all_losses = []
+            for k in sorted(train_loss_avg_dict.keys()):
+                loss_names.append(k)
+                all_losses.append(train_loss_avg_dict[k].cuda(device=gpu).float())
+
+            all_losses = torch.stack(all_losses, dim=0)
+
+            if gpu == 0:
+                all_losses /= n
+                reduced_losses = {k: v for k, v in zip(loss_names, all_losses)}
+
+                print(f"\t Epoch {epoch} train loss avg:")
+                pprint(train_loss_avg_dict)
+                print("\n")
 
         if args.validate:
-            val_loss_avg_dict, val_output_dict, val_input_dict = evaluate(args, model, loss, val_dataloader, val_augmentations)
-            # torch.distributed.reduce_multigpu(tensor=val_loss_avg_dict, op=torch.distributed.ReduceOp.MEAN)
-            if gpu == 0:
-                print(f"Validation epoch: {epoch}...\n")
-                print(f"\t Epoch {epoch} val loss avg:")
-                pprint(val_loss_avg_dict)
-                print("\n")
+            val_loss_avg_dict, val_output_dict, val_input_dict, n = evaluate(args, model, loss, val_dataloader, val_augmentations)
+
+            with torch.no_grad():
+                n = torch.tensor(n, requires_grad=False).cuda(device=gpu)
+
+                dist.reduce(n, dst=0, op=dist.ReduceOp.SUM)
+
+                loss_names = []
+                all_losses = []
+                for k in sorted(val_loss_avg_dict.keys()):
+                    loss_names.append(k)
+                    all_losses.append(val_loss_avg_dict[k].cuda(device=gpu).float())
+
+                all_losses = torch.stack(all_losses, dim=0)
+
+                if gpu == 0:
+                    all_losses /= n
+                    reduced_losses = {k: v for k, v in zip(loss_names, all_losses)}
+
+                    print(f"Validation epoch: {epoch}...\n")
+                    print(f"\t Epoch {epoch} val loss avg:")
+                    pprint(val_loss_avg_dict)
+                    print("\n")
+
         else:
             val_output_dict, val_input_dict = None, None
 
