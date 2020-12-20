@@ -5,6 +5,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --log_freq=1 \
                  --save_freq=1 \
                  --dataset_name="KITTI_EIGEN" \
+                 --validate=True \
                  --model_name='joint' \
                  --encoder_name='pwc' \
                  --num_examples=-1 \
