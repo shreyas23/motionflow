@@ -257,10 +257,10 @@ def train(gpu, args):
         if not args.no_logging:
             fp = os.path.join(args.log_dir, f"{epoch}.ckpt")
             if gpu == 0:
-                for k, v in train_loss_avg_dict.items():
+                for k, v in train_reduced_losses.items():
                     writer.add_scalar(f'train/{k}', v.item(), epoch)
                 if args.validate:
-                    for k, v in val_loss_avg_dict.items():
+                    for k, v in val_reduced_losses.items():
                         writer.add_scalar(f'val/{k}', v.item(), epoch)
 
                 if args.save_freq > 0:
