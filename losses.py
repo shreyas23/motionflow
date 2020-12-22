@@ -174,7 +174,7 @@ class Loss(nn.Module):
         poses_f = output['pose_f']
         poses_b = output['pose_b']
 
-        if self.args.use_mask:
+        if self.args.use_mask or self.args.use_census_mask:
             masks_l1 = output['masks_l1']
             masks_l2 = output['masks_l2']
 
@@ -213,7 +213,7 @@ class Loss(nn.Module):
                 pose_f = poses_f
                 pose_b = poses_b
 
-            if self.args.use_mask:
+            if self.args.use_mask or self.args.use_census_mask:
                 mask_l1 = interpolate2d_as(masks_l1[s], img_l1)
                 mask_l2 = interpolate2d_as(masks_l2[s], img_l1)
 
@@ -314,7 +314,7 @@ class Loss(nn.Module):
                 mask_census_loss1 = tf.binary_cross_entropy(mask_l1, census_mask_l1)
                 mask_census_loss2 = tf.binary_cross_entropy(mask_l2, census_mask_l2)
 
-                mask_loss = mask_loss1 + mask_loss2
+                mask_loss = mask_census_loss1 + mask_census_loss2
 
                 pose_diff1 = pose_diff1 * mask_l1
                 pose_diff2 = pose_diff2 * mask_l2
@@ -410,7 +410,7 @@ class Loss(nn.Module):
             disp_sm_sum = disp_sm_sum + loss_disp_sm
         
         loss_dict = {}
-        loss_dict["total_loss"] = (depth_loss_sum + flow_loss_sum) / num_scales
+        loss_dict["total_loss"] = (depth_loss_sum + flow_loss_sum + mask_loss) / num_scales
         loss_dict["depth_loss"] = depth_loss_sum.detach()
         loss_dict["flow_loss"] = flow_loss_sum.detach()
         loss_dict["pts_loss"] = flow_pts_sum.detach()
