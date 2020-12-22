@@ -167,9 +167,11 @@ def evaluate(args, model, loss, dataloader, augmentations):
     return loss_dict_avg, output_dict, data_dict, n
 
 
-def visualize_output(args, input_dict, output_dict, epoch, writer):
+def visualize_output(args, input_dict, output_dict, epoch, writer, prefix):
 
     assert (writer is not None), "tensorboard writer not provided"
+    assert prefix in {'train', 'val'}
+    prefix += '/'
 
     img_l1 = input_dict['input_l1'].detach()
     img_l2 = input_dict['input_l2'].detach()
@@ -193,13 +195,13 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
         pose_f = poses_f.detach()
         pose_b = poses_b.detach()
 
-    writer.add_text('pose_f', str(pose_f.cpu().detach().numpy()), epoch)
-    writer.add_text('pose_b', str(pose_b.cpu().detach().numpy()), epoch)
+    writer.add_text(prefix + 'pose_f', str(pose_f.cpu().detach().numpy()), epoch)
+    writer.add_text(prefix + 'pose_b', str(pose_b.cpu().detach().numpy()), epoch)
 
     # input
-    writer.add_images('input_l1', img_l1, epoch)
-    writer.add_images('input_l2', img_l2, epoch)
-    writer.add_images('input_r2', img_r2, epoch)
+    writer.add_images(prefix + 'input_l1', img_l1, epoch)
+    writer.add_images(prefix + 'input_l2', img_l2, epoch)
+    writer.add_images(prefix + 'input_r2', img_r2, epoch)
 
     # create (back)proj classes
     b, _, h, w = img_l1.shape
@@ -208,12 +210,12 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
 
     # depth
     disp_warp = _generate_image_left(img_r2, disp_l2) 
-    writer.add_images('disp', disp_l2, epoch)
-    writer.add_images('disp_warp', disp_warp, epoch)
+    writer.add_images(prefix + 'disp', disp_l2, epoch)
+    writer.add_images(prefix + 'disp_warp', disp_warp, epoch)
     disp_diff = _reconstruction_error(img_l2, disp_warp, 0.85)
-    writer.add_images('disp_diff', disp_diff, epoch)
+    writer.add_images(prefix + 'disp_diff', disp_diff, epoch)
     disp_occ = _adaptive_disocc_detection_disp(disp_r2)
-    writer.add_images('disp_occ', disp_occ, epoch)
+    writer.add_images(prefix + 'disp_occ', disp_occ, epoch)
 
     b, _, h, w = disp_l1.shape
     disp_l1 = disp_l1 * w
@@ -221,45 +223,45 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
 
     # visualize depth
     depth = _disp2depth_kitti_K(disp_l2, K[:, 0, 0])
-    writer.add_images('depth', depth, epoch)
+    writer.add_images(prefix + 'depth', depth, epoch)
 
     # static err map
     static_diff = _reconstruction_error(img_l2, img_l1, 0.85)
-    writer.add_images('static_diff', static_diff, epoch)
+    writer.add_images(prefix + 'static_diff', static_diff, epoch)
 
     # pose warp
     cam_points = back_proj(depth, torch.inverse(K), mode='pose')
     grid = proj(cam_points, K, T=pose_b, sf=None, mode='pose')
     ref_warp = tf.grid_sample(img_l1, grid, mode="bilinear", padding_mode="zeros")
-    writer.add_images('pose_warp', ref_warp, epoch)
+    writer.add_images(prefix + 'pose_warp', ref_warp, epoch)
 
     # pose occ map
     depth_l1 = _disp2depth_kitti_K(disp_l1, K[:, 0, 0])
     pose_flow = pose2flow(depth_l1.squeeze(dim=1), None, K, torch.inverse(K), pose_mat=pose_f)
     pose_occ_b = _adaptive_disocc_detection(pose_flow)
-    writer.add_images('pose_occ', pose_occ_b, epoch)
+    writer.add_images(prefix + 'pose_occ', pose_occ_b, epoch)
 
     # pose err
     pose_diff = _reconstruction_error(img_l2, ref_warp, 0.85)
-    writer.add_images('pose_diff', pose_diff, epoch)
+    writer.add_images(prefix + 'pose_diff', pose_diff, epoch)
 
     # sf warp
     cam_points = back_proj(depth, torch.inverse(K), mode='sf')
     grid = proj(cam_points, K, T=None, sf=sf_b, mode='sf')
     ref_warp = tf.grid_sample(img_l1, grid, mode="bilinear", padding_mode="zeros")
-    writer.add_images('sf_warp', ref_warp, epoch)
+    writer.add_images(prefix + 'sf_warp', ref_warp, epoch)
 
     # sf err
     sf_diff = _reconstruction_error(img_l2, ref_warp, 0.85)
-    writer.add_images('sf_diff', sf_diff, epoch)
+    writer.add_images(prefix + 'sf_diff', sf_diff, epoch)
 
     # sf occ map
     flow_f = projectSceneFlow2Flow(K, output_dict['flows_f'][0].detach(), disp_l1)
     flow_b = projectSceneFlow2Flow(K, sf_b, disp_l2)
     sf_occ_b = _adaptive_disocc_detection(flow_f)
     sf_occ_f = _adaptive_disocc_detection(flow_b)
-    writer.add_images('sf_occ_f', sf_occ_f, epoch)
-    writer.add_images('sf_occ_b', sf_occ_b, epoch)
+    writer.add_images(prefix + 'sf_occ_f', sf_occ_f, epoch)
+    writer.add_images(prefix + 'sf_occ_b', sf_occ_b, epoch)
 
     # pts = cam_points.permute(0, 2, 3, 1).reshape(b, h*w, 3)
     # colors = img_l2.permute(0, 2, 3, 1).reshape(b, h*w, 3)
@@ -267,9 +269,9 @@ def visualize_output(args, input_dict, output_dict, epoch, writer):
 
     # motion mask
     if args.use_mask:
-        writer.add_images('mask', mask_l2, epoch)
+        writer.add_images(prefix + 'mask', mask_l2, epoch)
 
-    writer.add_images('census_mask', census_mask_l2, epoch)
+    writer.add_images(prefix + 'census_mask', census_mask_l2, epoch)
 
     return
 

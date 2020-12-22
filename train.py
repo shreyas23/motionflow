@@ -181,12 +181,12 @@ def train(args):
                     torch.save({'model': model.state_dict(), 'optimizer': optimizer.state_dict()}, fp)
 
             if epoch % args.log_freq == 0:
-                visualize_output(args, input_dict, output_dict, epoch, writer)
+                visualize_output(args, input_dict, output_dict, epoch, writer, prefix='train')
                 del input_dict
                 del output_dict
 
                 if args.validate:
-                    visualize_output(args, val_input_dict, val_output_dict, epoch, writer)
+                    visualize_output(args, val_input_dict, val_output_dict, epoch, writer, prefix='val')
                     del val_input_dict
                     del val_output_dict
 
