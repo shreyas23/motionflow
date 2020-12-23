@@ -205,6 +205,8 @@ def train(gpu, args):
             n = torch.tensor(n, requires_grad=False).cuda(device=gpu)
             dist.reduce(n, dst=0, op=dist.ReduceOp.SUM)
 
+            train_loss_avg_dict['total_loss'].detach_()
+
             if gpu == 0:
 
                 loss_names = []
@@ -222,32 +224,33 @@ def train(gpu, args):
                 pprint(train_reduced_losses)
                 print("\n")
 
-        if args.validate:
-            val_loss_avg_dict, val_output_dict, val_input_dict, n = evaluate(args, model, loss, val_dataloader, val_augmentations)
+            if args.validate:
+                val_loss_avg_dict, val_output_dict, val_input_dict, n = evaluate(args, model, loss, val_dataloader, val_augmentations)
 
-            with torch.no_grad():
-                n = torch.tensor(n, requires_grad=False).cuda(device=gpu)
-                dist.reduce(n, dst=0, op=dist.ReduceOp.SUM)
+                val_loss_avg_dict['total_loss'].detach_()
 
-                if gpu == 0:
-                    loss_names = []
-                    all_losses = []
-                    for k in sorted(val_loss_avg_dict.keys()):
-                        loss_names.append(k)
-                        all_losses.append(val_loss_avg_dict[k].cuda(device=gpu).float())
+                with torch.no_grad():
+                    n = torch.tensor(n, requires_grad=False).cuda(device=gpu)
+                    dist.reduce(n, dst=0, op=dist.ReduceOp.SUM)
 
-                    all_losses = torch.stack(all_losses, dim=0)
+                    if gpu == 0:
+                        loss_names = []
+                        all_losses = []
+                        for k in sorted(val_loss_avg_dict.keys()):
+                            loss_names.append(k)
+                            all_losses.append(val_loss_avg_dict[k].cuda(device=gpu).float())
 
-                    all_losses /= n
-                    val_reduced_losses = {k: v for k, v in zip(loss_names, all_losses)}
+                        all_losses = torch.stack(all_losses, dim=0)
 
-                    print(f"Validation epoch: {epoch}...\n")
-                    print(f"\t Epoch {epoch} val loss avg:")
-                    pprint(val_reduced_losses)
-                    print("\n")
+                        all_losses /= n
+                        val_reduced_losses = {k: v for k, v in zip(loss_names, all_losses)}
 
-        else:
-            val_output_dict, val_input_dict = None, None
+                        print(f"Validation epoch: {epoch}...\n")
+                        print(f"\t Epoch {epoch} val loss avg:")
+                        pprint(val_reduced_losses)
+                        print("\n")
+            else:
+                val_output_dict, val_input_dict = None, None
 
         if args.lr_sched_type == 'plateau':
             lr_scheduler.step(train_loss_avg_dict['total_loss'])
@@ -272,17 +275,20 @@ def train(gpu, args):
                     visualize_output(args, input_dict, output_dict, epoch, writer, prefix='train')
                     del input_dict
                     del output_dict
+                    del train_loss_avg_dict
+                    del train_reduced_losses
 
                     if args.validate:
                         visualize_output(args, val_input_dict, val_output_dict, epoch, writer, prefix='val')
                         del val_input_dict
                         del val_output_dict
+                        del val_loss_avg_dict
+                        del val_reduced_losses
 
                     writer.flush()
 
             if args.save_freq > 0:
                 if epoch % args.save_freq == 0:
-                    
                     dist.barrier()
 
                     # configure map_location properly

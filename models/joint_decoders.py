@@ -9,15 +9,14 @@ class JointDecoder(nn.Module):
         super(JointDecoder, self).__init__()
 
         self.use_mask = args.use_mask
-        self.use_mask = args.use_census_mask
-
+        self.use_census_mask = args.use_census_mask
         self.convs = nn.Sequential(
             Conv(ch_in, 256),
             Conv(256, 128), 
             Conv(128, 128), 
             Conv(128, 96),
             Conv(96, 64),
-            Conv(64, 32),
+            Conv(64, 32)
         )
         
         self.conv_sf = Conv(32, 3, nonlin='none')
