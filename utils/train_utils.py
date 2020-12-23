@@ -180,7 +180,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer, prefix):
     disp_l1 = interpolate2d_as(output_dict['disps_l1'][0].detach(), img_l1)
     disp_l2 = interpolate2d_as(output_dict['disps_l2'][0].detach(), img_l1)
     disp_r2 = interpolate2d_as(output_dict['output_dict_r']['disps_l2'][0].detach(), img_l1)
-    if args.use_mask:
+    if args.use_mask or args.use_census_mask:
         mask_l2 = interpolate2d_as(output_dict['masks_l2'][0].detach(), img_l1)
 
     census_mask_l2 = interpolate2d_as(output_dict['census_masks_l2'][0].detach(), img_l1)
@@ -268,10 +268,10 @@ def visualize_output(args, input_dict, output_dict, epoch, writer, prefix):
     # writer.add_mesh(tag='pc_l2', vertices=pts, colors=colors)
 
     # motion mask
-    if args.use_mask:
+    if args.use_mask or args.use_census_mask:
         writer.add_images(prefix + 'mask', mask_l2, epoch)
 
-    writer.add_images(prefix + 'census_mask', census_mask_l2, epoch)
+    writer.add_images(prefix + 'target_census_mask', census_mask_l2, epoch)
 
     return
 
