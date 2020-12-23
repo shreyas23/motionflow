@@ -7,7 +7,6 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --dataset_name="KITTI_EIGEN" \
                  --validate=True \
                  --use_census_mask=True \
-                 --use_flow_mask=True \
                  --model_name='joint' \
                  --encoder_name='resnet' \
                  --num_examples=-1 \

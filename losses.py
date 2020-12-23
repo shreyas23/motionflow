@@ -217,7 +217,7 @@ class Loss(nn.Module):
                 mask_l1 = interpolate2d_as(masks_l1[s], img_l1)
                 mask_l2 = interpolate2d_as(masks_l2[s], img_l1)
 
-                if self.args.use_flow_mask:
+                if self.args.use_flow_mask or self.args.use_census_mask:
                     flow_mask_l1 = 1.0 - mask_l1
                     flow_mask_l2 = 1.0 - mask_l2
                 else:
@@ -315,24 +315,24 @@ class Loss(nn.Module):
                 mask_census_loss2 = tf.binary_cross_entropy(mask_l2, census_mask_l2)
 
                 mask_loss = mask_census_loss1 + mask_census_loss2
+            else:
+                mask_loss = torch.tensor(0, requires_grad=False)
 
+            if self.args.use_mask or self.args.use_census_mask:
                 pose_diff1 = pose_diff1 * mask_l1
                 pose_diff2 = pose_diff2 * mask_l2
                 pose_pts_diff1 = pose_pts_diff1 * mask_l1
                 pose_pts_diff2 = pose_pts_diff2 * mask_l2
-                if self.args.use_flow_mask:
-                    flow_diff1 = flow_diff1 * flow_mask_l1
-                    flow_diff2 = flow_diff2 * flow_mask_l2
+                if self.args.use_flow_mask or self.args.use_census_mask:
+                    sf_diff1 = sf_diff1 * flow_mask_l1
+                    sf_diff2 = sf_diff2 * flow_mask_l2
                     sf_pts_diff1 = sf_pts_diff1 * mask_l1
                     sf_pts_diff2 = sf_pts_diff2 * mask_l2
-            else:
-                mask_loss = torch.tensor(0, requires_grad=False)
 
             pose_occ_f = pose_occ_f * left_occ1
             sf_occ_f = sf_occ_f * left_occ1
             pose_occ_b = pose_occ_b * left_occ2
             sf_occ_b = sf_occ_b * left_occ2
-
 
             # remove static pixels from loss calculation
             if self.args.use_static_mask:
