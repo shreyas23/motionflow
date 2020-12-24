@@ -106,7 +106,7 @@ def train(gpu, args):
         train_sampler = DistributedSampler(train_dataset, num_replicas=args.world_size, rank=rank, shuffle=True)
         train_dataloader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True, sampler=train_sampler)
         if args.validate and gpu ==0:
-            val_dataset = KITTI_Raw_KittiSplit_Valid(args, DATA_ROOT)
+            val_dataset = KITTI_Raw_KittiSplit_Valid(args, DATA_ROOT, num_examples=args.num_examples)
             val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True) if val_dataset else None
         else:
             val_dataset = None
@@ -117,7 +117,7 @@ def train(gpu, args):
         train_sampler = DistributedSampler(train_dataset, num_replicas=args.world_size, rank=rank, shuffle=True)
         train_dataloader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True, sampler=train_sampler)
         if args.validate:
-            val_dataset = KITTI_Raw_EigenSplit_Valid(args, DATA_ROOT)
+            val_dataset = KITTI_Raw_EigenSplit_Valid(args, DATA_ROOT, num_examples=args.num_examples)
             val_sampler = DistributedSampler(val_dataset, num_replicas=args.world_size, rank=rank)
             val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True, sampler=val_sampler) if val_dataset else None
         else:
