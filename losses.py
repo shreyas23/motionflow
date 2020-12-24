@@ -317,16 +317,26 @@ class Loss(nn.Module):
             else:
                 mask_loss = torch.tensor(0, requires_grad=False)
 
-            if self.args.use_mask or self.args.use_census_mask:
+            if self.args.use_mask:
                 pose_diff1 = pose_diff1 * mask_l1
                 pose_diff2 = pose_diff2 * mask_l2
                 pose_pts_diff1 = pose_pts_diff1 * mask_l1
                 pose_pts_diff2 = pose_pts_diff2 * mask_l2
-                if self.args.use_flow_mask or self.args.use_census_mask:
+                if self.args.use_flow_mask:
                     sf_diff1 = sf_diff1 * flow_mask_l1
                     sf_diff2 = sf_diff2 * flow_mask_l2
-                    sf_pts_diff1 = sf_pts_diff1 * mask_l1
-                    sf_pts_diff2 = sf_pts_diff2 * mask_l2
+                    sf_pts_diff1 = sf_pts_diff1 * flow_mask_l1
+                    sf_pts_diff2 = sf_pts_diff2 * flow_mask_l2
+            elif self.args.use_census_mask:
+                pose_diff1 = pose_diff1 * mask_l1.detach()
+                pose_diff2 = pose_diff2 * mask_l2.detach()
+                pose_pts_diff1 = pose_pts_diff1 * mask_l1.detach()
+                pose_pts_diff2 = pose_pts_diff2 * mask_l2.detach()
+                if self.args.use_flow_mask:
+                    sf_diff1 = sf_diff1 * flow_mask_l1.detach()
+                    sf_diff2 = sf_diff2 * flow_mask_l2.detach()
+                    sf_pts_diff1 = sf_pts_diff1 * flow_mask_l1.detach()
+                    sf_pts_diff2 = sf_pts_diff2 * flow_mask_l2.detach()
 
             pose_occ_f = pose_occ_f * left_occ1
             sf_occ_f = sf_occ_f * left_occ1
