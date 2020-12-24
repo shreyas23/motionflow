@@ -40,7 +40,7 @@ class Loss(nn.Module):
         # conistency weights 
         self.disp_lr_w = args.disp_lr_w
         self.static_cons_w = args.static_cons_w
-        self.mask_cons_w = args.mask_cons_w
+        self.mask_census_w = args.mask_cons_w
         self.flow_diff_thresh = args.flow_diff_thresh
 
         self.use_mask = args.use_mask
@@ -303,18 +303,15 @@ class Loss(nn.Module):
                 mask_reg_loss1, mask_sm_loss1 = self.mask_loss(mask_l1, flow_diff_f, pose_diff1, sf_diff1)
                 mask_loss1 = mask_reg_loss1 * self.mask_reg_w + \
                              mask_sm_loss1 * self.mask_sm_w + \
-                             mask_census_loss1 * self.mask_cons_w
 
                 mask_reg_loss2, mask_sm_loss2 = self.mask_loss(mask_l2, flow_diff_b, pose_diff2, sf_diff2)
                 mask_loss2 = mask_reg_loss2 * self.mask_reg_w + \
                              mask_sm_loss2 * self.mask_sm_w + \
-                             mask_census_loss2 * self.mask_cons_w
 
             if self.args.use_census_mask:
                 mask_census_loss1 = tf.binary_cross_entropy(mask_l1, census_mask_l1)
                 mask_census_loss2 = tf.binary_cross_entropy(mask_l2, census_mask_l2)
-
-                mask_loss = mask_census_loss1 + mask_census_loss2
+                mask_loss = (mask_census_loss1 * mask_census_loss2) * self.mask_census_w
             else:
                 mask_loss = torch.tensor(0, requires_grad=False)
 
