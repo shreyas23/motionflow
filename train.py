@@ -191,11 +191,13 @@ def train(args):
                 visualize_output(args, input_dict, output_dict, epoch, writer, prefix='train')
                 del input_dict
                 del output_dict
+                del train_loss_avg_dict
 
                 if args.validate:
                     visualize_output(args, val_input_dict, val_output_dict, epoch, writer, prefix='val')
                     del val_input_dict
                     del val_output_dict
+                    del val_loss_avg_dict
 
                 writer.flush()
 
