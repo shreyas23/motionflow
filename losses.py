@@ -302,11 +302,11 @@ class Loss(nn.Module):
             if self.args.use_mask:
                 mask_reg_loss1, mask_sm_loss1 = self.mask_loss(mask_l1, flow_diff_f, pose_diff1, sf_diff1)
                 mask_loss1 = mask_reg_loss1 * self.mask_reg_w + \
-                             mask_sm_loss1 * self.mask_sm_w + \
+                             mask_sm_loss1 * self.mask_sm_w
 
                 mask_reg_loss2, mask_sm_loss2 = self.mask_loss(mask_l2, flow_diff_b, pose_diff2, sf_diff2)
                 mask_loss2 = mask_reg_loss2 * self.mask_reg_w + \
-                             mask_sm_loss2 * self.mask_sm_w + \
+                             mask_sm_loss2 * self.mask_sm_w
 
             if self.args.use_census_mask:
                 mask_census_loss1 = tf.binary_cross_entropy(mask_l1, census_mask_l1)
