@@ -309,9 +309,11 @@ class Loss(nn.Module):
                              mask_sm_loss2 * self.mask_sm_w
 
             if self.args.use_census_mask:
-                mask_census_loss1 = tf.binary_cross_entropy(mask_l1, census_mask_l1)
-                mask_census_loss2 = tf.binary_cross_entropy(mask_l2, census_mask_l2)
-                mask_loss = (mask_census_loss1 * mask_census_loss2) * self.mask_census_w
+                mask_loss1 = tf.binary_cross_entropy(mask_l1, census_mask_l1)
+                mask_loss2 = tf.binary_cross_entropy(mask_l2, census_mask_l2)
+            
+            if self.args.use_mask or self.args.use_census_mask:
+                mask_loss = (mask_loss1 * mask_loss2) * self.mask_census_w
             else:
                 mask_loss = torch.tensor(0, requires_grad=False)
 
