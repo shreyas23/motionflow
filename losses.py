@@ -101,12 +101,14 @@ class Loss(nn.Module):
 
         return img_diff, occ_mask, (cam_points, grid)
 
-    
-    def mask_loss(self, mask, flow_diff, pose_err, sf_err, flow_diff_thresh=1e-3):
+
+    def mask_loss(self, mask, census_target):
         reg_loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
         sm_loss = (_gradient_x_2nd(mask).abs() + _gradient_y_2nd(mask).abs()).mean()
+        census_loss = tf.binary_cross_entropy(mask, torch.ones_like(census_target))
 
-        return reg_loss, sm_loss
+        return reg_loss, sm_loss, census_loss
+    
 
     def create_census_mask(self, flow_diff, pose_err, sf_err, flow_diff_thresh=1e-3):
         # mask consensus loss
@@ -153,6 +155,9 @@ class Loss(nn.Module):
         sf_sm_sum = 0
         disp_sm_sum = 0
         mask_loss_sum = 0
+        mask_reg_loss_sum = 0
+        mask_sm_loss_sum = 0
+        mask_census_loss_sum = 0
         flow_pts_sum = 0
 
         img_l1 = target['input_l1']
@@ -174,7 +179,7 @@ class Loss(nn.Module):
         poses_f = output['pose_f']
         poses_b = output['pose_b']
 
-        if self.args.use_mask or self.args.use_census_mask:
+        if self.args.use_mask:
             masks_l1 = output['masks_l1']
             masks_l2 = output['masks_l2']
 
@@ -213,11 +218,11 @@ class Loss(nn.Module):
                 pose_f = poses_f
                 pose_b = poses_b
 
-            if self.args.use_mask or self.args.use_census_mask:
+            if self.args.use_mask:
                 mask_l1 = interpolate2d_as(masks_l1[s], img_l1)
                 mask_l2 = interpolate2d_as(masks_l2[s], img_l1)
 
-                if self.args.use_flow_mask or self.args.use_census_mask:
+                if self.args.use_flow_mask:
                     flow_mask_l1 = 1.0 - mask_l1
                     flow_mask_l2 = 1.0 - mask_l2
                 else:
@@ -300,43 +305,50 @@ class Loss(nn.Module):
 
             """ MASK LOSS """
             if self.args.use_mask:
-                mask_reg_loss1, mask_sm_loss1 = self.mask_loss(mask_l1, flow_diff_f, pose_diff1, sf_diff1)
+                mask_reg_loss1, mask_sm_loss1, mask_census_loss1 = self.mask_loss(mask_l1, census_mask_l1)
                 mask_loss1 = mask_reg_loss1 * self.mask_reg_w + \
-                             mask_sm_loss1 * self.mask_sm_w
+                             mask_sm_loss1 * self.mask_sm_w + \
+                             mask_census_loss1 * self.mask_census_w
 
-                mask_reg_loss2, mask_sm_loss2 = self.mask_loss(mask_l2, flow_diff_b, pose_diff2, sf_diff2)
+                mask_reg_loss2, mask_sm_loss2, mask_census_loss2 = self.mask_loss(mask_l2, census_mask_l2)
                 mask_loss2 = mask_reg_loss2 * self.mask_reg_w + \
-                             mask_sm_loss2 * self.mask_sm_w
+                             mask_sm_loss2 * self.mask_sm_w + \
+                             mask_census_loss2 * self.mask_census_w
 
-            if self.args.use_census_mask:
-                mask_loss1 = tf.binary_cross_entropy(mask_l1, census_mask_l1)
-                mask_loss2 = tf.binary_cross_entropy(mask_l2, census_mask_l2)
-            
-            if self.args.use_mask or self.args.use_census_mask:
                 mask_loss = (mask_loss1 * mask_loss2) * self.mask_census_w
+                mask_reg_loss = mask_reg_loss1 + mask_reg_loss2
+                mask_sm_loss = mask_sm_loss1 + mask_sm_loss2
+                mask_census_loss = mask_census_loss1 + mask_census_loss2
             else:
                 mask_loss = torch.tensor(0, requires_grad=False)
+                mask_reg_loss = torch.tensor(0, requires_grad=False)
+                mask_sm_loss = torch.tensor(0, requires_grad=False)
+                mask_census_loss = torch.tensor(0, requires_grad=False)
+
+            assert (self.mask_reg_w == 0 or self.mask_census_w == 0)
 
             if self.args.use_mask:
-                pose_diff1 = pose_diff1 * mask_l1
-                pose_diff2 = pose_diff2 * mask_l2
-                pose_pts_diff1 = pose_pts_diff1 * mask_l1
-                pose_pts_diff2 = pose_pts_diff2 * mask_l2
-                if self.args.use_flow_mask:
-                    sf_diff1 = sf_diff1 * flow_mask_l1
-                    sf_diff2 = sf_diff2 * flow_mask_l2
-                    sf_pts_diff1 = sf_pts_diff1 * flow_mask_l1
-                    sf_pts_diff2 = sf_pts_diff2 * flow_mask_l2
-            elif self.args.use_census_mask:
-                pose_diff1 = pose_diff1 * mask_l1.detach()
-                pose_diff2 = pose_diff2 * mask_l2.detach()
-                pose_pts_diff1 = pose_pts_diff1 * mask_l1.detach()
-                pose_pts_diff2 = pose_pts_diff2 * mask_l2.detach()
-                if self.args.use_flow_mask:
-                    sf_diff1 = sf_diff1 * flow_mask_l1.detach()
-                    sf_diff2 = sf_diff2 * flow_mask_l2.detach()
-                    sf_pts_diff1 = sf_pts_diff1 * flow_mask_l1.detach()
-                    sf_pts_diff2 = sf_pts_diff2 * flow_mask_l2.detach()
+                if self.mask_reg_w > 0:
+                    pose_diff1 = pose_diff1 * mask_l1
+                    pose_diff2 = pose_diff2 * mask_l2
+                    pose_pts_diff1 = pose_pts_diff1 * mask_l1
+                    pose_pts_diff2 = pose_pts_diff2 * mask_l2
+                    if self.args.use_flow_mask:
+                        sf_diff1 = sf_diff1 * flow_mask_l1
+                        sf_diff2 = sf_diff2 * flow_mask_l2
+                        sf_pts_diff1 = sf_pts_diff1 * flow_mask_l1
+                        sf_pts_diff2 = sf_pts_diff2 * flow_mask_l2
+
+                elif self.mask_census_w > 0:
+                    pose_diff1 = pose_diff1 * mask_l1.detach()
+                    pose_diff2 = pose_diff2 * mask_l2.detach()
+                    pose_pts_diff1 = pose_pts_diff1 * mask_l1.detach()
+                    pose_pts_diff2 = pose_pts_diff2 * mask_l2.detach()
+                    if self.args.use_flow_mask:
+                        sf_diff1 = sf_diff1 * flow_mask_l1.detach()
+                        sf_diff2 = sf_diff2 * flow_mask_l2.detach()
+                        sf_pts_diff1 = sf_pts_diff1 * flow_mask_l1.detach()
+                        sf_pts_diff2 = sf_pts_diff2 * flow_mask_l2.detach()
 
             pose_occ_f = pose_occ_f * left_occ1
             sf_occ_f = sf_occ_f * left_occ1
@@ -410,6 +422,9 @@ class Loss(nn.Module):
             depth_loss_sum = depth_loss_sum + (depth_loss + loss_disp_sm) * self.scale_weights[s]
             flow_loss_sum = flow_loss_sum + (flow_loss + loss_sf_sm) * self.scale_weights[s] 
             mask_loss_sum = mask_loss_sum + mask_loss * self.scale_weights[s]
+            mask_sm_loss_sum += mask_sm_loss
+            mask_reg_loss_sum += mask_reg_loss
+            mask_census_loss_sum += mask_census_loss
             pose_im_loss_sum = pose_im_loss_sum + pose_im_loss
             pose_pts_loss_sum = pose_pts_loss_sum + pose_pts_loss
             sf_im_loss_sum = sf_im_loss_sum + sf_im_loss
@@ -420,6 +435,7 @@ class Loss(nn.Module):
         
         loss_dict = {}
         loss_dict["total_loss"] = (depth_loss_sum + flow_loss_sum + mask_loss) / num_scales
+
         loss_dict["depth_loss"] = depth_loss_sum.detach()
         loss_dict["flow_loss"] = flow_loss_sum.detach()
         loss_dict["pts_loss"] = flow_pts_sum.detach()
@@ -430,6 +446,9 @@ class Loss(nn.Module):
         loss_dict["sf_smooth_loss"] = sf_sm_sum.detach()
         loss_dict["disp_sm_loss"] = disp_sm_sum.detach()
         loss_dict["mask_loss"] = mask_loss_sum.detach()
+        loss_dict["mask_reg_loss"] = mask_reg_loss_sum.detach()
+        loss_dict["mask_sm_loss"] = mask_sm_loss_sum.detach()
+        loss_dict["mask_census_loss"] = mask_census_loss_sum.detach()
 
         output['census_masks_l1'] = census_masks_l1
         output['census_masks_l2'] = census_masks_l2

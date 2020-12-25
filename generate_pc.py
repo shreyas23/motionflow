@@ -53,7 +53,6 @@ class Args:
     flow_pts_w=0.2
     flow_sm_w=200
     use_static_mask=False
-    use_census_mask=False
     batch_size=2
 
 args = Args()

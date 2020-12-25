@@ -9,7 +9,6 @@ class JointDecoder(nn.Module):
         super(JointDecoder, self).__init__()
 
         self.use_mask = args.use_mask
-        self.use_census_mask = args.use_census_mask
         self.convs = nn.Sequential(
             Conv(ch_in, 256),
             Conv(256, 128), 
@@ -23,7 +22,7 @@ class JointDecoder(nn.Module):
         self.conv_d1 = Conv(32, 1, nonlin='none')
         self.conv_pose = Conv(32, num_refs * 6, kernel_size=1, nonlin='none')
 
-        # if self.use_mask or self.use_census_mask:
+        # if self.use_mask:
         self.conv_mask = Conv(32, 1, nonlin='none')
 
     def forward(self, x):
@@ -33,7 +32,7 @@ class JointDecoder(nn.Module):
         pose_out = self.conv_pose(x_out)
         pred_pose = pose_out.mean(3).mean(2) * 0.1
 
-        # if self.use_mask or self.use_census_mask:
+        # if self.use_mask:
         mask = self.conv_mask(x_out)
         # else:
             # mask = None
@@ -46,7 +45,6 @@ class JointContextNetwork(nn.Module):
         super(JointContextNetwork, self).__init__()
 
         self.use_mask = args.use_mask
-        self.use_census_mask = args.use_census_mask
 
         self.convs = nn.Sequential(
             Conv(in_chs, 128, 3, 1, 1, use_bn=use_bn),
@@ -65,7 +63,7 @@ class JointContextNetwork(nn.Module):
 
         self.conv_pose = Conv(32, num_refs * 6, kernel_size=1, nonlin='none')
 
-        # if self.use_mask or self.use_census_mask:
+        # if self.use_mask:
         self.conv_mask = nn.Sequential(
             Conv(32, 1, nonlin='none'),
             torch.nn.Sigmoid()
@@ -79,7 +77,7 @@ class JointContextNetwork(nn.Module):
         pose_out = self.conv_pose(x_out)
         pred_pose = pose_out.mean(3).mean(2) * 0.1
 
-        # if self.use_mask or self.use_census_mask:
+        # if self.use_mask:
         mask = self.conv_mask(x_out)
         # else:
         #     mask = None

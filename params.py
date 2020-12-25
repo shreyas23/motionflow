@@ -86,7 +86,6 @@ class Params:
         # loss params
         self.parser.add_argument('--flow_reduce_mode', type=str, default="min", help='only do resize augmentation on input data')
         self.parser.add_argument('--use_disp_min', type=bool, default=False, help='only do resize augmentation on input data')
-        self.parser.add_argument('--use_census_mask', type=bool, default=False, help='only do resize augmentation on input data')
         self.parser.add_argument('--use_mask', type=bool, default=False, help="whether to use consensus mask in training procedure")
         self.parser.add_argument('--use_flow_mask', type=bool, default=False, help="whether to use consensus mask in training procedure")
         self.parser.add_argument('--use_static_mask', type=bool, default=False, help="whether to use consensus mask in training procedure")
