@@ -43,9 +43,7 @@ class Loss(nn.Module):
         self.mask_census_w = args.mask_cons_w
         self.flow_diff_thresh = args.flow_diff_thresh
 
-        self.use_mask = args.use_mask
-        self.use_flow_mask = args.use_flow_mask
-        self.use_static_mask = args.use_static_mask
+        self.use_mask = args.train_exp_mask or args.train_census_mask
 
         self.scale_weights = [1.0, 1.0, 1.0, 1.0, 1.0]
 
@@ -179,7 +177,7 @@ class Loss(nn.Module):
         poses_f = output['pose_f']
         poses_b = output['pose_b']
 
-        if self.args.use_mask:
+        if self.use_mask:
             masks_l1 = output['masks_l1']
             masks_l2 = output['masks_l2']
 
@@ -218,7 +216,7 @@ class Loss(nn.Module):
                 pose_f = poses_f
                 pose_b = poses_b
 
-            if self.args.use_mask:
+            if self.use_mask:
                 mask_l1 = interpolate2d_as(masks_l1[s], img_l1)
                 mask_l2 = interpolate2d_as(masks_l2[s], img_l1)
 
@@ -304,51 +302,50 @@ class Loss(nn.Module):
             census_masks_l2.append(census_mask_l2)
 
             """ MASK LOSS """
-            if self.args.use_mask:
-                mask_reg_loss1, mask_sm_loss1, mask_census_loss1 = self.mask_loss(mask_l1, census_mask_l1)
-                mask_loss1 = mask_reg_loss1 * self.mask_reg_w + \
-                             mask_sm_loss1 * self.mask_sm_w + \
-                             mask_census_loss1 * self.mask_census_w
+            mask_reg_loss1, mask_sm_loss1, mask_census_loss1 = self.mask_loss(mask_l1, census_mask_l1)
+            mask_reg_loss2, mask_sm_loss2, mask_census_loss2 = self.mask_loss(mask_l2, census_mask_l2)
 
-                mask_reg_loss2, mask_sm_loss2, mask_census_loss2 = self.mask_loss(mask_l2, census_mask_l2)
-                mask_loss2 = mask_reg_loss2 * self.mask_reg_w + \
-                             mask_sm_loss2 * self.mask_sm_w + \
-                             mask_census_loss2 * self.mask_census_w
-
-                mask_loss = (mask_loss1 * mask_loss2) * self.mask_census_w
-                mask_reg_loss = mask_reg_loss1 + mask_reg_loss2
-                mask_sm_loss = mask_sm_loss1 + mask_sm_loss2
-                mask_census_loss = mask_census_loss1 + mask_census_loss2
-            else:
-                mask_loss = torch.tensor(0, requires_grad=False)
-                mask_reg_loss = torch.tensor(0, requires_grad=False)
-                mask_sm_loss = torch.tensor(0, requires_grad=False)
-                mask_census_loss = torch.tensor(0, requires_grad=False)
-
-            assert (self.mask_reg_w == 0 or self.mask_census_w == 0)
-
-            if self.args.use_mask:
-                if self.mask_reg_w > 0:
+            if self.args.train_exp_mask:
+                if self.args.apply_mask:
                     pose_diff1 = pose_diff1 * mask_l1
                     pose_diff2 = pose_diff2 * mask_l2
                     pose_pts_diff1 = pose_pts_diff1 * mask_l1
                     pose_pts_diff2 = pose_pts_diff2 * mask_l2
-                    if self.args.use_flow_mask:
+
+                    if self.args.apply_flow_mask:
                         sf_diff1 = sf_diff1 * flow_mask_l1
                         sf_diff2 = sf_diff2 * flow_mask_l2
                         sf_pts_diff1 = sf_pts_diff1 * flow_mask_l1
                         sf_pts_diff2 = sf_pts_diff2 * flow_mask_l2
 
-                elif self.mask_census_w > 0:
+                mask_loss1 = mask_reg_loss1 * self.mask_reg_w + \
+                             mask_sm_loss1 * self.mask_sm_w
+                mask_loss2 = mask_reg_loss2 * self.mask_reg_w + \
+                             mask_sm_loss2 * self.mask_sm_w
+                mask_loss = mask_loss1 + mask_loss2
+
+            elif self.args.train_exp_mask:
+                if self.args.apply_mask:
                     pose_diff1 = pose_diff1 * mask_l1.detach()
                     pose_diff2 = pose_diff2 * mask_l2.detach()
                     pose_pts_diff1 = pose_pts_diff1 * mask_l1.detach()
                     pose_pts_diff2 = pose_pts_diff2 * mask_l2.detach()
-                    if self.args.use_flow_mask:
+                    if self.args.apply_flow_mask:
                         sf_diff1 = sf_diff1 * flow_mask_l1.detach()
                         sf_diff2 = sf_diff2 * flow_mask_l2.detach()
                         sf_pts_diff1 = sf_pts_diff1 * flow_mask_l1.detach()
                         sf_pts_diff2 = sf_pts_diff2 * flow_mask_l2.detach()
+
+                mask_loss1 = mask_sm_loss1 * self.mask_sm_w + \
+                             mask_census_loss1 * self.mask_census_w
+                mask_loss2 = mask_sm_loss2 * self.mask_sm_w + \
+                             mask_census_loss2 * self.mask_census_w
+                mask_loss = mask_loss1 + mask_loss2
+            else:
+                mask_loss = torch.tensor(0, requires_grad=False)
+                mask_reg_loss = torch.tensor(0, requires_grad=False)
+                mask_sm_loss = torch.tensor(0, requires_grad=False)
+                mask_census_loss = torch.tensor(0, requires_grad=False)
 
             pose_occ_f = pose_occ_f * left_occ1
             sf_occ_f = sf_occ_f * left_occ1
@@ -370,7 +367,7 @@ class Loss(nn.Module):
             """ FLOW LOSS """
             # do not use min reduction for now... 
             if self.flow_reduce_mode == 'min':
-                assert (not self.args.use_mask), "Cannot use min flow reduction while using explainability mask."
+                assert (not self.use_mask), "Cannot use min flow reduction while using explainability mask."
                 flow_diffs1 = torch.cat([pose_diff1, sf_diff1], dim=1)
                 flow_diffs2 = torch.cat([pose_diff2, sf_diff2], dim=1)
                 min_flow_diff1, _ = flow_diffs1.min(dim=1, keepdim=True)
@@ -459,7 +456,7 @@ class Loss(nn.Module):
             output['output_dict_r']['flows_b'][s].detach_()
             output['output_dict_r']['disps_l1'][s].detach_()
             output['output_dict_r']['disps_l2'][s].detach_()
-            if self.args.use_mask:
+            if self.use_mask:
                 output['output_dict_r']['masks_l1'][s].detach_()
                 output['output_dict_r']['masks_l2'][s].detach_()
 

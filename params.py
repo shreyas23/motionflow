@@ -86,7 +86,9 @@ class Params:
         # loss params
         self.parser.add_argument('--flow_reduce_mode', type=str, default="min", help='only do resize augmentation on input data')
         self.parser.add_argument('--use_disp_min', type=bool, default=False, help='only do resize augmentation on input data')
-        self.parser.add_argument('--use_mask', type=bool, default=False, help="whether to use consensus mask in training procedure")
+        self.parser.add_argument('--train_exp_mask', type=bool, default=False, help="whether to use consensus mask in training procedure")
+        self.parser.add_argument('--train_census_mask', type=bool, default=False, help="whether to use consensus mask in training procedure")
+        self.parser.add_argument('--apply_mask', type=bool, default=False, help="whether to use consensus mask in training procedure")
         self.parser.add_argument('--use_flow_mask', type=bool, default=False, help="whether to use consensus mask in training procedure")
         self.parser.add_argument('--use_static_mask', type=bool, default=False, help="whether to use consensus mask in training procedure")
 
@@ -98,3 +100,4 @@ class Params:
         self.parser.add_argument('--cuda_seed', default=543987, help='random seed for reproducibility')
 
         self.args = self.parser.parse_args()
+        assert (self.args.train_exp_mask ^ self.args.train_census_mask), "Can only either train exp mask or census mask"

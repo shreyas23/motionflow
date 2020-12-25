@@ -25,7 +25,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --mask_reg_w=0.0 \
                  --flow_pts_w=0.2 \
                  --mask_cons_w=0.2 \
-                 --use_mask=True \
+                 --use_census_mask=True \
                  --flow_diff_thresh=1e-2
 
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
@@ -56,4 +56,5 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --flow_pts_w=0.2 \
                  --use_mask=True \
                  --mask_cons_w=0.2 \
+                 --use_census_mask=True \
                  --flow_diff_thresh=1e-2

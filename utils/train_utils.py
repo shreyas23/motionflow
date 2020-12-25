@@ -133,12 +133,17 @@ def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_
     return loss_dict_avg, output_dict, data, n
 
 
-def evaluate(args, model, loss, dataloader, augmentations):
+def evaluate(args, model, loss, dataloader, augmentations, gpu):
     model.eval()
     loss_dict_avg = None
 
     with torch.no_grad():
-        for data_dict in tqdm(dataloader):
+        if gpu == 0:
+            dataloader_iter = tqdm(dataloader)
+        else:
+            dataloader_iter = dataloader
+
+        for data_dict in dataloader_iter:
             # Get input and target tensor keys
             input_keys = list(filter(lambda x: "input" in x, data_dict.keys()))
             target_keys = list(filter(lambda x: "target" in x, data_dict.keys()))
@@ -169,6 +174,8 @@ def evaluate(args, model, loss, dataloader, augmentations):
 
 def visualize_output(args, input_dict, output_dict, epoch, writer, prefix):
 
+    use_mask = args.train_exp_mask or args.train_census_mask
+
     assert (writer is not None), "tensorboard writer not provided"
     assert prefix in {'train', 'val'}
     prefix += '/'
@@ -180,7 +187,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer, prefix):
     disp_l1 = interpolate2d_as(output_dict['disps_l1'][0].detach(), img_l1)
     disp_l2 = interpolate2d_as(output_dict['disps_l2'][0].detach(), img_l1)
     disp_r2 = interpolate2d_as(output_dict['output_dict_r']['disps_l2'][0].detach(), img_l1)
-    if args.use_mask:
+    if use_mask:
         mask_l2 = interpolate2d_as(output_dict['masks_l2'][0].detach(), img_l1)
 
     census_mask_l2 = interpolate2d_as(output_dict['census_masks_l2'][0].detach(), img_l1)
@@ -268,7 +275,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer, prefix):
     # writer.add_mesh(tag='pc_l2', vertices=pts, colors=colors)
 
     # motion mask
-    if args.use_mask:
+    if use_mask:
         writer.add_images(prefix + 'mask', mask_l2, epoch)
 
     writer.add_images(prefix + 'target_census_mask', census_mask_l2, epoch)

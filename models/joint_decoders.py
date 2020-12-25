@@ -8,7 +8,7 @@ class JointDecoder(nn.Module):
     def __init__(self, args, ch_in, num_refs=1, use_bn=False):
         super(JointDecoder, self).__init__()
 
-        self.use_mask = args.use_mask
+        self.use_mask = args.train_exp_mask or args.train_census_mask
         self.convs = nn.Sequential(
             Conv(ch_in, 256),
             Conv(256, 128), 
@@ -44,7 +44,7 @@ class JointContextNetwork(nn.Module):
     def __init__(self, args, in_chs, num_refs=1, use_bn=False):
         super(JointContextNetwork, self).__init__()
 
-        self.use_mask = args.use_mask
+        self.use_mask = args.train_exp_mask or args.train_census_mask
 
         self.convs = nn.Sequential(
             Conv(in_chs, 128, 3, 1, 1, use_bn=use_bn),

@@ -232,7 +232,7 @@ def train(gpu, args):
                 print("\n")
 
             if args.validate:
-                val_loss_avg_dict, val_output_dict, val_input_dict, n = evaluate(args, model, loss, val_dataloader, val_augmentations)
+                val_loss_avg_dict, val_output_dict, val_input_dict, n = evaluate(args, model, loss, val_dataloader, val_augmentations, gpu)
 
                 val_loss_avg_dict['total_loss'].detach_()
 
