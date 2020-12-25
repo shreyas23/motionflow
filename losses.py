@@ -322,6 +322,9 @@ class Loss(nn.Module):
                              mask_sm_loss1 * self.mask_sm_w
                 mask_loss2 = mask_reg_loss2 * self.mask_reg_w + \
                              mask_sm_loss2 * self.mask_sm_w
+                mask_reg_loss = mask_reg_loss1 + mask_reg_loss2
+                mask_sm_loss = mask_sm_loss1 + mask_sm_loss2
+                mask_census_loss = mask_census_loss1 + mask_census_loss2
                 mask_loss = mask_loss1 + mask_loss2
 
             elif self.args.train_census_mask:
@@ -340,6 +343,10 @@ class Loss(nn.Module):
                              mask_census_loss1 * self.mask_census_w
                 mask_loss2 = mask_sm_loss2 * self.mask_sm_w + \
                              mask_census_loss2 * self.mask_census_w
+
+                mask_reg_loss = mask_reg_loss1 + mask_reg_loss2
+                mask_sm_loss = mask_sm_loss1 + mask_sm_loss2
+                mask_census_loss = mask_census_loss1 + mask_census_loss2
                 mask_loss = mask_loss1 + mask_loss2
             else:
                 mask_loss = torch.tensor(0, requires_grad=False)
