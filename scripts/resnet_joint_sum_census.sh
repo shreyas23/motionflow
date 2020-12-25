@@ -13,7 +13,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --num_workers=16 \
                  --start_epoch=1 \
                  --epochs=40 \
-                 --batch_size=4 \
+                 --batch_size=2 \
                  --lr=2e-4 \
                  --lr_gamma=0.5 \
                  --lr_sched_type='step' \
@@ -25,6 +25,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --mask_reg_w=0.0 \
                  --flow_pts_w=0.2 \
                  --mask_cons_w=0.2 \
+                 --use_mask=True \
                  --flow_diff_thresh=1e-2
 
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
@@ -40,13 +41,13 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --encoder_name='resnet' \
                  --num_examples=-1 \
                  --num_workers=16 \
-                 --start_epoch=51 \
+                 --start_epoch=41 \
                  --epochs=15 \
-                 --batch_size=4 \
+                 --batch_size=2 \
                  --lr=1e-5 \
                  --lr_gamma=0.5 \
                  --lr_sched_type='step' \
-                 --milestones 55 60 63 \
+                 --milestones 45 50 53 \
                  --flow_reduce_mode='sum' \
                  --disp_sm_w=0.1 \
                  --flow_sm_w=200 \
