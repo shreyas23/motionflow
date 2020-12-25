@@ -197,28 +197,9 @@ class Loss(nn.Module):
             disp_r1 = disps_r1[s]
             disp_r2 = disps_r2[s]
 
-            # flow_f = interpolate2d_as(flow_f, img_l1)
-            # flow_b = interpolate2d_as(flow_b, img_l2)
-            # disp_l1 = interpolate2d_as(disp_l1, img_l1)
-            # disp_l2 = interpolate2d_as(disp_l2, img_l2)
-            # disp_r1 = interpolate2d_as(disp_r1, img_l1)
-            # disp_r2 = interpolate2d_as(disp_r2, img_l2)
-
-            img_l1 = interpolate2d_as(img_l1, disp_l1)
-            img_l2 = interpolate2d_as(img_l2, disp_l2)
-            img_r1 = interpolate2d_as(img_r1, disp_r1)
-            img_r2 = interpolate2d_as(img_r2, disp_r2)
-
-            if isinstance(poses_f, list) and isinstance(poses_b, list):
-                pose_b = poses_b[s]
-                pose_f = poses_f[s]
-            else:
-                pose_f = poses_f
-                pose_b = poses_b
-
             if self.use_mask:
-                mask_l1 = interpolate2d_as(masks_l1[s], img_l1)
-                mask_l2 = interpolate2d_as(masks_l2[s], img_l1)
+                mask_l1 = masks_l1[s]
+                mask_l2 = masks_l2[s]
 
                 if self.args.use_flow_mask:
                     flow_mask_l1 = 1.0 - mask_l1
@@ -229,6 +210,18 @@ class Loss(nn.Module):
             else:
                 mask_l1 = None
                 mask_l2 = None
+
+            if isinstance(poses_f, list) and isinstance(poses_b, list):
+                pose_b = poses_b[s]
+                pose_f = poses_f[s]
+            else:
+                pose_f = poses_f
+                pose_b = poses_b
+
+            img_l1 = interpolate2d_as(img_l1, disp_l1)
+            img_l2 = interpolate2d_as(img_l2, disp_l2)
+            img_r1 = interpolate2d_as(img_r1, disp_r1)
+            img_r2 = interpolate2d_as(img_r2, disp_r2)
 
             # depth diffs
             disp_diff1, left_occ1, loss_disp_sm1 = self.depth_loss(disp_l1, disp_r1, img_l1, img_r1, s)
@@ -288,8 +281,6 @@ class Loss(nn.Module):
             depth_loss = depth_loss1 + depth_loss2
 
             """ CENSUS MASK """
-            # pose_sf_f = pose2sceneflow(depth_l1.squeeze(dim=1), None, torch.inverse(K_l1_s), pose_mat=pose_f)
-            # pose_sf_b = pose2sceneflow(depth_l2.squeeze(dim=1), None, torch.inverse(K_l2_s), pose_mat=pose_b)
             pose_of_f = pose2flow(depth_l1.squeeze(dim=1), None, K_l1_s, torch.inverse(K_l1_s), pose_mat=pose_f)
             pose_of_b = pose2flow(depth_l2.squeeze(dim=1), None, K_l2_s, torch.inverse(K_l2_s), pose_mat=pose_b)
             of_f = projectSceneFlow2Flow(K_l1_s, flow_f, disp_l1)
@@ -324,8 +315,8 @@ class Loss(nn.Module):
                              mask_sm_loss2 * self.mask_sm_w
                 mask_reg_loss = mask_reg_loss1 + mask_reg_loss2
                 mask_sm_loss = mask_sm_loss1 + mask_sm_loss2
-                mask_census_loss = mask_census_loss1 + mask_census_loss2
                 mask_loss = mask_loss1 + mask_loss2
+                mask_census_loss = torch.tensor(0, requires_grad=False)
 
             elif self.args.train_census_mask:
                 if self.args.apply_mask:
@@ -344,10 +335,10 @@ class Loss(nn.Module):
                 mask_loss2 = mask_sm_loss2 * self.mask_sm_w + \
                              mask_census_loss2 * self.mask_census_w
 
-                mask_reg_loss = mask_reg_loss1 + mask_reg_loss2
                 mask_sm_loss = mask_sm_loss1 + mask_sm_loss2
                 mask_census_loss = mask_census_loss1 + mask_census_loss2
                 mask_loss = mask_loss1 + mask_loss2
+                mask_reg_loss = torch.tensor(0, requires_grad=False)
             else:
                 mask_loss = torch.tensor(0, requires_grad=False)
                 mask_reg_loss = torch.tensor(0, requires_grad=False)
