@@ -35,9 +35,11 @@ class JointModel(nn.Module):
         if self._args.encoder_name == "resnet":
             self.feature_pyramid_extractor = ResnetEncoder(args, num_layers=18, pretrained=args.pt_encoder, num_input_images=1)
             self.num_chs = self.feature_pyramid_extractor.num_ch_enc
-        else:
+        elif self._args.encoder_name == 'pwc':
             self.num_chs = [3, 32, 64, 96, 128, 192, 256]
             self.feature_pyramid_extractor = FeatureExtractor(self.num_chs, use_bn=args.use_bn)
+        else:
+            raise NotImplementedError
 
         self.warping_layer_sf = WarpingLayer_SF()
         self.warping_layer_pose = WarpingLayer_Pose()
@@ -80,10 +82,6 @@ class JointModel(nn.Module):
 
             elif isinstance(layer, nn.Sequential):
                 pass
-
-        # for decoder in self.flow_estimators:
-        #     nn.init.kaiming_uniform_(decoder.conv_pose.conv[0].weight)
-        # nn.init.kaiming_uniform_(self.context_networks.conv_pose.conv[0].weight)
 
     def run_pwc(self, input_dict, x1_raw, x2_raw, k1, k2):
             
@@ -140,33 +138,23 @@ class JointModel(nn.Module):
             out_corr_relu_f = self.leakyRELU(out_corr_f)
             out_corr_relu_b = self.leakyRELU(out_corr_b)
 
-            # out_corr_pose_f = Correlation.apply(x1, x2_warp_pose, self.corr_params)
-            # out_corr_pose_b = Correlation.apply(x2, x1_warp_pose, self.corr_params)
-            # out_corr_pose_relu_f = self.leakyRELU(out_corr_pose_f)
-            # out_corr_pose_relu_b = self.leakyRELU(out_corr_pose_b)
-
             # monosf estimator
             if l == 0:
                 x1_out, flow_f, disp_l1, mask_l1, pose_f, pose_f_out = self.flow_estimators[l](torch.cat([out_corr_relu_f, x1, x2_warp_pose], dim=1))
                 x2_out, flow_b, disp_l2, mask_l2,      _, pose_b_out = self.flow_estimators[l](torch.cat([out_corr_relu_b, x2, x1_warp_pose], dim=1))
-                # x2_out, flow_b, disp_l2, mask_l2, pose_b, pose_b_out = self.flow_estimators[l](torch.cat([out_corr_relu_b, out_corr_pose_relu_b, x2], dim=1))
                 pose_mat_f = pose_vec2mat(pose_f)
                 pose_mat_b = invert_pose(pose_mat_f)
-                # pose_mat_b = pose_vec2mat(pose_b)
             else:
                 x1_out, flow_f_res, disp_l1, mask_l1, pose_f_res, pose_f_out = self.flow_estimators[l](torch.cat([
                     out_corr_relu_f, x1, x2_warp_pose, x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
                 x2_out, flow_b_res, disp_l2, mask_l2,          _, pose_b_out = self.flow_estimators[l](torch.cat([
                     out_corr_relu_b, x2, x1_warp_pose, x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
-                # x2_out, flow_b_res, disp_l2, mask_l2, pose_b_res, pose_b_out = self.flow_estimators[l](torch.cat([
-                #     out_corr_relu_b, out_corr_pose_relu_b, x2, x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
 
                 flow_f = flow_f + flow_f_res
                 flow_b = flow_b + flow_b_res
 
                 pose_mat_f_res = pose_vec2mat(pose_f_res)
                 pose_mat_b_res = invert_pose(pose_mat_f_res)
-                # pose_mat_b_res = pose_vec2mat(pose_b_res)
 
                 pose_mat_f = add_pose(pose_mat_f, pose_mat_f_res)
                 pose_mat_b = add_pose(pose_mat_b, pose_mat_b_res)
@@ -194,7 +182,6 @@ class JointModel(nn.Module):
 
                 pose_mat_f_res = pose_vec2mat(pose_f_res)
                 pose_mat_b_res = invert_pose(pose_mat_f_res)
-                # pose_mat_b_res = pose_vec2mat(pose_b_res)
 
                 pose_mat_f = add_pose(pose_mat_f, pose_mat_f_res)
                 pose_mat_b = add_pose(pose_mat_b, pose_mat_b_res)

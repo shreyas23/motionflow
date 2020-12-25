@@ -163,10 +163,17 @@ def train(gpu, args):
 
     # set up logging
     if not args.no_logging:
-        writer = SummaryWriter(args.log_dir) if gpu == 0 else None
         if gpu == 0:
-            with open(os.path.join(args.log_dir, 'args.txt'), 'w') as f:
+            writer = SummaryWriter(args.log_dir)
+            suffix = 'args.txt'
+            args_fp = os.path.join(args.log_dir, suffix)
+            if os.path.isfile(args_fp):
+                suffix = 'args_census.txt' 
+                args_fp = os.path.join(args.log_dir, suffix)
+            with open(args_fp, 'w') as f:
                 json.dump(args.__dict__, f, indent=2)
+        else:
+            writer = None
 
     curr_epoch = args.start_epoch
 

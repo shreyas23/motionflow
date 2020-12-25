@@ -62,7 +62,7 @@ def train(args):
         train_dataset = KITTI_Raw_KittiSplit_Train(args, DATA_ROOT, num_examples=args.num_examples)
         train_dataloader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True)
         if args.validate:
-            val_dataset = KITTI_Raw_KittiSplit_Valid(args, DATA_ROOT)
+            val_dataset = KITTI_Raw_KittiSplit_Valid(args, DATA_ROOT, num_examples=args.num_examples)
             val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True) if val_dataset else None
         else:
             val_dataset = None
@@ -72,7 +72,7 @@ def train(args):
         train_dataset = KITTI_Raw_EigenSplit_Train(args, DATA_ROOT, num_examples=args.num_examples)
         train_dataloader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True)
         if args.validate:
-            val_dataset = KITTI_Raw_EigenSplit_Valid(args, DATA_ROOT)
+            val_dataset = KITTI_Raw_EigenSplit_Valid(args, DATA_ROOT, num_examples=args.num_examples)
             val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True) if val_dataset else None
         else:
             val_dataset = None
@@ -106,21 +106,16 @@ def train(args):
         lr_scheduler = None
 
     # set up logging
+    if args.exp_name == "":
+        exp_name = datetime.datetime.now().strftime("%d%m%y-%I%M%S")
+    else:
+        exp_name = args.exp_name
+
+    log_dir = os.path.join(args.log_root, exp_name)
+    print(f"All logs will be stored at: {log_dir}")
+
     if not args.no_logging:
-        log_dir = os.path.join(args.log_root, args.exp_dir)
-        os.makedirs(log_dir, exist_ok=True)
-
-        if args.exp_name == "":
-            exp_name = datetime.datetime.now().strftime("%d%m%y-%I%M%S")
-        else:
-            exp_name = args.exp_name
-
-        log_dir = os.path.join(log_dir, exp_name)
-
-        print(f"All logs will be stored at: {log_dir}")
-
         writer = SummaryWriter(log_dir)
-    
         with open(os.path.join(log_dir, 'args.txt'), 'w') as f:
             json.dump(args.__dict__, f, indent=2)
 
