@@ -296,14 +296,14 @@ class Loss(nn.Module):
             of_b = projectSceneFlow2Flow(K_l2_s, flow_b, disp_l2)
             flow_diff_f = _elementwise_epe(pose_of_f, of_f)
             flow_diff_b = _elementwise_epe(pose_of_b, of_b)
-            census_mask_l1 = self.create_census_mask(flow_diff_f, pose_diff1, sf_diff1)
-            census_mask_l2 = self.create_census_mask(flow_diff_b, pose_diff2, sf_diff2)
-            census_masks_l1.append(census_mask_l1)
-            census_masks_l2.append(census_mask_l2)
+            census_mask_tgt_l1 = self.create_census_mask(flow_diff_f, pose_diff1, sf_diff1)
+            census_mask_tgt_l2 = self.create_census_mask(flow_diff_b, pose_diff2, sf_diff2)
+            census_masks_l1.append(census_mask_tgt_l1)
+            census_masks_l2.append(census_mask_tgt_l2)
 
             """ MASK LOSS """
-            mask_reg_loss1, mask_sm_loss1, mask_census_loss1 = self.mask_loss(mask_l1, census_mask_l1)
-            mask_reg_loss2, mask_sm_loss2, mask_census_loss2 = self.mask_loss(mask_l2, census_mask_l2)
+            mask_reg_loss1, mask_sm_loss1, mask_census_loss1 = self.mask_loss(mask_l1, census_mask_tgt_l1)
+            mask_reg_loss2, mask_sm_loss2, mask_census_loss2 = self.mask_loss(mask_l2, census_mask_tgt_l2)
 
             if self.args.train_exp_mask:
                 if self.args.apply_mask:
@@ -324,7 +324,7 @@ class Loss(nn.Module):
                              mask_sm_loss2 * self.mask_sm_w
                 mask_loss = mask_loss1 + mask_loss2
 
-            elif self.args.train_exp_mask:
+            elif self.args.train_census_mask:
                 if self.args.apply_mask:
                     pose_diff1 = pose_diff1 * mask_l1.detach()
                     pose_diff2 = pose_diff2 * mask_l2.detach()
