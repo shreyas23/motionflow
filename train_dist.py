@@ -87,8 +87,10 @@ def train(gpu, args):
 
     if args.model_name == 'joint':
         model = JointModel(args).cuda(device=gpu)
-    else:
+    elif args.model_name == 'split':
         model = Model(args).cuda(device=gpu)
+    else:
+        raise NotImplementedError
 
     loss = Loss(args).cuda(device=gpu)
 

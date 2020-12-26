@@ -28,13 +28,14 @@ class Model(nn.Module):
 
         self.args = args
         self.num_scales = args.num_scales
+        self.use_mask = args.train_census_mask or args.train_exp_mask
 
         self.encoder = ResnetEncoder(args, num_layers=18, pretrained=args.pt_encoder, num_input_images=1)
         self.encoder_chs = self.encoder.num_ch_enc
 
         self.disp_decoder = DispDecoder(num_ch_enc=self.encoder_chs, scales=range(5))
         self.pose_decoder = PoseDecoder(self.encoder_chs, 2)
-        if args.use_mask:
+        if self.use_mask:
             self.mask_decoder = MaskDecoder(num_ch_enc=self.encoder_chs, scales=range(5))
 
         self.sf_out_chs = 32
@@ -46,7 +47,7 @@ class Model(nn.Module):
         if args.do_pose_c2f:
             self.pose_layers = nn.ModuleList()
 
-        self.context_network = ContextNetworkSF(in_chs=(self.sf_out_chs + 3 + 1 + int(self.args.use_mask)))
+        self.context_network = ContextNetworkSF(in_chs=(self.sf_out_chs + 3 + 1 + int(self.use_mask)))
 
         self.search_range = 4
         self.output_level = 4
@@ -107,7 +108,7 @@ class Model(nn.Module):
         disps_l1 = self.disp_decoder(x1_features)
         disps_l2 = self.disp_decoder(x2_features)
         
-        if self.args.use_mask:
+        if self.use_mask:
             masks_l1 = self.mask_decoder(x1_features)
             masks_l2 = self.mask_decoder(x2_features)
 
@@ -155,7 +156,7 @@ class Model(nn.Module):
             else:
                 disp_l1 = interpolate2d_as(disps_l1[-1], flow_f)
                 disp_l2 = interpolate2d_as(disps_l2[-1], flow_b)
-                if self.args.use_mask:
+                if self.use_mask:
                     mask_l1 = interpolate2d_as(masks_l1[-1], flow_f)
                     mask_l2 = interpolate2d_as(masks_l2[-1], flow_b)
                     flow_res_f = self.context_network(torch.cat([x1_out, flow_f, disp_l1, mask_l1], dim=1))
@@ -177,7 +178,7 @@ class Model(nn.Module):
         output_dict["disps_l1"] = upsample_outputs_as(disps_l1[::-1], x1_features)
         output_dict["disps_l2"] = upsample_outputs_as(disps_l2[::-1], x1_features)
 
-        if self.args.use_mask:
+        if self.use_mask:
             output_dict["masks_l1"] = upsample_outputs_as(masks_l1[::-1], x1_features)
             output_dict["masks_l2"] = upsample_outputs_as(masks_l2[::-1], x1_features)
         
@@ -223,7 +224,7 @@ class Model(nn.Module):
                 output_dict_r['flows_b'][ii] = flow_horizontal_flip(output_dict_r['flows_b'][ii])
                 output_dict_r['disps_l1'][ii] = torch.flip(output_dict_r['disps_l1'][ii], [3])
                 output_dict_r['disps_l2'][ii] = torch.flip(output_dict_r['disps_l2'][ii], [3])
-                if self.args.use_mask:
+                if self.use_mask:
                     output_dict_r['masks_l1'][ii] = torch.flip(output_dict_r['masks_l1'][ii], [3])
                     output_dict_r['masks_l2'][ii] = torch.flip(output_dict_r['masks_l2'][ii], [3])
 
@@ -257,7 +258,7 @@ class Model(nn.Module):
                 flow_b_pp.append(post_processing(output_dict['flows_b'][ii], flow_horizontal_flip(output_dict_flip['flows_b'][ii])))
                 disp_l1_pp.append(post_processing(output_dict['disps_l1'][ii], torch.flip(output_dict_flip['disps_l1'][ii], [3])))
                 disp_l2_pp.append(post_processing(output_dict['disps_l2'][ii], torch.flip(output_dict_flip['disps_l2'][ii], [3])))
-                if self.args.use_mask:
+                if self.use_mask:
                     mask_l1_pp.append(post_processing(output_dict['masks_l1'][ii], torch.flip(output_dict_flip['masks_l1'][ii], [3])))
                     mask_l2_pp.append(post_processing(output_dict['masks_l2'][ii], torch.flip(output_dict_flip['masks_l2'][ii], [3])))
 
@@ -265,7 +266,7 @@ class Model(nn.Module):
             output_dict['flows_b_pp'] = flow_b_pp
             output_dict['disps_l1_pp'] = disp_l1_pp
             output_dict['disps_l2_pp'] = disp_l2_pp
-            if self.args.use_mask:
+            if self.use_mask:
                 output_dict['masks_l1_pp'] = disp_l1_pp
                 output_dict['masks_l2_pp'] = disp_l2_pp
 
