@@ -201,7 +201,7 @@ class Loss(nn.Module):
                 mask_l1 = masks_l1[s]
                 mask_l2 = masks_l2[s]
 
-                if self.args.use_flow_mask:
+                if self.args.apply_flow_mask:
                     flow_mask_l1 = 1.0 - mask_l1
                     flow_mask_l2 = 1.0 - mask_l2
                 else:
