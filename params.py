@@ -89,7 +89,7 @@ class Params:
         self.parser.add_argument('--train_exp_mask', type=bool, default=False, help="whether to use consensus mask in training procedure")
         self.parser.add_argument('--train_census_mask', type=bool, default=False, help="whether to use consensus mask in training procedure")
         self.parser.add_argument('--apply_mask', type=bool, default=False, help="whether to use consensus mask in training procedure")
-        self.parser.add_argument('--use_flow_mask', type=bool, default=False, help="whether to use consensus mask in training procedure")
+        self.parser.add_argument('--apply_flow_mask', type=bool, default=False, help="whether to use consensus mask in training procedure")
         self.parser.add_argument('--use_static_mask', type=bool, default=False, help="whether to use consensus mask in training procedure")
 
         # etc.
