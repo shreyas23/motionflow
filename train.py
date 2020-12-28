@@ -18,6 +18,7 @@ from datasets.kitti_raw_monosf import KITTI_Raw_KittiSplit_Train, KITTI_Raw_Kitt
 from datasets.kitti_raw_monosf import KITTI_Raw_EigenSplit_Train, KITTI_Raw_EigenSplit_Valid
 from models.JointModel import JointModel
 from models.Model import Model
+from models.ResModel import ResModel
 from losses import Loss
 
 from params import Params
@@ -49,6 +50,8 @@ def train(args):
 
     if args.model_name == 'joint':
         model = JointModel(args).cuda()
+    elif args.model_name == 'residual':
+        model = ResModel(args).cuda()
     else:
         model = Model(args).cuda() 
 

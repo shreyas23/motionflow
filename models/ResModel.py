@@ -56,9 +56,9 @@ class ResModel(nn.Module):
             if l > self.output_level:
                 break
             if l == 0:
-                num_ch_in = self.dim_corr + ch + ch
+                num_ch_in = self.dim_corr + ch
             else:
-                num_ch_in = self.dim_corr + ch + ch + self.out_ch_size + 3 + 1 + 6 + 1
+                num_ch_in = self.dim_corr + ch + self.out_ch_size + 3 + 1 + 1 + 6
                 self.upconv_layers.append(UpConv(self.out_ch_size, self.out_ch_size, 3, 2))
 
             layer_sf = JointDecoder(args, num_ch_in, use_bn=args.use_bn)
@@ -169,8 +169,8 @@ class ResModel(nn.Module):
             k1_s = intrinsic_scale(k1, rel_scale[:, 0], rel_scale[:, 1])
             k2_s = intrinsic_scale(k2, rel_scale[:, 0], rel_scale[:, 1])
 
-            pose_flow_f = pose2sceneflow(depth_l1, None, torch.inverse(k1_s), pose_mat=pose_mat_f)
-            pose_flow_b = pose2sceneflow(depth_l2, None, torch.inverse(k2_s), pose_mat=pose_mat_b)
+            pose_flow_f = pose2sceneflow(depth_l1.squeeze(dim=1), None, torch.inverse(k1_s), pose_mat=pose_mat_f)
+            pose_flow_b = pose2sceneflow(depth_l2.squeeze(dim=1), None, torch.inverse(k2_s), pose_mat=pose_mat_b)
             flow_f = pose_flow_f + flow_f
             flow_b = pose_flow_b + flow_b
 
@@ -189,8 +189,8 @@ class ResModel(nn.Module):
                 poses_f.append(pose_mat_f)
                 poses_b.append(pose_mat_b)
             else:
-                flow_res_f, disp_l1, pose_f_res, mask_l1 = self.context_networks(torch.cat([x1_out, flow_f, disp_l1, mask_l1], dim=1))
-                flow_res_b, disp_l2,          _, mask_l2 = self.context_networks(torch.cat([x2_out, flow_b, disp_l2, mask_l2], dim=1))
+                flow_res_f, disp_l1, pose_f_res, mask_l1 = self.context_networks(torch.cat([x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
+                flow_res_b, disp_l2,          _, mask_l2 = self.context_networks(torch.cat([x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
 
                 flow_f = flow_f + flow_res_f
                 flow_b = flow_b + flow_res_b
@@ -214,8 +214,8 @@ class ResModel(nn.Module):
                 k1_s = intrinsic_scale(k1, rel_scale[:, 0], rel_scale[:, 1])
                 k2_s = intrinsic_scale(k2, rel_scale[:, 0], rel_scale[:, 1])
 
-                pose_flow_f = pose2sceneflow(depth_l1, None, torch.inverse(k1_s), pose_mat=pose_mat_f)
-                pose_flow_b = pose2sceneflow(depth_l2, None, torch.inverse(k2_s), pose_mat=pose_mat_b)
+                pose_flow_f = pose2sceneflow(depth_l1.squeeze(dim=1), None, torch.inverse(k1_s), pose_mat=pose_mat_f)
+                pose_flow_b = pose2sceneflow(depth_l2.squeeze(dim=1), None, torch.inverse(k2_s), pose_mat=pose_mat_b)
                 flow_f = pose_flow_f + flow_f
                 flow_b = pose_flow_b + flow_b
 
@@ -241,10 +241,6 @@ class ResModel(nn.Module):
             output_dict['masks_l2'] = upsample_outputs_as(masks_2[::-1], x1_rev)
         output_dict["pose_f"] = poses_f[::-1]
         output_dict["pose_b"] = poses_b[::-1]
-
-        print(len(output_dict['flows_f']))
-        print(len(output_dict['pose_f']))
-        exit()
 
         return output_dict
 

@@ -186,7 +186,7 @@ class Loss(nn.Module):
         
         assert(len(disps_l1) == len(flows_f))
         assert(len(disps_l2) == len(flows_b))
-        assert (len(poses_b) == len(flows_b)),  f"{len(poses_b)} {len(flows_b)}"
+        assert (len(poses_b) == len(flows_b)), f"{len(poses_b)} {len(flows_b)}"
 
         num_scales = len(disps_l1)
         for s in range(num_scales):
