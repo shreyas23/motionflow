@@ -23,6 +23,7 @@ from datasets.kitti_raw_monosf import KITTI_Raw_KittiSplit_Train, KITTI_Raw_Kitt
 from datasets.kitti_raw_monosf import KITTI_Raw_EigenSplit_Train, KITTI_Raw_EigenSplit_Valid
 from models.JointModel import JointModel
 from models.Model import Model
+from models.ResModel import ResModel
 from losses import Loss
 from old_losses import Loss_SceneFlow_SelfSup_JointIter
 
@@ -89,6 +90,8 @@ def train(gpu, args):
         model = JointModel(args).cuda(device=gpu)
     elif args.model_name == 'split':
         model = Model(args).cuda(device=gpu)
+    elif args.model_name == 'residual':
+        model = ResModel(args).cuda(device=gpu)
     else:
         raise NotImplementedError
 

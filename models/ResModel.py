@@ -21,9 +21,9 @@ from utils.helpers import Warp_SceneFlow, Warp_Pose, add_pose, invert_pose
 from.common import UpConv
 
 
-class JointModel(nn.Module):
+class ResModel(nn.Module):
     def __init__(self, args):
-        super(JointModel, self).__init__()
+        super(ResModel, self).__init__()
 
         self.args = args
         self.use_mask = args.train_exp_mask or args.train_census_mask
@@ -105,16 +105,14 @@ class JointModel(nn.Module):
         masks_1 = []
         masks_2 = []
 
+        aug_size = input_dict['aug_size']
+
         for l, (x1, x2) in enumerate(zip(x1_pyramid[::-1], x2_pyramid[::-1])):
 
             # warping
             if l == 0:
                 x2_warp = x2
                 x1_warp = x1
-
-                x2_warp_pose = x2
-                x1_warp_pose = x1
-
             else:
                 flow_f = interpolate2d_as(flow_f, x1, mode="bilinear")
                 flow_b = interpolate2d_as(flow_b, x1, mode="bilinear")
@@ -124,14 +122,12 @@ class JointModel(nn.Module):
                 pose_b_out = interpolate2d_as(pose_b_out, x1, mode="bilinear")
                 mask_l1 = interpolate2d_as(mask_l1, x1, mode="bilinear")
                 mask_l2 = interpolate2d_as(mask_l2, x1, mode="bilinear")
+
                 x1_out = self.upconv_layers[l-1](x1_out)
                 x2_out = self.upconv_layers[l-1](x2_out)
 
                 x2_warp = self.warping_layer_sf(x2, flow_f, disp_l1, k1, input_dict['aug_size'])
                 x1_warp = self.warping_layer_sf(x1, flow_b, disp_l2, k2, input_dict['aug_size'])
-
-                x2_warp_pose = self.warping_layer_pose(x2, pose_mat_f, disp_l1, k1, input_dict['aug_size'])
-                x1_warp_pose = self.warping_layer_pose(x1, pose_mat_b, disp_l2, k2, input_dict['aug_size'])
 
             # correlation
             out_corr_f = Correlation.apply(x1, x2_warp, self.corr_params)
@@ -141,19 +137,15 @@ class JointModel(nn.Module):
 
             # monosf estimator
             if l == 0:
-                x1_out, flow_f, disp_l1, mask_l1, pose_f, pose_f_out = self.flow_estimators[l](torch.cat([out_corr_relu_f, x1, x2_warp_pose], dim=1))
-                x2_out, flow_b, disp_l2, mask_l2,      _, pose_b_out = self.flow_estimators[l](torch.cat([out_corr_relu_b, x2, x1_warp_pose], dim=1))
+                x1_out, flow_f, disp_l1, mask_l1, pose_f, pose_f_out = self.flow_estimators[l](torch.cat([out_corr_relu_f, x1], dim=1))
+                x2_out, flow_b, disp_l2, mask_l2,      _, pose_b_out = self.flow_estimators[l](torch.cat([out_corr_relu_b, x2], dim=1))
                 pose_mat_f = pose_vec2mat(pose_f)
                 pose_mat_b = invert_pose(pose_mat_f)
-
-                depth_l1 = disp2depth_kitti(disp_l1, k1[:, 0, 0])
-                depth_l2 = disp2depth_kitti(disp_l1, k1[:, 0, 0])
-                pose_flow_f = p(depth_l1, None, pose_mat=pose_mat_b)
             else:
                 x1_out, flow_f_res, disp_l1, mask_l1, pose_f_res, pose_f_out = self.flow_estimators[l](torch.cat([
-                    out_corr_relu_f, x1, x2_warp_pose, x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
+                    out_corr_relu_f, x1, x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
                 x2_out, flow_b_res, disp_l2, mask_l2,          _, pose_b_out = self.flow_estimators[l](torch.cat([
-                    out_corr_relu_b, x2, x1_warp_pose, x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
+                    out_corr_relu_b, x2, x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
 
                 flow_f = flow_f + flow_f_res
                 flow_b = flow_b + flow_b_res
@@ -163,6 +155,24 @@ class JointModel(nn.Module):
 
                 pose_mat_f = add_pose(pose_mat_f, pose_mat_f_res)
                 pose_mat_b = add_pose(pose_mat_b, pose_mat_b_res)
+
+            depth_l1 = disp2depth_kitti(disp_l1, k1[:, 0, 0])
+            depth_l2 = disp2depth_kitti(disp_l2, k2[:, 0, 0])
+
+            _, _, h, w = depth_l1.shape
+            local_scale = torch.zeros_like(aug_size)
+            local_scale[:, 0] = h
+            local_scale[:, 1] = w
+
+            rel_scale = local_scale / aug_size
+
+            k1_s = intrinsic_scale(k1, rel_scale[:, 0], rel_scale[:, 1])
+            k2_s = intrinsic_scale(k2, rel_scale[:, 0], rel_scale[:, 1])
+
+            pose_flow_f = pose2sceneflow(depth_l1, None, torch.inverse(k1_s), pose_mat=pose_mat_f)
+            pose_flow_b = pose2sceneflow(depth_l2, None, torch.inverse(k2_s), pose_mat=pose_mat_b)
+            flow_f = pose_flow_f + flow_f
+            flow_b = pose_flow_b + flow_b
 
             # upsampling or post-processing
             if l != self.output_level:
@@ -179,8 +189,8 @@ class JointModel(nn.Module):
                 poses_f.append(pose_mat_f)
                 poses_b.append(pose_mat_b)
             else:
-                flow_res_f, disp_l1, pose_f_res, mask_l1 = self.context_networks(torch.cat([x1_out, flow_f, disp_l1, pose_f_out, mask_l1], dim=1))
-                flow_res_b, disp_l2,          _, mask_l2 = self.context_networks(torch.cat([x2_out, flow_b, disp_l2, pose_b_out, mask_l2], dim=1))
+                flow_res_f, disp_l1, pose_f_res, mask_l1 = self.context_networks(torch.cat([x1_out, flow_f, disp_l1, mask_l1], dim=1))
+                flow_res_b, disp_l2,          _, mask_l2 = self.context_networks(torch.cat([x2_out, flow_b, disp_l2, mask_l2], dim=1))
 
                 flow_f = flow_f + flow_res_f
                 flow_b = flow_b + flow_res_b
@@ -190,6 +200,24 @@ class JointModel(nn.Module):
 
                 pose_mat_f = add_pose(pose_mat_f, pose_mat_f_res)
                 pose_mat_b = add_pose(pose_mat_b, pose_mat_b_res)
+
+                depth_l1 = disp2depth_kitti(disp_l1, k1[:, 0, 0])
+                depth_l2 = disp2depth_kitti(disp_l1, k1[:, 0, 0])
+
+                _, _, h, w = depth_l1.shape
+                local_scale = torch.zeros_like(aug_size)
+                local_scale[:, 0] = h
+                local_scale[:, 1] = w
+
+                rel_scale = local_scale / aug_size
+
+                k1_s = intrinsic_scale(k1, rel_scale[:, 0], rel_scale[:, 1])
+                k2_s = intrinsic_scale(k2, rel_scale[:, 0], rel_scale[:, 1])
+
+                pose_flow_f = pose2sceneflow(depth_l1, None, torch.inverse(k1_s), pose_mat=pose_mat_b)
+                pose_flow_b = pose2sceneflow(depth_l2, None, torch.inverse(k2_s), pose_mat=pose_mat_f)
+                flow_f = pose_flow_f + flow_f
+                flow_b = pose_flow_b + flow_b
 
                 sceneflows_f.append(flow_f)
                 sceneflows_b.append(flow_b)
