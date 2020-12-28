@@ -202,7 +202,7 @@ class ResModel(nn.Module):
                 pose_mat_b = add_pose(pose_mat_b, pose_mat_b_res)
 
                 depth_l1 = disp2depth_kitti(disp_l1, k1[:, 0, 0])
-                depth_l2 = disp2depth_kitti(disp_l1, k1[:, 0, 0])
+                depth_l2 = disp2depth_kitti(disp_l2, k2[:, 0, 0])
 
                 _, _, h, w = depth_l1.shape
                 local_scale = torch.zeros_like(aug_size)
@@ -214,8 +214,8 @@ class ResModel(nn.Module):
                 k1_s = intrinsic_scale(k1, rel_scale[:, 0], rel_scale[:, 1])
                 k2_s = intrinsic_scale(k2, rel_scale[:, 0], rel_scale[:, 1])
 
-                pose_flow_f = pose2sceneflow(depth_l1, None, torch.inverse(k1_s), pose_mat=pose_mat_b)
-                pose_flow_b = pose2sceneflow(depth_l2, None, torch.inverse(k2_s), pose_mat=pose_mat_f)
+                pose_flow_f = pose2sceneflow(depth_l1, None, torch.inverse(k1_s), pose_mat=pose_mat_f)
+                pose_flow_b = pose2sceneflow(depth_l2, None, torch.inverse(k2_s), pose_mat=pose_mat_b)
                 flow_f = pose_flow_f + flow_f
                 flow_b = pose_flow_b + flow_b
 
@@ -241,6 +241,10 @@ class ResModel(nn.Module):
             output_dict['masks_l2'] = upsample_outputs_as(masks_2[::-1], x1_rev)
         output_dict["pose_f"] = poses_f[::-1]
         output_dict["pose_b"] = poses_b[::-1]
+
+        print(len(output_dict['flows_f']))
+        print(len(output_dict['pose_f']))
+        exit()
 
         return output_dict
 
