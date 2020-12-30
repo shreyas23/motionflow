@@ -21,10 +21,12 @@ from torch.nn.parallel import DistributedDataParallel
 from augmentations import Augmentation_SceneFlow, Augmentation_Resize_Only
 from datasets.kitti_raw_monosf import KITTI_Raw_KittiSplit_Train, KITTI_Raw_KittiSplit_Valid
 from datasets.kitti_raw_monosf import KITTI_Raw_EigenSplit_Train, KITTI_Raw_EigenSplit_Valid
+from datasets.kitti_2015_train import KITTI_2015_MonoSceneFlow
 from models.JointModel import JointModel
 from models.Model import Model
 from models.ResModel import ResModel
 from losses import Loss
+from losses_eval import Eval_SceneFlow_KITTI_Train
 from old_losses import Loss_SceneFlow_SelfSup_JointIter
 
 from params import Params
@@ -96,6 +98,7 @@ def train(gpu, args):
         raise NotImplementedError
 
     loss = Loss(args).cuda(device=gpu)
+    test_loss = Eval_SceneFlow_KITTI_Train(args).cuda(device=gpu)
 
     if args.use_bn:
         model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
@@ -112,7 +115,7 @@ def train(gpu, args):
         train_dataloader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True, sampler=train_sampler)
         if args.validate and gpu ==0:
             val_dataset = KITTI_Raw_KittiSplit_Valid(args, DATA_ROOT, num_examples=args.num_examples)
-            val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True) if val_dataset else None
+            val_dataloader = DataLoader(val_dataset, args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
         else:
             val_dataset = None
             val_dataloader = None
@@ -124,12 +127,16 @@ def train(gpu, args):
         if args.validate:
             val_dataset = KITTI_Raw_EigenSplit_Valid(args, DATA_ROOT, num_examples=args.num_examples)
             val_sampler = DistributedSampler(val_dataset, num_replicas=args.world_size, rank=rank)
-            val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True, sampler=val_sampler) if val_dataset else None
+            val_dataloader = DataLoader(val_dataset, args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True, sampler=val_sampler)
         else:
             val_dataset = None
             val_dataloader = None
     else:
         raise NotImplementedError
+
+    test_dataset = KITTI_2015_MonoSceneFlow(args, data_root=DATA_ROOT)
+    test_sampler = DistributedSampler(test_dataset, num_replicas=args.world_size, rank=rank)
+    test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True, sampler=test_sampler)
 
     # train_dataset, val_dataset = get_dataset(args, gpu)
 
@@ -261,8 +268,34 @@ def train(gpu, args):
                         print(f"\t Epoch {epoch} val loss avg:")
                         pprint(val_reduced_losses)
                         print("\n")
+
+                test_loss_avg_dict, test_output_dict, test_input_dict, n = evaluate(args, model, test_loss, test_dataloader, val_augmentations, gpu)
+
+                test_loss_avg_dict['total_loss'].detach_()
+
+                with torch.no_grad():
+                    n = torch.tensor(n, requires_grad=False).cuda(device=gpu)
+                    dist.reduce(n, dst=0, op=dist.ReduceOp.SUM)
+
+                    if gpu == 0:
+                        loss_names = []
+                        all_losses = []
+                        for k in sorted(test_loss_avg_dict.keys()):
+                            loss_names.append(k)
+                            all_losses.append(test_loss_avg_dict[k].cuda(device=gpu).float())
+
+                        all_losses = torch.stack(all_losses, dim=0)
+
+                        all_losses /= n
+                        test_reduced_losses = {k: v for k, v in zip(loss_names, all_losses)}
+
+                        print(f"Test epoch: {epoch}...\n")
+                        print(f"\t Epoch {epoch} test loss avg:")
+                        pprint(test_reduced_losses)
+                        print("\n")
             else:
                 val_output_dict, val_input_dict = None, None
+                test_output_dict, test_input_dict = None, None
 
         if args.lr_sched_type == 'plateau':
             lr_scheduler.step(train_loss_avg_dict['total_loss'])
@@ -296,6 +329,13 @@ def train(gpu, args):
                         del val_output_dict
                         del val_loss_avg_dict
                         del val_reduced_losses
+
+                        visualize_output(args, test_input_dict, test_output_dict, epoch, writer, prefix='test')
+
+                        del test_input_dict
+                        del test_output_dict
+                        del test_loss_avg_dict
+                        del test_reduced_losses
 
                     writer.flush()
 
