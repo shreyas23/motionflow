@@ -1,7 +1,7 @@
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --log_root="/ceph/checkpoints/" \
                  --exp_dir="resnet_joint_sum" \
-                 --exp_name="" \
+                 --exp_name="v2" \
                  --log_freq=1 \
                  --save_freq=1 \
                  --dataset_name="KITTI_EIGEN" \
