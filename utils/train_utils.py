@@ -134,7 +134,7 @@ def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_
 
 
 def evaluate(args, model, loss, dataloader, augmentations, gpu):
-    model.eval()
+    model = model.eval()
     loss_dict_avg = None
 
     with torch.no_grad():

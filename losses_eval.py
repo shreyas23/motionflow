@@ -60,7 +60,7 @@ class Eval_SceneFlow_KITTI_Train(nn.Module):
 
         batch_size, _, _, width = gt_disp.size()
 
-        out_disp_l1 = interpolate2d_as(output_dict["disp_l1_pp"][0], gt_disp, mode="bilinear") * width
+        out_disp_l1 = interpolate2d_as(output_dict["disps_l1_pp"][0], gt_disp, mode="bilinear") * width
         out_depth_l1 = _disp2depth_kitti_K(out_disp_l1, intrinsics[:, 0, 0])
         out_depth_l1 = torch.clamp(out_depth_l1, 1e-3, 80)
         gt_depth_l1 = _disp2depth_kitti_K(gt_disp, intrinsics[:, 0, 0])
@@ -79,7 +79,7 @@ class Eval_SceneFlow_KITTI_Train(nn.Module):
         ## Optical Flow Eval
         ##################################################
         
-        out_sceneflow = interpolate2d_as(output_dict['flow_f_pp'][0], gt_flow, mode="bilinear")
+        out_sceneflow = interpolate2d_as(output_dict['flows_f_pp'][0], gt_flow, mode="bilinear")
         out_flow = projectSceneFlow2Flow(target_dict['input_k_l1'], out_sceneflow, output_dict["out_disp_l_pp"])
 
         ## Flow Eval

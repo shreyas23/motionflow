@@ -245,7 +245,7 @@ class JointModel(nn.Module):
         ## Post Processing 
         ## ss:           eval
         ## ft: train val eval
-        if self.args.evaluation:
+        if self.args.evaluation or (not self.training):
 
             input_l1_flip = torch.flip(input_dict['input_l1_aug'], [3])
             input_l2_flip = torch.flip(input_dict['input_l2_aug'], [3])

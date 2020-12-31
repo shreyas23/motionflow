@@ -16,6 +16,8 @@ from torch.utils.tensorboard import SummaryWriter
 from augmentations import Augmentation_SceneFlow, Augmentation_Resize_Only
 from datasets.kitti_raw_monosf import KITTI_Raw_KittiSplit_Train, KITTI_Raw_KittiSplit_Valid
 from datasets.kitti_raw_monosf import KITTI_Raw_EigenSplit_Train, KITTI_Raw_EigenSplit_Valid
+from datasets.kitti_2015_train import KITTI_2015_MonoSceneFlow
+from losses_eval import Eval_SceneFlow_KITTI_Train
 from models.JointModel import JointModel
 from models.Model import Model
 from models.ResModel import ResModel
@@ -47,15 +49,20 @@ def train(args):
 
     DATASET_NAME = args.dataset_name
     DATA_ROOT = args.data_root
+    TEST_DATA_ROOT = args.test_data_root
 
     if args.model_name == 'joint':
+        print("Using joint scene flow model")
         model = JointModel(args).cuda()
     elif args.model_name == 'residual':
+        print("Using joint residual scene flow model")
         model = ResModel(args).cuda()
     else:
+        print("Using split scene flow model")
         model = Model(args).cuda() 
 
     loss = Loss(args).cuda()
+    test_loss = Eval_SceneFlow_KITTI_Train(args).cuda()
 
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"The model has {num_params} learnable parameters")
@@ -66,7 +73,7 @@ def train(args):
         train_dataloader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True)
         if args.validate:
             val_dataset = KITTI_Raw_KittiSplit_Valid(args, DATA_ROOT, num_examples=args.num_examples)
-            val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True) if val_dataset else None
+            val_dataloader = DataLoader(val_dataset, args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
         else:
             val_dataset = None
             val_dataloader = None
@@ -76,12 +83,15 @@ def train(args):
         train_dataloader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True)
         if args.validate:
             val_dataset = KITTI_Raw_EigenSplit_Valid(args, DATA_ROOT, num_examples=args.num_examples)
-            val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True) if val_dataset else None
+            val_dataloader = DataLoader(val_dataset, args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
         else:
             val_dataset = None
             val_dataloader = None
     else:
         raise NotImplementedError
+
+    test_dataset = KITTI_2015_MonoSceneFlow(args, data_root=TEST_DATA_ROOT)
+    test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
 
     # define augmentations
     train_augmentations = Augmentation_SceneFlow(args)
@@ -138,18 +148,18 @@ def train(args):
         optimizer.load_state_dict(
             torch.load(ckpt_fp)['optimizer'])
 
-    model.train()
+    model = model.train()
 
     # run training loop
     for epoch in range(curr_epoch, curr_epoch + args.epochs):
 
         print(f"Training epoch: {epoch}...\n")
 
-        train_loss_avg_dict, output_dict, input_dict, n = train_one_epoch(
+        train_loss_avg_dict, output_dict, input_dict, num_train = train_one_epoch(
             args, model, loss, train_dataloader, optimizer, train_augmentations, lr_scheduler, 0)
 
         for k, v in train_loss_avg_dict.items():
-            train_loss_avg_dict[k] = v / n
+            train_loss_avg_dict[k] = v / num_train
 
         print(f"\t Epoch {epoch} train loss avg:")
         pprint(train_loss_avg_dict)
@@ -157,16 +167,26 @@ def train(args):
 
         if args.validate:
             print(f"Validation epoch: {epoch}...\n")
-            val_loss_avg_dict, val_output_dict, val_input_dict, n = evaluate(args, model, loss, val_dataloader, val_augmentations)
+            val_loss_avg_dict, val_output_dict, val_input_dict, num_val = evaluate(args, model, loss, val_dataloader, val_augmentations, gpu=0)
 
             for k, v in val_loss_avg_dict.items():
-                val_loss_avg_dict[k] = v / n
+                val_loss_avg_dict[k] = v / num_val
 
             print(f"\t Epoch {epoch} val loss avg:")
             pprint(val_loss_avg_dict)
             print("\n")
+
+            test_loss_avg_dict, test_output_dict, test_input_dict, num_test = evaluate(args, model, test_loss, test_dataloader, val_augmentations, gpu=0)
+
+            for k, v in test_loss_avg_dict.items():
+                test_loss_avg_dict[k] = v / num_test
+
+            print(f"\t Epoch {epoch} test loss avg:")
+            pprint(test_loss_avg_dict)
+            print("\n")
         else:
             val_output_dict, val_input_dict = None, None
+            test_output_dict, test_input_dict = None, None
 
         if args.lr_sched_type == 'plateau':
             lr_scheduler.step(train_loss_avg_dict['total_loss'])
@@ -196,6 +216,11 @@ def train(args):
                     del val_input_dict
                     del val_output_dict
                     del val_loss_avg_dict
+
+                    visualize_output(args, test_input_dict, test_output_dict, epoch, writer, prefix='test')
+                    del test_input_dict
+                    del test_output_dict
+                    del test_loss_avg_dict
 
                 writer.flush()
 

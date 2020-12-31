@@ -12,6 +12,7 @@ class Params:
 
         # runtime params
         self.parser.add_argument('--data_root', help='path to dataset', default="/external/datasets/kitti_data_jpg")
+        self.parser.add_argument('--test_data_root', help='path to 2015 dataset', default="/external/datasets/kitti2015")
         self.parser.add_argument('--epochs', type=int, default=20, help='number of epochs to run')
         self.parser.add_argument('--start_epoch', type=int, default=1,
                             help='resume from checkpoint (using experiment name)')

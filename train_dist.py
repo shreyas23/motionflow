@@ -85,6 +85,7 @@ def train(gpu, args):
 
     DATASET_NAME = args.dataset_name
     DATA_ROOT = args.data_root
+    TEST_DATA_ROOT = args.test_data_root
 
     print(f"Loading model onto gpu: {gpu}")
 
@@ -134,7 +135,7 @@ def train(gpu, args):
     else:
         raise NotImplementedError
 
-    test_dataset = KITTI_2015_MonoSceneFlow(args, data_root=DATA_ROOT)
+    test_dataset = KITTI_2015_MonoSceneFlow(args, data_root=TEST_DATA_ROOT)
     test_sampler = DistributedSampler(test_dataset, num_replicas=args.world_size, rank=rank)
     test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True, sampler=test_sampler)
 
@@ -236,7 +237,7 @@ def train(gpu, args):
 
                 all_losses = torch.stack(all_losses, dim=0)
 
-                all_losses /= n
+                all_losses /= (n * args.batch_size)
                 train_reduced_losses = {k: v for k, v in zip(loss_names, all_losses)}
 
                 print(f"\t Epoch {epoch} train loss avg:")
