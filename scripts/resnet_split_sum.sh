@@ -5,6 +5,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                  --log_freq=1 \
                  --save_freq=1 \
                  --dataset_name="KITTI_EIGEN" \
+                 --model_name="split" \
                  --num_examples=-1 \
                  --num_workers=16 \
                  --start_epoch=1 \
