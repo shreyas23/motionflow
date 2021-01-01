@@ -164,8 +164,9 @@ class JointModel(nn.Module):
             if l != self.output_level:
                 disp_l1 = self.sigmoid(disp_l1) * 0.3
                 disp_l2 = self.sigmoid(disp_l2) * 0.3
-                mask_l1 = self.sigmoid(mask_l1)
-                mask_l2 = self.sigmoid(mask_l2)
+                if self.use_mask:
+                    mask_l1 = self.sigmoid(mask_l1)
+                    mask_l2 = self.sigmoid(mask_l2)
                 sceneflows_f.append(flow_f)
                 sceneflows_b.append(flow_b)                
                 disps_1.append(disp_l1)

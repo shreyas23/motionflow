@@ -295,52 +295,53 @@ class Loss(nn.Module):
             census_masks_l2.append(census_mask_tgt_l2)
 
             """ MASK LOSS """
-            mask_reg_loss1, mask_sm_loss1, mask_census_loss1 = self.mask_loss(mask_l1, census_mask_tgt_l1)
-            mask_reg_loss2, mask_sm_loss2, mask_census_loss2 = self.mask_loss(mask_l2, census_mask_tgt_l2)
+            if self.use_mask:
+                mask_reg_loss1, mask_sm_loss1, mask_census_loss1 = self.mask_loss(mask_l1, census_mask_tgt_l1)
+                mask_reg_loss2, mask_sm_loss2, mask_census_loss2 = self.mask_loss(mask_l2, census_mask_tgt_l2)
 
-            if self.args.train_exp_mask:
-                if self.args.apply_mask:
-                    pose_diff1 = pose_diff1 * mask_l1
-                    pose_diff2 = pose_diff2 * mask_l2
-                    pose_pts_diff1 = pose_pts_diff1 * mask_l1
-                    pose_pts_diff2 = pose_pts_diff2 * mask_l2
+                if self.args.train_exp_mask:
+                    if self.args.apply_mask:
+                        pose_diff1 = pose_diff1 * mask_l1
+                        pose_diff2 = pose_diff2 * mask_l2
+                        pose_pts_diff1 = pose_pts_diff1 * mask_l1
+                        pose_pts_diff2 = pose_pts_diff2 * mask_l2
 
-                    if self.args.apply_flow_mask:
-                        sf_diff1 = sf_diff1 * flow_mask_l1
-                        sf_diff2 = sf_diff2 * flow_mask_l2
-                        sf_pts_diff1 = sf_pts_diff1 * flow_mask_l1
-                        sf_pts_diff2 = sf_pts_diff2 * flow_mask_l2
+                        if self.args.apply_flow_mask:
+                            sf_diff1 = sf_diff1 * flow_mask_l1
+                            sf_diff2 = sf_diff2 * flow_mask_l2
+                            sf_pts_diff1 = sf_pts_diff1 * flow_mask_l1
+                            sf_pts_diff2 = sf_pts_diff2 * flow_mask_l2
 
-                mask_loss1 = mask_reg_loss1 * self.mask_reg_w + \
-                             mask_sm_loss1 * self.mask_sm_w
-                mask_loss2 = mask_reg_loss2 * self.mask_reg_w + \
-                             mask_sm_loss2 * self.mask_sm_w
-                mask_reg_loss = mask_reg_loss1 + mask_reg_loss2
-                mask_sm_loss = mask_sm_loss1 + mask_sm_loss2
-                mask_loss = mask_loss1 + mask_loss2
-                mask_census_loss = torch.tensor(0, requires_grad=False)
+                    mask_loss1 = mask_reg_loss1 * self.mask_reg_w + \
+                                mask_sm_loss1 * self.mask_sm_w
+                    mask_loss2 = mask_reg_loss2 * self.mask_reg_w + \
+                                mask_sm_loss2 * self.mask_sm_w
+                    mask_reg_loss = mask_reg_loss1 + mask_reg_loss2
+                    mask_sm_loss = mask_sm_loss1 + mask_sm_loss2
+                    mask_loss = mask_loss1 + mask_loss2
+                    mask_census_loss = torch.tensor(0, requires_grad=False)
 
-            elif self.args.train_census_mask:
-                if self.args.apply_mask:
-                    pose_diff1 = pose_diff1 * mask_l1.detach()
-                    pose_diff2 = pose_diff2 * mask_l2.detach()
-                    pose_pts_diff1 = pose_pts_diff1 * mask_l1.detach()
-                    pose_pts_diff2 = pose_pts_diff2 * mask_l2.detach()
-                    if self.args.apply_flow_mask:
-                        sf_diff1 = sf_diff1 * flow_mask_l1.detach()
-                        sf_diff2 = sf_diff2 * flow_mask_l2.detach()
-                        sf_pts_diff1 = sf_pts_diff1 * flow_mask_l1.detach()
-                        sf_pts_diff2 = sf_pts_diff2 * flow_mask_l2.detach()
+                elif self.args.train_census_mask:
+                    if self.args.apply_mask:
+                        pose_diff1 = pose_diff1 * mask_l1.detach()
+                        pose_diff2 = pose_diff2 * mask_l2.detach()
+                        pose_pts_diff1 = pose_pts_diff1 * mask_l1.detach()
+                        pose_pts_diff2 = pose_pts_diff2 * mask_l2.detach()
+                        if self.args.apply_flow_mask:
+                            sf_diff1 = sf_diff1 * flow_mask_l1.detach()
+                            sf_diff2 = sf_diff2 * flow_mask_l2.detach()
+                            sf_pts_diff1 = sf_pts_diff1 * flow_mask_l1.detach()
+                            sf_pts_diff2 = sf_pts_diff2 * flow_mask_l2.detach()
 
-                mask_loss1 = mask_sm_loss1 * self.mask_sm_w + \
-                             mask_census_loss1 * self.mask_census_w
-                mask_loss2 = mask_sm_loss2 * self.mask_sm_w + \
-                             mask_census_loss2 * self.mask_census_w
+                    mask_loss1 = mask_sm_loss1 * self.mask_sm_w + \
+                                mask_census_loss1 * self.mask_census_w
+                    mask_loss2 = mask_sm_loss2 * self.mask_sm_w + \
+                                mask_census_loss2 * self.mask_census_w
 
-                mask_sm_loss = mask_sm_loss1 + mask_sm_loss2
-                mask_census_loss = mask_census_loss1 + mask_census_loss2
-                mask_loss = mask_loss1 + mask_loss2
-                mask_reg_loss = torch.tensor(0, requires_grad=False)
+                    mask_sm_loss = mask_sm_loss1 + mask_sm_loss2
+                    mask_census_loss = mask_census_loss1 + mask_census_loss2
+                    mask_loss = mask_loss1 + mask_loss2
+                    mask_reg_loss = torch.tensor(0, requires_grad=False)
             else:
                 mask_loss = torch.tensor(0, requires_grad=False)
                 mask_reg_loss = torch.tensor(0, requires_grad=False)
