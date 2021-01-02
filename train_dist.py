@@ -116,7 +116,7 @@ def train(gpu, args):
         train_dataloader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True, sampler=train_sampler)
         if args.validate and gpu ==0:
             val_dataset = KITTI_Raw_KittiSplit_Valid(args, DATA_ROOT, num_examples=args.num_examples)
-            val_dataloader = DataLoader(val_dataset, args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
+            val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True)
         else:
             val_dataset = None
             val_dataloader = None
@@ -128,7 +128,7 @@ def train(gpu, args):
         if args.validate:
             val_dataset = KITTI_Raw_EigenSplit_Valid(args, DATA_ROOT, num_examples=args.num_examples)
             val_sampler = DistributedSampler(val_dataset, num_replicas=args.world_size, rank=rank)
-            val_dataloader = DataLoader(val_dataset, args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True, sampler=val_sampler)
+            val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True, sampler=val_sampler)
         else:
             val_dataset = None
             val_dataloader = None
@@ -137,7 +137,7 @@ def train(gpu, args):
 
     test_dataset = KITTI_2015_MonoSceneFlow(args, data_root=TEST_DATA_ROOT)
     test_sampler = DistributedSampler(test_dataset, num_replicas=args.world_size, rank=rank)
-    test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True, sampler=test_sampler)
+    test_dataloader = DataLoader(test_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True, sampler=test_sampler)
 
     # train_dataset, val_dataset = get_dataset(args, gpu)
 

@@ -73,17 +73,18 @@ def train(args):
         train_dataloader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True)
         if args.validate:
             val_dataset = KITTI_Raw_KittiSplit_Valid(args, DATA_ROOT, num_examples=args.num_examples)
-            val_dataloader = DataLoader(val_dataset, args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
+            val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True)
         else:
             val_dataset = None
             val_dataloader = None
 
     elif DATASET_NAME == 'KITTI_EIGEN':
+        print(DATA_ROOT)
         train_dataset = KITTI_Raw_EigenSplit_Train(args, DATA_ROOT, num_examples=args.num_examples)
         train_dataloader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True)
         if args.validate:
             val_dataset = KITTI_Raw_EigenSplit_Valid(args, DATA_ROOT, num_examples=args.num_examples)
-            val_dataloader = DataLoader(val_dataset, args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
+            val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True)
         else:
             val_dataset = None
             val_dataloader = None
@@ -91,7 +92,7 @@ def train(args):
         raise NotImplementedError
 
     test_dataset = KITTI_2015_MonoSceneFlow(args, data_root=TEST_DATA_ROOT)
-    test_dataloader = DataLoader(test_dataset, args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
+    test_dataloader = DataLoader(test_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True)
 
     # define augmentations
     train_augmentations = Augmentation_SceneFlow(args)
