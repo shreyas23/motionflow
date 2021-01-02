@@ -272,8 +272,6 @@ def train(gpu, args):
 
                 test_loss_avg_dict, test_output_dict, test_input_dict, n = evaluate(args, model, test_loss, test_dataloader, val_augmentations, gpu)
 
-                test_loss_avg_dict['total_loss'].detach_()
-
                 with torch.no_grad():
                     n = torch.tensor(n, requires_grad=False).cuda(device=gpu)
                     dist.reduce(n, dst=0, op=dist.ReduceOp.SUM)
