@@ -164,9 +164,8 @@ class JointModel(nn.Module):
             if l != self.output_level:
                 disp_l1 = self.sigmoid(disp_l1) * 0.3
                 disp_l2 = self.sigmoid(disp_l2) * 0.3
-                if self.use_mask:
-                    mask_l1 = self.sigmoid(mask_l1)
-                    mask_l2 = self.sigmoid(mask_l2)
+                mask_l1 = self.sigmoid(mask_l1)
+                mask_l2 = self.sigmoid(mask_l2)
                 sceneflows_f.append(flow_f)
                 sceneflows_b.append(flow_b)                
                 disps_1.append(disp_l1)
@@ -205,9 +204,8 @@ class JointModel(nn.Module):
         output_dict['flows_b'] = upsample_outputs_as(sceneflows_b[::-1], x1_rev)
         output_dict['disps_l1'] = upsample_outputs_as(disps_1[::-1], x1_rev)
         output_dict['disps_l2'] = upsample_outputs_as(disps_2[::-1], x1_rev)
-        if self.use_mask:
-            output_dict['masks_l1'] = upsample_outputs_as(masks_1[::-1], x1_rev)
-            output_dict['masks_l2'] = upsample_outputs_as(masks_2[::-1], x1_rev)
+        output_dict['masks_l1'] = upsample_outputs_as(masks_1[::-1], x1_rev)
+        output_dict['masks_l2'] = upsample_outputs_as(masks_2[::-1], x1_rev)
         output_dict["pose_f"] = poses_f[::-1]
         output_dict["pose_b"] = poses_b[::-1]
 
@@ -237,9 +235,8 @@ class JointModel(nn.Module):
                 output_dict_r['flows_b'][ii] = flow_horizontal_flip(output_dict_r['flows_b'][ii])
                 output_dict_r['disps_l1'][ii] = torch.flip(output_dict_r['disps_l1'][ii], [3])
                 output_dict_r['disps_l2'][ii] = torch.flip(output_dict_r['disps_l2'][ii], [3])
-                if self.use_mask:
-                    output_dict_r['masks_l1'][ii] = torch.flip(output_dict_r['masks_l1'][ii], [3])
-                    output_dict_r['masks_l2'][ii] = torch.flip(output_dict_r['masks_l2'][ii], [3])
+                output_dict_r['masks_l1'][ii] = torch.flip(output_dict_r['masks_l1'][ii], [3])
+                output_dict_r['masks_l2'][ii] = torch.flip(output_dict_r['masks_l2'][ii], [3])
 
             output_dict['output_dict_r'] = output_dict_r
 
@@ -268,16 +265,14 @@ class JointModel(nn.Module):
                 flow_b_pp.append(post_processing(output_dict['flows_b'][ii], flow_horizontal_flip(output_dict_flip['flows_b'][ii])))
                 disp_l1_pp.append(post_processing(output_dict['disps_l1'][ii], torch.flip(output_dict_flip['disps_l1'][ii], [3])))
                 disp_l2_pp.append(post_processing(output_dict['disps_l2'][ii], torch.flip(output_dict_flip['disps_l2'][ii], [3])))
-                if self.use_mask:
-                    mask_l1_pp.append(post_processing(output_dict['masks_l1'][ii], torch.flip(output_dict_flip['masks_l1'][ii], [3])))
-                    mask_l2_pp.append(post_processing(output_dict['masks_l2'][ii], torch.flip(output_dict_flip['masks_l2'][ii], [3])))
+                mask_l1_pp.append(post_processing(output_dict['masks_l1'][ii], torch.flip(output_dict_flip['masks_l1'][ii], [3])))
+                mask_l2_pp.append(post_processing(output_dict['masks_l2'][ii], torch.flip(output_dict_flip['masks_l2'][ii], [3])))
 
             output_dict['flows_f_pp'] = flow_f_pp
             output_dict['flows_b_pp'] = flow_b_pp
             output_dict['disps_l1_pp'] = disp_l1_pp
             output_dict['disps_l2_pp'] = disp_l2_pp
-            if self.use_mask:
-                output_dict['masks_l1_pp'] = disp_l1_pp
-                output_dict['masks_l2_pp'] = disp_l2_pp
+            output_dict['masks_l1_pp'] = disp_l1_pp
+            output_dict['masks_l2_pp'] = disp_l2_pp
 
         return output_dict

@@ -22,8 +22,7 @@ class JointDecoder(nn.Module):
         self.conv_d1 = Conv(32, 1, nonlin='none')
         self.conv_pose = Conv(32, num_refs * 6, kernel_size=1, nonlin='none')
 
-        if self.use_mask:
-            self.conv_mask = Conv(32, 1, nonlin='none')
+        self.conv_mask = Conv(32, 1, nonlin='none')
 
     def forward(self, x):
         x_out = self.convs(x)
@@ -32,10 +31,7 @@ class JointDecoder(nn.Module):
         pose_out = self.conv_pose(x_out)
         pred_pose = pose_out.mean(3).mean(2) * 0.1
 
-        if self.use_mask:
-            mask = self.conv_mask(x_out)
-        else:
-            mask = None
+        mask = self.conv_mask(x_out)
 
         return x_out, sf, disp1, mask, pred_pose, pose_out
 
@@ -63,11 +59,10 @@ class JointContextNetwork(nn.Module):
 
         self.conv_pose = Conv(32, num_refs * 6, kernel_size=1, nonlin='none')
 
-        if self.use_mask:
-            self.conv_mask = nn.Sequential(
-                Conv(32, 1, nonlin='none'),
-                torch.nn.Sigmoid()
-            )
+        self.conv_mask = nn.Sequential(
+            Conv(32, 1, nonlin='none'),
+            torch.nn.Sigmoid()
+        )
 
     def forward(self, x):
 
@@ -77,9 +72,6 @@ class JointContextNetwork(nn.Module):
         pose_out = self.conv_pose(x_out)
         pred_pose = pose_out.mean(3).mean(2) * 0.1
 
-        if self.use_mask:
-            mask = self.conv_mask(x_out)
-        else:
-            mask = None
+        mask = self.conv_mask(x_out)
 
         return sf, disp1, pred_pose, mask
