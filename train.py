@@ -201,6 +201,8 @@ def train(args):
             if args.validate:
                 for k, v in val_loss_avg_dict.items():
                     writer.add_scalar(f'val/{k}', v.item(), epoch)
+                for k, v in test_loss_avg_dict.items():
+                    writer.add_scalar(f'test/{k}', v.item(), epoch)
 
             if args.save_freq > 0:
                 if epoch % args.save_freq == 0 or epoch == args.epochs:
