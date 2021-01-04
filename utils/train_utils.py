@@ -135,6 +135,8 @@ def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_
 
 def evaluate(args, model, loss, dataloader, augmentations, gpu):
     model.eval()
+    assert (model.training == False)
+
     loss_dict_avg = None
 
     with torch.no_grad():

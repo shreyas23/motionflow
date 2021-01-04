@@ -217,6 +217,7 @@ def train(gpu, args):
             print(f"Training epoch: {epoch}...\n")
 
         model.train()
+        assert (model.training == True)
 
         train_loss_avg_dict, output_dict, input_dict, n = train_one_epoch(
             args, model, loss, train_dataloader, optimizer, train_augmentations, lr_scheduler, gpu)
