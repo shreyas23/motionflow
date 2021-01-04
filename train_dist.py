@@ -310,6 +310,8 @@ def train(gpu, args):
                 if args.validate:
                     for k, v in val_reduced_losses.items():
                         writer.add_scalar(f'val/{k}', v.item(), epoch)
+                    for k, v in test_reduced_losses.items():
+                        writer.add_scalar(f'test/{k}', v.item(), epoch)
 
                 if args.save_freq > 0:
                     if epoch % args.save_freq == 0 or epoch == args.epochs:
