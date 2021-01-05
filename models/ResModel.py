@@ -98,6 +98,8 @@ class ResModel(nn.Module):
         # outputs
         sceneflows_f = []
         sceneflows_b = []
+        residuals_f = []
+        residuals_b = []
         poses_f = []
         poses_b = []
         disps_1 = []
@@ -114,8 +116,8 @@ class ResModel(nn.Module):
                 x2_warp = x2
                 x1_warp = x1
             else:
-                flow_f = interpolate2d_as(flow_f, x1, mode="bilinear")
-                flow_b = interpolate2d_as(flow_b, x1, mode="bilinear")
+                sf_f = interpolate2d_as(sf_f, x1, mode="bilinear")
+                sf_b = interpolate2d_as(sf_b, x1, mode="bilinear")
                 disp_l1 = interpolate2d_as(disp_l1, x1, mode="bilinear")
                 disp_l2 = interpolate2d_as(disp_l2, x1, mode="bilinear")
                 pose_f_out = interpolate2d_as(pose_f_out, x1, mode="bilinear")
@@ -126,14 +128,35 @@ class ResModel(nn.Module):
                 x1_out = self.upconv_layers[l-1](x1_out)
                 x2_out = self.upconv_layers[l-1](x2_out)
 
-                x2_warp = self.warping_layer_sf(x2, flow_f, disp_l1, k1, input_dict['aug_size'])
-                x1_warp = self.warping_layer_sf(x1, flow_b, disp_l2, k2, input_dict['aug_size'])
+                x2_warp = self.warping_layer_sf(x2, sf_f, disp_l1, k1, input_dict['aug_size'])
+                x1_warp = self.warping_layer_sf(x1, sf_b, disp_l2, k2, input_dict['aug_size'])
 
             # correlation
             out_corr_f = Correlation.apply(x1, x2_warp, self.corr_params)
             out_corr_b = Correlation.apply(x2, x1_warp, self.corr_params)
             out_corr_relu_f = self.leakyRELU(out_corr_f)
             out_corr_relu_b = self.leakyRELU(out_corr_b)
+
+            # monosf estimator
+            if l == 0:
+                x1_out, flow_f, disp_l1, mask_l1, pose_f, pose_f_out = self.flow_estimators[l](torch.cat([out_corr_relu_f, x1], dim=1))
+                x2_out, flow_b, disp_l2, mask_l2,      _, pose_b_out = self.flow_estimators[l](torch.cat([out_corr_relu_b, x2], dim=1))
+
+                pose_mat_f = pose_vec2mat(pose_f)
+                pose_mat_b = invert_pose(pose_mat_f)
+            else:
+                x1_out, flow_f_res, disp_l1, mask_l1, pose_f_res, pose_f_out = self.flow_estimators[l](torch.cat([
+                    out_corr_relu_f, x1, x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
+                x2_out, flow_b_res, disp_l2, mask_l2,          _, pose_b_out = self.flow_estimators[l](torch.cat([
+                    out_corr_relu_b, x2, x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
+
+                pose_mat_f_res = pose_vec2mat(pose_f_res)
+                pose_mat_b_res = invert_pose(pose_mat_f_res)
+
+                pose_mat_f = add_pose(pose_mat_f, pose_mat_f_res)
+                pose_mat_b = add_pose(pose_mat_b, pose_mat_b_res)
+                flow_f = flow_f + flow_f_res 
+                flow_b = flow_b + flow_b_res 
 
             depth_l1 = disp2depth_kitti(disp_l1, k1[:, 0, 0])
             depth_l2 = disp2depth_kitti(disp_l2, k2[:, 0, 0])
@@ -148,33 +171,11 @@ class ResModel(nn.Module):
             k1_s = intrinsic_scale(k1, rel_scale[:, 0], rel_scale[:, 1])
             k2_s = intrinsic_scale(k2, rel_scale[:, 0], rel_scale[:, 1])
 
-            # monosf estimator
-            if l == 0:
-                x1_out, flow_f, disp_l1, mask_l1, pose_f, pose_f_out = self.flow_estimators[l](torch.cat([out_corr_relu_f, x1], dim=1))
-                x2_out, flow_b, disp_l2, mask_l2,      _, pose_b_out = self.flow_estimators[l](torch.cat([out_corr_relu_b, x2], dim=1))
+            pose_flow_f = pose2sceneflow(depth_l1.squeeze(dim=1), None, torch.inverse(k1_s), pose_mat=pose_mat_f)
+            pose_flow_b = pose2sceneflow(depth_l2.squeeze(dim=1), None, torch.inverse(k2_s), pose_mat=pose_mat_b)
 
-                pose_mat_f = pose_vec2mat(pose_f)
-                pose_mat_b = invert_pose(pose_mat_f)
-                pose_flow_f = pose2sceneflow(depth_l1.squeeze(dim=1), None, torch.inverse(k1_s), pose_mat=pose_mat_f)
-                pose_flow_b = pose2sceneflow(depth_l2.squeeze(dim=1), None, torch.inverse(k2_s), pose_mat=pose_mat_b)
-                flow_f = pose_flow_f + flow_f
-                flow_b = pose_flow_b + flow_b
-
-            else:
-                x1_out, flow_f_res, disp_l1, mask_l1, pose_f_res, pose_f_out = self.flow_estimators[l](torch.cat([
-                    out_corr_relu_f, x1, x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
-                x2_out, flow_b_res, disp_l2, mask_l2,          _, pose_b_out = self.flow_estimators[l](torch.cat([
-                    out_corr_relu_b, x2, x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
-
-                pose_mat_f_res = pose_vec2mat(pose_f_res)
-                pose_mat_b_res = invert_pose(pose_mat_f_res)
-                pose_mat_f = add_pose(pose_mat_f, pose_mat_f_res)
-                pose_mat_b = add_pose(pose_mat_b, pose_mat_b_res)
-
-                pose_flow_f_res = pose2sceneflow(depth_l1.squeeze(dim=1), None, torch.inverse(k1_s), pose_mat=pose_mat_f_res)
-                pose_flow_b_res = pose2sceneflow(depth_l2.squeeze(dim=1), None, torch.inverse(k2_s), pose_mat=pose_mat_b_res)
-                flow_f = pose_flow_f_res + flow_f_res + flow_f
-                flow_b = pose_flow_b_res + flow_b_res + flow_b
+            sf_f = pose_flow_f + flow_f
+            sf_b = pose_flow_b + flow_b
 
             # upsampling or post-processing
             if l != self.output_level:
@@ -182,8 +183,10 @@ class ResModel(nn.Module):
                 disp_l2 = self.sigmoid(disp_l2) * 0.3
                 mask_l1 = self.sigmoid(mask_l1)
                 mask_l2 = self.sigmoid(mask_l2)
-                sceneflows_f.append(flow_f)
-                sceneflows_b.append(flow_b)                
+                sceneflows_f.append(sf_f)
+                sceneflows_b.append(sf_b)                
+                residuals_f.append(flow_f)
+                residuals_b.append(flow_b)
                 disps_1.append(disp_l1)
                 disps_2.append(disp_l2)
                 masks_1.append(mask_l1)
@@ -191,17 +194,16 @@ class ResModel(nn.Module):
                 poses_f.append(pose_mat_f)
                 poses_b.append(pose_mat_b)
             else:
-                flow_res_f, disp_l1, pose_f_res, mask_l1 = self.context_networks(torch.cat([x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
-                flow_res_b, disp_l2,          _, mask_l2 = self.context_networks(torch.cat([x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
-
-                flow_f = flow_f + flow_res_f
-                flow_b = flow_b + flow_res_b
+                flow_f_res, disp_l1, pose_f_res, mask_l1 = self.context_networks(torch.cat([x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
+                flow_b_res, disp_l2,          _, mask_l2 = self.context_networks(torch.cat([x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
 
                 pose_mat_f_res = pose_vec2mat(pose_f_res)
                 pose_mat_b_res = invert_pose(pose_mat_f_res)
 
                 pose_mat_f = add_pose(pose_mat_f, pose_mat_f_res)
                 pose_mat_b = add_pose(pose_mat_b, pose_mat_b_res)
+                flow_f = flow_f + flow_f_res 
+                flow_b = flow_b + flow_b_res 
 
                 depth_l1 = disp2depth_kitti(disp_l1, k1[:, 0, 0])
                 depth_l2 = disp2depth_kitti(disp_l2, k2[:, 0, 0])
@@ -218,11 +220,14 @@ class ResModel(nn.Module):
 
                 pose_flow_f = pose2sceneflow(depth_l1.squeeze(dim=1), None, torch.inverse(k1_s), pose_mat=pose_mat_f)
                 pose_flow_b = pose2sceneflow(depth_l2.squeeze(dim=1), None, torch.inverse(k2_s), pose_mat=pose_mat_b)
-                flow_f = pose_flow_f + flow_f
-                flow_b = pose_flow_b + flow_b
 
-                sceneflows_f.append(flow_f)
-                sceneflows_b.append(flow_b)
+                sf_f = pose_flow_f + flow_f
+                sf_b = pose_flow_b + flow_b
+
+                sceneflows_f.append(sf_f)
+                sceneflows_b.append(sf_b)
+                residuals_f.append(flow_f)
+                residuals_b.append(flow_b)
                 disps_1.append(disp_l1)
                 disps_2.append(disp_l2)
                 masks_1.append(mask_l1)
@@ -236,6 +241,8 @@ class ResModel(nn.Module):
 
         output_dict['flows_f'] = upsample_outputs_as(sceneflows_f[::-1], x1_rev)
         output_dict['flows_b'] = upsample_outputs_as(sceneflows_b[::-1], x1_rev)
+        output_dict['residuals_f'] = upsample_outputs_as(residuals_f[::-1], x1_rev)
+        output_dict['residuals_b'] = upsample_outputs_as(residuals_b[::-1], x1_rev)
         output_dict['disps_l1'] = upsample_outputs_as(disps_1[::-1], x1_rev)
         output_dict['disps_l2'] = upsample_outputs_as(disps_2[::-1], x1_rev)
         output_dict['masks_l1'] = upsample_outputs_as(masks_1[::-1], x1_rev)
@@ -267,6 +274,8 @@ class ResModel(nn.Module):
             for ii in range(0, len(output_dict_r['flows_f'])):
                 output_dict_r['flows_f'][ii] = flow_horizontal_flip(output_dict_r['flows_f'][ii])
                 output_dict_r['flows_b'][ii] = flow_horizontal_flip(output_dict_r['flows_b'][ii])
+                output_dict_r['residuals_f'][ii] = flow_horizontal_flip(output_dict_r['residuals_f'][ii])
+                output_dict_r['residuals_b'][ii] = flow_horizontal_flip(output_dict_r['residuals_b'][ii])
                 output_dict_r['disps_l1'][ii] = torch.flip(output_dict_r['disps_l1'][ii], [3])
                 output_dict_r['disps_l2'][ii] = torch.flip(output_dict_r['disps_l2'][ii], [3])
                 output_dict_r['masks_l1'][ii] = torch.flip(output_dict_r['masks_l1'][ii], [3])
@@ -292,11 +301,15 @@ class ResModel(nn.Module):
             disp_l2_pp = []
             mask_l1_pp = []
             mask_l2_pp = []
+            residuals_f_pp = []
+            residuals_b_pp = []
 
             for ii in range(0, len(output_dict_flip['flows_f'])):
 
                 flow_f_pp.append(post_processing(output_dict['flows_f'][ii], flow_horizontal_flip(output_dict_flip['flows_f'][ii])))
                 flow_b_pp.append(post_processing(output_dict['flows_b'][ii], flow_horizontal_flip(output_dict_flip['flows_b'][ii])))
+                residuals_f_pp.append(post_processing(output_dict['residuals_f'][ii], flow_horizontal_flip(output_dict_flip['residuals_f'][ii])))
+                residuals_b_pp.append(post_processing(output_dict['residuals_b'][ii], flow_horizontal_flip(output_dict_flip['residuals_b'][ii])))
                 disp_l1_pp.append(post_processing(output_dict['disps_l1'][ii], torch.flip(output_dict_flip['disps_l1'][ii], [3])))
                 disp_l2_pp.append(post_processing(output_dict['disps_l2'][ii], torch.flip(output_dict_flip['disps_l2'][ii], [3])))
                 mask_l1_pp.append(post_processing(output_dict['masks_l1'][ii], torch.flip(output_dict_flip['masks_l1'][ii], [3])))
@@ -304,6 +317,8 @@ class ResModel(nn.Module):
 
             output_dict['flows_f_pp'] = flow_f_pp
             output_dict['flows_b_pp'] = flow_b_pp
+            output_dict['residuals_f_pp'] = residuals_f_pp
+            output_dict['residuals_b_pp'] = residuals_b_pp
             output_dict['disps_l1_pp'] = disp_l1_pp
             output_dict['disps_l2_pp'] = disp_l2_pp
             output_dict['masks_l1_pp'] = disp_l1_pp
