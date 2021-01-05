@@ -118,6 +118,8 @@ class ResModel(nn.Module):
             else:
                 sf_f = interpolate2d_as(sf_f, x1, mode="bilinear")
                 sf_b = interpolate2d_as(sf_b, x1, mode="bilinear")
+                flow_f = interpolate2d_as(flow_f, x1, mode="bilinear")
+                flow_b = interpolate2d_as(flow_b, x1, mode="bilinear")
                 disp_l1 = interpolate2d_as(disp_l1, x1, mode="bilinear")
                 disp_l2 = interpolate2d_as(disp_l2, x1, mode="bilinear")
                 pose_f_out = interpolate2d_as(pose_f_out, x1, mode="bilinear")
