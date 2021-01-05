@@ -135,27 +135,6 @@ class ResModel(nn.Module):
             out_corr_relu_f = self.leakyRELU(out_corr_f)
             out_corr_relu_b = self.leakyRELU(out_corr_b)
 
-            # monosf estimator
-            if l == 0:
-                x1_out, flow_f, disp_l1, mask_l1, pose_f, pose_f_out = self.flow_estimators[l](torch.cat([out_corr_relu_f, x1], dim=1))
-                x2_out, flow_b, disp_l2, mask_l2,      _, pose_b_out = self.flow_estimators[l](torch.cat([out_corr_relu_b, x2], dim=1))
-                pose_mat_f = pose_vec2mat(pose_f)
-                pose_mat_b = invert_pose(pose_mat_f)
-            else:
-                x1_out, flow_f_res, disp_l1, mask_l1, pose_f_res, pose_f_out = self.flow_estimators[l](torch.cat([
-                    out_corr_relu_f, x1, x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
-                x2_out, flow_b_res, disp_l2, mask_l2,          _, pose_b_out = self.flow_estimators[l](torch.cat([
-                    out_corr_relu_b, x2, x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
-
-                flow_f = flow_f + flow_f_res
-                flow_b = flow_b + flow_b_res
-
-                pose_mat_f_res = pose_vec2mat(pose_f_res)
-                pose_mat_b_res = invert_pose(pose_mat_f_res)
-
-                pose_mat_f = add_pose(pose_mat_f, pose_mat_f_res)
-                pose_mat_b = add_pose(pose_mat_b, pose_mat_b_res)
-
             depth_l1 = disp2depth_kitti(disp_l1, k1[:, 0, 0])
             depth_l2 = disp2depth_kitti(disp_l2, k2[:, 0, 0])
 
@@ -169,10 +148,33 @@ class ResModel(nn.Module):
             k1_s = intrinsic_scale(k1, rel_scale[:, 0], rel_scale[:, 1])
             k2_s = intrinsic_scale(k2, rel_scale[:, 0], rel_scale[:, 1])
 
-            pose_flow_f = pose2sceneflow(depth_l1.squeeze(dim=1), None, torch.inverse(k1_s), pose_mat=pose_mat_f)
-            pose_flow_b = pose2sceneflow(depth_l2.squeeze(dim=1), None, torch.inverse(k2_s), pose_mat=pose_mat_b)
-            flow_f = pose_flow_f + flow_f
-            flow_b = pose_flow_b + flow_b
+            # monosf estimator
+            if l == 0:
+                x1_out, flow_f, disp_l1, mask_l1, pose_f, pose_f_out = self.flow_estimators[l](torch.cat([out_corr_relu_f, x1], dim=1))
+                x2_out, flow_b, disp_l2, mask_l2,      _, pose_b_out = self.flow_estimators[l](torch.cat([out_corr_relu_b, x2], dim=1))
+
+                pose_mat_f = pose_vec2mat(pose_f)
+                pose_mat_b = invert_pose(pose_mat_f)
+                pose_flow_f = pose2sceneflow(depth_l1.squeeze(dim=1), None, torch.inverse(k1_s), pose_mat=pose_mat_f)
+                pose_flow_b = pose2sceneflow(depth_l2.squeeze(dim=1), None, torch.inverse(k2_s), pose_mat=pose_mat_b)
+                flow_f = pose_flow_f + flow_f
+                flow_b = pose_flow_b + flow_b
+
+            else:
+                x1_out, flow_f_res, disp_l1, mask_l1, pose_f_res, pose_f_out = self.flow_estimators[l](torch.cat([
+                    out_corr_relu_f, x1, x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
+                x2_out, flow_b_res, disp_l2, mask_l2,          _, pose_b_out = self.flow_estimators[l](torch.cat([
+                    out_corr_relu_b, x2, x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
+
+                pose_mat_f_res = pose_vec2mat(pose_f_res)
+                pose_mat_b_res = invert_pose(pose_mat_f_res)
+                pose_mat_f = add_pose(pose_mat_f, pose_mat_f_res)
+                pose_mat_b = add_pose(pose_mat_b, pose_mat_b_res)
+
+                pose_flow_f_res = pose2sceneflow(depth_l1.squeeze(dim=1), None, torch.inverse(k1_s), pose_mat=pose_mat_f_res)
+                pose_flow_b_res = pose2sceneflow(depth_l2.squeeze(dim=1), None, torch.inverse(k2_s), pose_mat=pose_mat_b_res)
+                flow_f = pose_flow_f_res + flow_f_res + flow_f
+                flow_b = pose_flow_b_res + flow_b_res + flow_b
 
             # upsampling or post-processing
             if l != self.output_level:
