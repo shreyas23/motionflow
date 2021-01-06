@@ -432,7 +432,7 @@ class Loss(nn.Module):
             disp_sm_sum = disp_sm_sum + loss_disp_sm
         
         loss_dict = {}
-        loss_dict["total_loss"] = (depth_loss_sum + flow_loss_sum + mask_loss_sum) #/ num_scales
+        loss_dict["total_loss"] = (depth_loss_sum + flow_loss_sum + mask_loss_sum) / num_scales
 
         loss_dict["depth_loss"] = depth_loss_sum.detach()
         loss_dict["flow_loss"] = flow_loss_sum.detach()
@@ -702,7 +702,7 @@ class MonoDepthSFLoss(nn.Module):
             disp_sm_sum = disp_sm_sum + loss_disp_sm
         
         loss_dict = {}
-        loss_dict["total_loss"] = (depth_loss_sum + flow_loss_sum)
+        loss_dict["total_loss"] = (depth_loss_sum + flow_loss_sum) / num_scales
 
         loss_dict["depth_loss"] = depth_loss_sum.detach()
         loss_dict["flow_loss"] = flow_loss_sum.detach()
