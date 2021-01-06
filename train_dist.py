@@ -25,7 +25,8 @@ from datasets.kitti_2015_train import KITTI_2015_MonoSceneFlow
 from models.JointModel import JointModel
 from models.Model import Model
 from models.ResModel import ResModel
-from losses import Loss
+from models.MonoDepthSFModel import MonoDepthSFModel
+from losses import Loss, MonoDepthSFLoss
 from losses_eval import Eval_SceneFlow_KITTI_Train
 from old_losses import Loss_SceneFlow_SelfSup_JointIter
 

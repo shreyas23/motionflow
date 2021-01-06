@@ -6,6 +6,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --log_freq=1 \
                       --save_freq=1 \
                       --dataset_name="KITTI_EIGEN" \
+                      --model_name='monodepth' \
                       --encoder_name='resnet' \
                       --num_examples=-1 \
                       --num_workers=16 \
@@ -16,7 +17,6 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --lr_gamma=0.5 \
                       --lr_sched_type='step' \
                       --milestones 15 \
-                      --flow_reduce_mode='sum' \
                       --disp_sm_w=0.1 \
                       --flow_sm_w=200 \
                       --flow_pts_w=0.0 \
