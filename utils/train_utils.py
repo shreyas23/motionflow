@@ -194,17 +194,19 @@ def visualize_output(args, input_dict, output_dict, epoch, writer, prefix):
         census_mask_l2 = interpolate2d_as(output_dict['census_masks_l2'][0].detach(), img_l1)
 
     sf_b = interpolate2d_as(output_dict['flows_b'][0].detach(), img_l1)
-    poses_b = output_dict['pose_b']
-    poses_f = output_dict['pose_f']
-    if isinstance(poses_b, list) and isinstance(poses_f, list):
-        pose_f = poses_f[0].detach()
-        pose_b = poses_b[0].detach()
-    else:
-        pose_f = poses_f.detach()
-        pose_b = poses_b.detach()
 
-    writer.add_text(prefix + 'pose_f', str(pose_f.cpu().detach().numpy()), epoch)
-    writer.add_text(prefix + 'pose_b', str(pose_b.cpu().detach().numpy()), epoch)
+    if 'pose_b' in output_dict:
+        poses_b = output_dict['pose_b']
+        poses_f = output_dict['pose_f']
+        if isinstance(poses_b, list) and isinstance(poses_f, list):
+            pose_f = poses_f[0].detach()
+            pose_b = poses_b[0].detach()
+        else:
+            pose_f = poses_f.detach()
+            pose_b = poses_b.detach()
+
+        writer.add_text(prefix + 'pose_f', str(pose_f.cpu().detach().numpy()), epoch)
+        writer.add_text(prefix + 'pose_b', str(pose_b.cpu().detach().numpy()), epoch)
 
     # input
     writer.add_images(prefix + 'input_l1', img_l1, epoch)
@@ -238,20 +240,21 @@ def visualize_output(args, input_dict, output_dict, epoch, writer, prefix):
     writer.add_images(prefix + 'static_diff', static_diff, epoch)
 
     # pose warp
-    cam_points = back_proj(depth, torch.inverse(K), mode='pose')
-    grid = proj(cam_points, K, T=pose_b, sf=None, mode='pose')
-    ref_warp = tf.grid_sample(img_l1, grid, mode="bilinear", padding_mode="zeros")
-    writer.add_images(prefix + 'pose_warp', ref_warp, epoch)
+    if 'pose_b' in output_dict:
+        cam_points = back_proj(depth, torch.inverse(K), mode='pose')
+        grid = proj(cam_points, K, T=pose_b, sf=None, mode='pose')
+        ref_warp = tf.grid_sample(img_l1, grid, mode="bilinear", padding_mode="zeros")
+        writer.add_images(prefix + 'pose_warp', ref_warp, epoch)
 
-    # pose occ map
-    depth_l1 = _disp2depth_kitti_K(disp_l1, K[:, 0, 0])
-    pose_flow = pose2flow(depth_l1.squeeze(dim=1), None, K, torch.inverse(K), pose_mat=pose_f)
-    pose_occ_b = _adaptive_disocc_detection(pose_flow)
-    writer.add_images(prefix + 'pose_occ', pose_occ_b, epoch)
+        # pose occ map
+        depth_l1 = _disp2depth_kitti_K(disp_l1, K[:, 0, 0])
+        pose_flow = pose2flow(depth_l1.squeeze(dim=1), None, K, torch.inverse(K), pose_mat=pose_f)
+        pose_occ_b = _adaptive_disocc_detection(pose_flow)
+        writer.add_images(prefix + 'pose_occ', pose_occ_b, epoch)
 
-    # pose err
-    pose_diff = _reconstruction_error(img_l2, ref_warp, 0.85)
-    writer.add_images(prefix + 'pose_diff', pose_diff, epoch)
+        # pose err
+        pose_diff = _reconstruction_error(img_l2, ref_warp, 0.85)
+        writer.add_images(prefix + 'pose_diff', pose_diff, epoch)
 
     # sf warp
     cam_points = back_proj(depth, torch.inverse(K), mode='sf')
