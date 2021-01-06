@@ -21,7 +21,8 @@ from losses_eval import Eval_SceneFlow_KITTI_Train
 from models.JointModel import JointModel
 from models.Model import Model
 from models.ResModel import ResModel
-from losses import Loss
+from models.MonoDepthSFModel import MonoDepthSFModel
+from losses import Loss, MonoDepthSFLoss
 
 from params import Params
 from utils.train_utils import step, evaluate, train_one_epoch, visualize_output
@@ -51,18 +52,22 @@ def train(args):
     DATA_ROOT = args.data_root
     TEST_DATA_ROOT = args.test_data_root
 
+    loss = Loss(args).cuda()
+    test_loss = Eval_SceneFlow_KITTI_Train(args).cuda()
+
     if args.model_name == 'joint':
         print("Using joint scene flow model")
         model = JointModel(args).cuda()
     elif args.model_name == 'residual':
         print("Using joint residual scene flow model")
         model = ResModel(args).cuda()
+    elif args.model_name == 'monodepth':
+        print("Using monodepth scene flow model")
+        model = MonoDepthSFModel(args).cuda()
+        loss = MonoDepthSFLoss(args).cuda()
     else:
         print("Using split scene flow model")
         model = Model(args).cuda() 
-
-    loss = Loss(args).cuda()
-    test_loss = Eval_SceneFlow_KITTI_Train(args).cuda()
 
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"The model has {num_params} learnable parameters")

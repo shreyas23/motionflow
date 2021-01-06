@@ -89,16 +89,19 @@ def train(gpu, args):
 
     print(f"Loading model onto gpu: {gpu}")
 
+    loss = Loss(args).cuda(device=gpu)
     if args.model_name == 'joint':
         model = JointModel(args).cuda(device=gpu)
     elif args.model_name == 'split':
         model = Model(args).cuda(device=gpu)
     elif args.model_name == 'residual':
         model = ResModel(args).cuda(device=gpu)
+    elif args.model_name == 'monodepth':
+        model = MonoDepthSFModel(args).cuda()
+        loss = MonoDepthSFLoss(args).cuda()
     else:
         raise NotImplementedError
 
-    loss = Loss(args).cuda(device=gpu)
     test_loss = Eval_SceneFlow_KITTI_Train(args).cuda(device=gpu)
 
     if args.use_bn:
