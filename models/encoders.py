@@ -107,7 +107,7 @@ class ResnetEncoder(nn.Module):
         self.features = []
         x = (input_image - 0.45) / 0.225
         x = self.encoder.conv1(x)
-        if self.args.batch_size > 1:
+        if self.args.use_bn and self.args.batch_size > 1:
             x = self.encoder.bn1(x)
         self.features.append(self.encoder.relu(x))
         self.features.append(self.encoder.layer1(self.encoder.maxpool(self.features[-1])))

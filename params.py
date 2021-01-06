@@ -34,12 +34,12 @@ class Params:
 
         # model params
         self.parser.add_argument('--model_name', type=str,
-                            default="separate", help="name of model")
+                            default="split", help="name of model")
         self.parser.add_argument('--encoder_name', type=str, default="pwc",
                             help="which encoder to use for Scene Net")
         self.parser.add_argument('--decoder_type', type=str, default="full",
                             help="which decoder to use for Scene Net")
-        self.parser.add_argument('--pt_encoder', type=bool, default=True, help='only do resize augmentation on input data')
+        self.parser.add_argument('--pt_encoder', type=bool, default=False, help='only do resize augmentation on input data')
         self.parser.add_argument('--use_bn', type=bool, default=False, help="whether to use batch-norm in training procedure")
         self.parser.add_argument('--use_ppm', type=bool, default=False, help="whether to use consensus mask in training procedure")
         self.parser.add_argument('--num_scales', type=int, default=4, help="whether to use consensus mask in training procedure")
