@@ -160,13 +160,13 @@ class ResModel(nn.Module):
                 flow_f = flow_f + flow_f_res 
                 flow_b = flow_b + flow_b_res 
 
-            depth_l1 = disp2depth_kitti(disp_l1, k1[:, 0, 0])
-            depth_l2 = disp2depth_kitti(disp_l2, k2[:, 0, 0])
-
             _, _, h, w = depth_l1.shape
             local_scale = torch.zeros_like(aug_size)
             local_scale[:, 0] = h
             local_scale[:, 1] = w
+
+            depth_l1 = disp2depth_kitti(disp_l1 * w, k1[:, 0, 0])
+            depth_l2 = disp2depth_kitti(disp_l2 * w, k2[:, 0, 0])
 
             rel_scale = local_scale / aug_size
 
@@ -207,13 +207,13 @@ class ResModel(nn.Module):
                 flow_f = flow_f + flow_f_res 
                 flow_b = flow_b + flow_b_res 
 
-                depth_l1 = disp2depth_kitti(disp_l1, k1[:, 0, 0])
-                depth_l2 = disp2depth_kitti(disp_l2, k2[:, 0, 0])
-
                 _, _, h, w = depth_l1.shape
                 local_scale = torch.zeros_like(aug_size)
                 local_scale[:, 0] = h
                 local_scale[:, 1] = w
+
+                depth_l1 = disp2depth_kitti(disp_l1 * w, k1[:, 0, 0])
+                depth_l2 = disp2depth_kitti(disp_l2 * w, k2[:, 0, 0])
 
                 rel_scale = local_scale / aug_size
 
