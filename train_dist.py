@@ -232,16 +232,15 @@ def train(gpu, args):
 
             train_loss_avg_dict['total_loss'].detach_()
 
+            loss_names = []
+            all_losses = []
+            for k in sorted(train_loss_avg_dict.keys()):
+                loss_names.append(k)
+                all_losses.append(train_loss_avg_dict[k].cuda(device=gpu).float())
+
+            all_losses = torch.stack(all_losses, dim=0)
+            dist.reduce(all_losses, dst=0, op=dist.ReduceOp.SUM)
             if gpu == 0:
-
-                loss_names = []
-                all_losses = []
-                for k in sorted(train_loss_avg_dict.keys()):
-                    loss_names.append(k)
-                    all_losses.append(train_loss_avg_dict[k].cuda(device=gpu).float())
-
-                all_losses = torch.stack(all_losses, dim=0)
-
                 all_losses /= (n * args.batch_size)
                 train_reduced_losses = {k: v for k, v in zip(loss_names, all_losses)}
 
@@ -258,16 +257,17 @@ def train(gpu, args):
                     n = torch.tensor(n, requires_grad=False).cuda(device=gpu)
                     dist.reduce(n, dst=0, op=dist.ReduceOp.SUM)
 
+                    loss_names = []
+                    all_losses = []
+                    for k in sorted(val_loss_avg_dict.keys()):
+                        loss_names.append(k)
+                        all_losses.append(val_loss_avg_dict[k].cuda(device=gpu).float())
+
+                    all_losses = torch.stack(all_losses, dim=0)
+                    dist.reduce(all_losses, dst=0, op=dist.ReduceOp.SUM)
+
                     if gpu == 0:
-                        loss_names = []
-                        all_losses = []
-                        for k in sorted(val_loss_avg_dict.keys()):
-                            loss_names.append(k)
-                            all_losses.append(val_loss_avg_dict[k].cuda(device=gpu).float())
-
-                        all_losses = torch.stack(all_losses, dim=0)
-
-                        all_losses /= n
+                        all_losses /= (n * args.batch_size)
                         val_reduced_losses = {k: v for k, v in zip(loss_names, all_losses)}
 
                         print(f"Validation epoch: {epoch}...\n")
@@ -281,16 +281,18 @@ def train(gpu, args):
                     n = torch.tensor(n, requires_grad=False).cuda(device=gpu)
                     dist.reduce(n, dst=0, op=dist.ReduceOp.SUM)
 
+                    loss_names = []
+                    all_losses = []
+                    for k in sorted(test_loss_avg_dict.keys()):
+                        loss_names.append(k)
+                        all_losses.append(test_loss_avg_dict[k].cuda(device=gpu).float())
+
+                    all_losses = torch.stack(all_losses, dim=0)
+
+                    dist.reduce(all_losses, dst=0, op=dist.ReduceOp.SUM)
+
                     if gpu == 0:
-                        loss_names = []
-                        all_losses = []
-                        for k in sorted(test_loss_avg_dict.keys()):
-                            loss_names.append(k)
-                            all_losses.append(test_loss_avg_dict[k].cuda(device=gpu).float())
-
-                        all_losses = torch.stack(all_losses, dim=0)
-
-                        all_losses /= n
+                        all_losses /= 200
                         test_reduced_losses = {k: v for k, v in zip(loss_names, all_losses)}
 
                         print(f"Test epoch: {epoch}...\n")

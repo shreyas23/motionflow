@@ -94,7 +94,7 @@ def _adaptive_disocc_detection(flow):
     flow = flow.transpose(1, 2).transpose(2, 3)
 
     disocc = torch.clamp(forward_warp()(mask, flow), 0, 1)
-    disocc_map = (disocc > 0.5)
+    disocc_map = (disocc > 0.3)
 
     if disocc_map.float().sum() < (b * h * w / 2):
         disocc_map = torch.ones(
