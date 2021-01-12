@@ -161,11 +161,11 @@ def train(args):
 
         print(f"Training epoch: {epoch}...\n")
 
-        train_loss_avg_dict, output_dict, input_dict, num_train = train_one_epoch(
+        train_loss_avg_dict, output_dict, input_dict = train_one_epoch(
             args, model, loss, train_dataloader, optimizer, train_augmentations, lr_scheduler, 0)
 
         for k, v in train_loss_avg_dict.items():
-            train_loss_avg_dict[k] = v / num_train
+            train_loss_avg_dict[k] = v / len(train_dataset)
 
         print(f"\t Epoch {epoch} train loss avg:")
         pprint(train_loss_avg_dict)
@@ -173,19 +173,19 @@ def train(args):
 
         if args.validate:
             print(f"Validation epoch: {epoch}...\n")
-            val_loss_avg_dict, val_output_dict, val_input_dict, num_val = evaluate(args, model, loss, val_dataloader, val_augmentations, gpu=0)
+            val_loss_avg_dict, val_output_dict, val_input_dict = evaluate(args, model, loss, val_dataloader, val_augmentations, gpu=0)
 
             for k, v in val_loss_avg_dict.items():
-                val_loss_avg_dict[k] = v / num_val
+                val_loss_avg_dict[k] = v / len(val_dataset)
 
             print(f"\t Epoch {epoch} val loss avg:")
             pprint(val_loss_avg_dict)
             print("\n")
 
-            test_loss_avg_dict, test_output_dict, test_input_dict, num_test = evaluate(args, model, test_loss, test_dataloader, val_augmentations, gpu=0)
+            test_loss_avg_dict, test_output_dict, test_input_dict = evaluate(args, model, test_loss, test_dataloader, val_augmentations, gpu=0)
 
             for k, v in test_loss_avg_dict.items():
-                test_loss_avg_dict[k] = v / num_test
+                test_loss_avg_dict[k] = v / len(test_dataset)
 
             print(f"\t Epoch {epoch} test loss avg:")
             pprint(test_loss_avg_dict)

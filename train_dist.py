@@ -223,13 +223,10 @@ def train(gpu, args):
         model.train()
         assert (model.training == True)
 
-        train_loss_avg_dict, output_dict, input_dict, n = train_one_epoch(
+        train_loss_avg_dict, output_dict, input_dict = train_one_epoch(
             args, model, loss, train_dataloader, optimizer, train_augmentations, lr_scheduler, gpu)
 
         with torch.no_grad():
-            n = torch.tensor(n, requires_grad=False).cuda(device=gpu)
-            dist.reduce(n, dst=0, op=dist.ReduceOp.SUM)
-
             train_loss_avg_dict['total_loss'].detach_()
 
             loss_names = []
@@ -241,7 +238,7 @@ def train(gpu, args):
             all_losses = torch.stack(all_losses, dim=0)
             dist.reduce(all_losses, dst=0, op=dist.ReduceOp.SUM)
             if gpu == 0:
-                all_losses /= (n * args.batch_size)
+                all_losses /= len(train_dataset)
                 train_reduced_losses = {k: v for k, v in zip(loss_names, all_losses)}
 
                 print(f"\t Epoch {epoch} train loss avg:")
@@ -250,14 +247,11 @@ def train(gpu, args):
 
             if args.validate:
                 model.eval()
-                val_loss_avg_dict, val_output_dict, val_input_dict, n = evaluate(args, model, loss, val_dataloader, val_augmentations, gpu)
+                val_loss_avg_dict, val_output_dict, val_input_dict = evaluate(args, model, loss, val_dataloader, val_augmentations, gpu)
 
                 val_loss_avg_dict['total_loss'].detach_()
 
                 with torch.no_grad():
-                    n = torch.tensor(n, requires_grad=False).cuda(device=gpu)
-                    dist.reduce(n, dst=0, op=dist.ReduceOp.SUM)
-
                     loss_names = []
                     all_losses = []
                     for k in sorted(val_loss_avg_dict.keys()):
@@ -268,7 +262,7 @@ def train(gpu, args):
                     dist.reduce(all_losses, dst=0, op=dist.ReduceOp.SUM)
 
                     if gpu == 0:
-                        all_losses /= (n * args.batch_size)
+                        all_losses /= len(val_dataset)
                         val_reduced_losses = {k: v for k, v in zip(loss_names, all_losses)}
 
                         print(f"Validation epoch: {epoch}...\n")
@@ -277,12 +271,9 @@ def train(gpu, args):
                         print("\n")
 
                 model.eval()
-                test_loss_avg_dict, test_output_dict, test_input_dict, n = evaluate(args, model, test_loss, test_dataloader, val_augmentations, gpu)
+                test_loss_avg_dict, test_output_dict, test_input_dict = evaluate(args, model, test_loss, test_dataloader, val_augmentations, gpu)
 
                 with torch.no_grad():
-                    n = torch.tensor(n, requires_grad=False).cuda(device=gpu)
-                    dist.reduce(n, dst=0, op=dist.ReduceOp.SUM)
-
                     loss_names = []
                     all_losses = []
                     for k in sorted(test_loss_avg_dict.keys()):
@@ -294,7 +285,7 @@ def train(gpu, args):
                     dist.reduce(all_losses, dst=0, op=dist.ReduceOp.SUM)
 
                     if gpu == 0:
-                        all_losses /= 200
+                        all_losses /= len(test_dataset)
                         test_reduced_losses = {k: v for k, v in zip(loss_names, all_losses)}
 
                         print(f"Test epoch: {epoch}...\n")
