@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 from utils.helpers import BackprojectDepth, Project3D
 from utils.interpolation import interpolate2d_as
-from utils.inverse_warp import pose2flow, pose_vec2mat, pose2sceneflow
+from utils.inverse_warp import pose2flow, pose_vec2mat
 from utils.loss_utils import _generate_image_left, _generate_image_right, _smoothness_motion_2nd, disp_smooth_loss
 from utils.loss_utils import _SSIM, _reconstruction_error, _disp2depth_kitti_K, logical_or, _elementwise_epe
 from utils.loss_utils import _adaptive_disocc_detection, _adaptive_disocc_detection_disp

@@ -249,6 +249,7 @@ def train(gpu, args):
                 print("\n")
 
             if args.validate:
+                model.eval()
                 val_loss_avg_dict, val_output_dict, val_input_dict, n = evaluate(args, model, loss, val_dataloader, val_augmentations, gpu)
 
                 val_loss_avg_dict['total_loss'].detach_()
@@ -275,6 +276,7 @@ def train(gpu, args):
                         pprint(val_reduced_losses)
                         print("\n")
 
+                model.eval()
                 test_loss_avg_dict, test_output_dict, test_input_dict, n = evaluate(args, model, test_loss, test_dataloader, val_augmentations, gpu)
 
                 with torch.no_grad():

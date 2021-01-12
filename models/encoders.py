@@ -84,6 +84,7 @@ class ResnetEncoder(nn.Module):
         super(ResnetEncoder, self).__init__()
 
         self.args = args
+        self.pretrained = pretrained
         self.num_ch_enc = np.array([64, 64, 128, 256, 512])
 
         resnets = {18: models.resnet18,
@@ -105,9 +106,12 @@ class ResnetEncoder(nn.Module):
 
     def forward(self, input_image):
         self.features = []
-        x = (input_image - 0.45) / 0.225
+        if self.pretrained:
+            x = (input_image - 0.45) / 0.225
+        else:
+            x = input_image
         x = self.encoder.conv1(x)
-        if self.args.use_bn and self.args.batch_size > 1:
+        if self.args.use_bn:
             x = self.encoder.bn1(x)
         self.features.append(self.encoder.relu(x))
         self.features.append(self.encoder.layer1(self.encoder.maxpool(self.features[-1])))
@@ -116,3 +120,37 @@ class ResnetEncoder(nn.Module):
         self.features.append(self.encoder.layer4(self.features[-1]))
 
         return self.features
+
+
+class PoseBottleNeck(nn.Module):
+
+    def __init__(self, in_ch=6, use_bn=False):
+        super(PoseBottleNeck, self).__init__()
+
+        conv_planes = [16, 32, 64, 128]
+        self.conv0 = Conv(in_ch, conv_planes[0], kernel_size=7, stride=1, use_bn=use_bn)
+        self.conv1 = Conv(conv_planes[0], conv_planes[1], kernel_size=5, stride=1, use_bn=use_bn)
+        self.conv2 = Conv(conv_planes[1], conv_planes[2], stride=1, use_bn=use_bn)
+        self.conv3 = Conv(conv_planes[2], conv_planes[3], stride=1, use_bn=use_bn)
+
+    def init_weights(self):
+        for layer in self.modules():
+            if isinstance(layer, nn.Conv2d) or isinstance(layer, nn.ConvTranspose2d):
+                nn.init.kaiming_normal_(layer.weight)
+                if layer.bias is not None:
+                    nn.init.constant_(layer.bias, 0)
+
+            elif isinstance(layer, nn.LeakyReLU):
+                pass
+
+            elif isinstance(layer, nn.Sequential):
+                pass
+
+
+    def forward(self, x):
+        out_conv0 = self.conv0(x)
+        out_conv1 = self.conv1(out_conv0)
+        out_conv2 = self.conv2(out_conv1)
+        out_conv3 = self.conv3(out_conv2)
+
+        return out_conv3 

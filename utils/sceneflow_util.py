@@ -9,7 +9,7 @@ from .inverse_warp import pose_vec2mat
 from sys import exit
 
 
-def pose_process_flow(pose_sf, sf, pose_err, sf_err):
+def pose_process_flow(pose_sf, sf):
     out_sf = torch.where(pose_err <= sf_err, pose_sf, sf)
     return out_sf
 

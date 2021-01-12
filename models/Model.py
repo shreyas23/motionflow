@@ -15,10 +15,11 @@ from .correlation_package.correlation import Correlation
 
 from .common import Conv, UpConv
 from utils.helpers import invert_pose, Warp_SceneFlow, add_pose, Warp_Pose
-from utils.sceneflow_util import flow_horizontal_flip, post_processing
+from utils.sceneflow_util import flow_horizontal_flip, post_processing, pose_process_flow
 from utils.interpolation import interpolate2d_as
 from utils.inverse_warp import pose_vec2mat
 from .modules_sceneflow import upsample_outputs_as
+
 
 
 class Model(nn.Module):
@@ -261,6 +262,9 @@ class Model(nn.Module):
                 if self.use_mask:
                     mask_l1_pp.append(post_processing(output_dict['masks_l1'][ii], torch.flip(output_dict_flip['masks_l1'][ii], [3])))
                     mask_l2_pp.append(post_processing(output_dict['masks_l2'][ii], torch.flip(output_dict_flip['masks_l2'][ii], [3])))
+
+            # flow_f_pp = pose_process_flow()
+            # flow_b_pp = pose_process_flow()
 
             output_dict['flows_f_pp'] = flow_f_pp
             output_dict['flows_b_pp'] = flow_b_pp

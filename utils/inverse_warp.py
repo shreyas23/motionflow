@@ -219,19 +219,41 @@ def pose2flow(depth, pose, intrinsics, intrinsics_inv, rotation_mode='euler', pa
 
     return torch.stack((X,Y), dim=1)
 
+def get_pixelgrid(b, h, w):
+    grid_h = torch.linspace(0.0, w - 1, w).view(1, 1, 1, w).expand(b, 1, h, w)
+    grid_v = torch.linspace(0.0, h - 1, h).view(1, 1, h, 1).expand(b, 1, h, w)
 
-def pose2sceneflow(depth, pose, intrinsics_inv, rotation_mode='euler', padding_mode=None, pose_mat=None):
+    ones = torch.ones_like(grid_h)
+    pixelgrid = torch.cat((grid_h, grid_v, ones), dim=1).float().requires_grad_(False).cuda()
+
+    return pixelgrid
+
+
+def pixel2pts(intrinsics, depth):
+    b, _, h, w = depth.size()
+
+    pixelgrid = get_pixelgrid(b, h, w)
+
+    depth_mat = depth.view(b, 1, -1)
+    pixel_mat = pixelgrid.view(b, 3, -1)
+    pts_mat = torch.matmul(torch.inverse(intrinsics.cpu()).cuda(), pixel_mat) * depth_mat
+    pts = pts_mat.view(b, -1, h, w)
+
+    return pts, pixelgrid
+
+def pose2sceneflow(depth, pose, intrinsics, rotation_mode='euler', padding_mode=None, pose_mat=None):
     """
     Converts pose parameters to rigid scene flow
     """
-    check_sizes(depth, 'depth', 'BHW')
+    check_sizes(depth, 'depth', 'B1HW')
     # check_sizes(pose, 'pose', 'B6')
-    check_sizes(intrinsics_inv, 'intrinsics', 'B33')
+    check_sizes(intrinsics, 'intrinsics', 'B33')
 
-    _, h, w = depth.size()
+    _, _, h, w = depth.size()
 
     # projection matrix from target to points
-    cam_coords = pixel2cam(depth, intrinsics_inv)  # [B,3,H,W]
+    # cam_coords = pixel2cam(depth, intrinsics_inv)  # [B,3,H,W]
+    cam_coords, _ = pixel2pts(intrinsics, depth)  # [B,3,H,W]
 
     # tform matrix
     if pose is not None and pose_mat is None:
