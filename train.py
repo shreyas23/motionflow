@@ -165,7 +165,7 @@ def train(args):
             args, model, loss, train_dataloader, optimizer, train_augmentations, lr_scheduler, 0)
 
         for k, v in train_loss_avg_dict.items():
-            train_loss_avg_dict[k] = v / len(train_dataset)
+            train_loss_avg_dict[k] = v / (len(train_dataset) * args.batch_size)
 
         print(f"\t Epoch {epoch} train loss avg:")
         pprint(train_loss_avg_dict)
@@ -176,7 +176,7 @@ def train(args):
             val_loss_avg_dict, val_output_dict, val_input_dict = evaluate(args, model, loss, val_dataloader, val_augmentations, gpu=0)
 
             for k, v in val_loss_avg_dict.items():
-                val_loss_avg_dict[k] = v / len(val_dataset)
+                val_loss_avg_dict[k] = v / (len(val_dataset) * args.batch_size)
 
             print(f"\t Epoch {epoch} val loss avg:")
             pprint(val_loss_avg_dict)
@@ -185,7 +185,7 @@ def train(args):
             test_loss_avg_dict, test_output_dict, test_input_dict = evaluate(args, model, test_loss, test_dataloader, val_augmentations, gpu=0)
 
             for k, v in test_loss_avg_dict.items():
-                test_loss_avg_dict[k] = v / len(test_dataset)
+                test_loss_avg_dict[k] = v / (len(test_dataset) * args.batch_size)
 
             print(f"\t Epoch {epoch} test loss avg:")
             pprint(test_loss_avg_dict)
@@ -215,20 +215,11 @@ def train(args):
 
             if epoch % args.log_freq == 0:
                 visualize_output(args, input_dict, output_dict, epoch, writer, prefix='train')
-                del input_dict
-                del output_dict
-                del train_loss_avg_dict
 
                 if args.validate:
                     visualize_output(args, val_input_dict, val_output_dict, epoch, writer, prefix='val')
-                    del val_input_dict
-                    del val_output_dict
-                    del val_loss_avg_dict
 
                     visualize_output(args, test_input_dict, test_output_dict, epoch, writer, prefix='test')
-                    del test_input_dict
-                    del test_output_dict
-                    del test_loss_avg_dict
 
                 writer.flush()
 
@@ -236,6 +227,17 @@ def train(args):
                 if epoch % args.save_freq == 0:
                     model.load_state_dict(torch.load(fp)['model'])
                     optimizer.load_state_dict(torch.load(fp)['optimizer'])
+
+        del input_dict
+        del output_dict
+        del train_loss_avg_dict
+        if args.validate:
+            del val_input_dict
+            del val_output_dict
+            del val_loss_avg_dict
+            del test_input_dict
+            del test_output_dict
+            del test_loss_avg_dict
 
         gc.collect()
 
