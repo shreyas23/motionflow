@@ -319,24 +319,9 @@ def train(gpu, args):
 
                 if epoch % args.log_freq == 0:
                     visualize_output(args, input_dict, output_dict, epoch, writer, prefix='train')
-                    del input_dict
-                    del output_dict
-                    del train_loss_avg_dict
-                    del train_reduced_losses
-
                     if args.validate:
                         visualize_output(args, val_input_dict, val_output_dict, epoch, writer, prefix='val')
-                        del val_input_dict
-                        del val_output_dict
-                        del val_loss_avg_dict
-                        del val_reduced_losses
-
                         visualize_output(args, test_input_dict, test_output_dict, epoch, writer, prefix='test')
-
-                        del test_input_dict
-                        del test_output_dict
-                        del test_loss_avg_dict
-                        del test_reduced_losses
 
                     writer.flush()
 
@@ -350,6 +335,25 @@ def train(gpu, args):
                         torch.load(fp, map_location=map_location)['model'])
                     optimizer.load_state_dict(
                         torch.load(fp, map_location=map_location)['optimizer'])
+
+        # clear GPU memory for next epoch
+        del input_dict
+        del output_dict
+        del train_loss_avg_dict
+        if gpu == 0:
+            del train_reduced_losses
+
+        if args.validate:
+            del val_input_dict
+            del val_output_dict
+            del val_loss_avg_dict
+            del test_input_dict
+            del test_output_dict
+            del test_loss_avg_dict
+            if gpu == 0:
+                del val_reduced_losses
+                del test_reduced_losses
+
 
         gc.collect()
 
