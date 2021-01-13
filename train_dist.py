@@ -238,7 +238,7 @@ def train(gpu, args):
             all_losses = torch.stack(all_losses, dim=0)
             dist.reduce(all_losses, dst=0, op=dist.ReduceOp.SUM)
             if gpu == 0:
-                all_losses /= (len(train_dataset) * args.batch_size)
+                all_losses /= len(train_dataset)
                 train_reduced_losses = {k: v for k, v in zip(loss_names, all_losses)}
 
                 print(f"\t Epoch {epoch} train loss avg:")
@@ -262,7 +262,7 @@ def train(gpu, args):
                     dist.reduce(all_losses, dst=0, op=dist.ReduceOp.SUM)
 
                     if gpu == 0:
-                        all_losses /= (len(val_dataset) * args.batch_size)
+                        all_losses /= len(val_dataset)
                         val_reduced_losses = {k: v for k, v in zip(loss_names, all_losses)}
 
                         print(f"Validation epoch: {epoch}...\n")
@@ -285,7 +285,7 @@ def train(gpu, args):
                     dist.reduce(all_losses, dst=0, op=dist.ReduceOp.SUM)
 
                     if gpu == 0:
-                        all_losses /= (len(test_dataset) * args.batch_size)
+                        all_losses /= len(test_dataset)
                         test_reduced_losses = {k: v for k, v in zip(loss_names, all_losses)}
 
                         print(f"Test epoch: {epoch}...\n")
