@@ -10,8 +10,7 @@ from sys import exit
 
 
 def pose_process_flow(pose_sf, sf):
-    out_sf = torch.where(pose_err <= sf_err, pose_sf, sf)
-    return out_sf
+    return 
 
 
 def post_processing(l_disp, r_disp):

@@ -100,9 +100,10 @@ class Loss(nn.Module):
         return img_diff, occ_mask, (cam_points, grid), occ_mask
 
 
-    def mask_loss(self, mask, census_target):
+    def mask_loss(self, image, mask, census_target):
         reg_loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
-        sm_loss = (_gradient_x_2nd(mask).abs() + _gradient_y_2nd(mask).abs()).mean()
+        # sm_loss = (_gradient_x_2nd(mask).abs() + _gradient_y_2nd(mask).abs()).mean()
+        sm_loss = _smoothness_motion_2nd(mask, image)
         census_loss = tf.binary_cross_entropy(mask, census_target)
 
         return reg_loss, sm_loss, census_loss
@@ -297,8 +298,8 @@ class Loss(nn.Module):
 
             """ MASK LOSS """
             if self.use_mask:
-                mask_reg_loss1, mask_sm_loss1, mask_census_loss1 = self.mask_loss(mask_l1, census_mask_tgt_l1)
-                mask_reg_loss2, mask_sm_loss2, mask_census_loss2 = self.mask_loss(mask_l2, census_mask_tgt_l2)
+                mask_reg_loss1, mask_sm_loss1, mask_census_loss1 = self.mask_loss(img_l1, mask_l1, census_mask_tgt_l1)
+                mask_reg_loss2, mask_sm_loss2, mask_census_loss2 = self.mask_loss(img_l2, mask_l2, census_mask_tgt_l2)
 
                 if self.args.train_exp_mask:
                     if self.args.apply_mask:
@@ -441,7 +442,7 @@ class Loss(nn.Module):
             disp_sm_sum = disp_sm_sum + loss_disp_sm
         
         loss_dict = {}
-        loss_dict["total_loss"] = (depth_loss_sum + flow_loss_sum + mask_loss_sum + cons_loss_sum) / num_scales
+        loss_dict["total_loss"] = (depth_loss_sum + flow_loss_sum + mask_loss_sum + cons_loss_sum) # / num_scales
 
         loss_dict["depth_loss"] = depth_loss_sum.detach()
         loss_dict["flow_loss"] = flow_loss_sum.detach()
