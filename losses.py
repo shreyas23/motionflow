@@ -425,8 +425,10 @@ class Loss(nn.Module):
             sf_diff2[~sf_occ_b].detach_()
 
             if self.static_cons_w > 0.0:
-                cons_loss_f = _elementwise_epe(pose_of_f * mask_l1, of_f)
-                cons_loss_b = _elementwise_epe(pose_of_b * mask_l2, of_b)
+                pose_sf_f = pose2flow(depth_l1.squeeze(dim=1), None, K_l1_s, torch.inverse(K_l1_s), pose_mat=pose_f)
+                pose_sf_b = pose2flow(depth_l2.squeeze(dim=1), None, K_l2_s, torch.inverse(K_l2_s), pose_mat=pose_b)
+                cons_loss_f = _elementwise_epe(pose_sf_f * mask_l1, flow_f)
+                cons_loss_b = _elementwise_epe(pose_sf_b * mask_l2, flow_b)
                 cons_loss = (cons_loss_f + cons_loss_b) * self.static_cons_w
             else:
                 cons_loss = torch.tensor(0.0, requires_grad=False)
