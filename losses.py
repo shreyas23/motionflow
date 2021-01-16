@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 from utils.helpers import BackprojectDepth, Project3D
 from utils.interpolation import interpolate2d_as
-from utils.inverse_warp import pose2flow, pose_vec2mat
+from utils.inverse_warp import pose2flow, pose2sceneflow, pose_vec2mat
 from utils.loss_utils import _generate_image_left, _generate_image_right, _smoothness_motion_2nd, disp_smooth_loss
 from utils.loss_utils import _SSIM, _reconstruction_error, _disp2depth_kitti_K, logical_or, _elementwise_epe
 from utils.loss_utils import _adaptive_disocc_detection, _adaptive_disocc_detection_disp
@@ -100,10 +100,10 @@ class Loss(nn.Module):
         return img_diff, occ_mask, (cam_points, grid), occ_mask
 
 
-    def mask_loss(self, image, mask, census_target):
+    def mask_loss(self, image, mask, census_target, scale):
         reg_loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
         # sm_loss = (_gradient_x_2nd(mask).abs() + _gradient_y_2nd(mask).abs()).mean()
-        sm_loss = _smoothness_motion_2nd(mask, image)
+        sm_loss = _smoothness_motion_2nd(mask, image).mean() / (2**scale)
         census_loss = tf.binary_cross_entropy(mask, census_target)
 
         return reg_loss, sm_loss, census_loss
@@ -250,8 +250,10 @@ class Loss(nn.Module):
             depth_l2 = _disp2depth_kitti_K(disp_l2, K_l2_s[:, 0, 0])
 
             # pose diffs
-            pose_diff1, pose_occ_b, (_, pose_grid1), pose_occ_f = self.flow_loss(disp=disp_l1, src=img_l2, tgt=img_l1, K=K_l1_s, T=pose_f, mode='pose')
-            pose_diff2, pose_occ_f, (_, pose_grid2), pose_occ_b = self.flow_loss(disp=disp_l2, src=img_l1, tgt=img_l2, K=K_l2_s, T=pose_b, mode='pose')
+            pose_sf_f = pose2sceneflow(depth_l1, None, K_l1_s, torch.inverse(K_l1_s), pose_mat=pose_f)
+            pose_sf_b = pose2sceneflow(depth_l2, None, K_l2_s, torch.inverse(K_l2_s), pose_mat=pose_b)
+            pose_diff1, pose_occ_b, (_, pose_grid1), pose_occ_f = self.flow_loss(disp=disp_l1, src=img_l2, tgt=img_l1, K=K_l1_s, sf=pose_sf_f, mode='sf')
+            pose_diff2, pose_occ_f, (_, pose_grid2), pose_occ_b = self.flow_loss(disp=disp_l2, src=img_l1, tgt=img_l2, K=K_l2_s, sf=pose_sf_b, mode='sf')
 
             # sf diffs
             sf_diff1, sf_occ_b, (pts1, sf_grid1), sf_occ_f = self.flow_loss(disp=disp_l1, src=img_l2, tgt=img_l1, K=K_l1_s, sf=flow_f, mode='sf')
@@ -285,12 +287,12 @@ class Loss(nn.Module):
             depth_loss = depth_loss1 + depth_loss2
 
             """ CENSUS MASK """
-            pose_of_f = pose2flow(depth_l1.squeeze(dim=1), None, K_l1_s, torch.inverse(K_l1_s), pose_mat=pose_f)
-            pose_of_b = pose2flow(depth_l2.squeeze(dim=1), None, K_l2_s, torch.inverse(K_l2_s), pose_mat=pose_b)
-            of_f = projectSceneFlow2Flow(K_l1_s, flow_f, disp_l1)
-            of_b = projectSceneFlow2Flow(K_l2_s, flow_b, disp_l2)
-            flow_diff_f = _elementwise_epe(pose_of_f, of_f)
-            flow_diff_b = _elementwise_epe(pose_of_b, of_b)
+            # of_f = projectSceneFlow2Flow(K_l1_s, flow_f, disp_l1)
+            # of_b = projectSceneFlow2Flow(K_l2_s, flow_b, disp_l2)
+            # pose_of_f = pose2flow(depth_l1.squeeze(dim=1), None, K_l1_s, torch.inverse(K_l1_s), pose_mat=pose_f)
+            # pose_of_b = pose2flow(depth_l2.squeeze(dim=1), None, K_l2_s, torch.inverse(K_l2_s), pose_mat=pose_b)
+            flow_diff_f = _elementwise_epe(pose_sf_f, flow_f)
+            flow_diff_b = _elementwise_epe(pose_sf_b, flow_b)
             census_mask_tgt_l1 = self.create_census_mask(flow_diff_f, pose_diff1, sf_diff1)
             census_mask_tgt_l2 = self.create_census_mask(flow_diff_b, pose_diff2, sf_diff2)
             census_masks_l1.append(census_mask_tgt_l1)
@@ -298,8 +300,8 @@ class Loss(nn.Module):
 
             """ MASK LOSS """
             if self.use_mask:
-                mask_reg_loss1, mask_sm_loss1, mask_census_loss1 = self.mask_loss(img_l1, mask_l1, census_mask_tgt_l1)
-                mask_reg_loss2, mask_sm_loss2, mask_census_loss2 = self.mask_loss(img_l2, mask_l2, census_mask_tgt_l2)
+                mask_reg_loss1, mask_sm_loss1, mask_census_loss1 = self.mask_loss(img_l1, mask_l1, census_mask_tgt_l1, s)
+                mask_reg_loss2, mask_sm_loss2, mask_census_loss2 = self.mask_loss(img_l2, mask_l2, census_mask_tgt_l2, s)
 
                 if self.args.train_exp_mask:
                     if self.args.apply_mask:
@@ -425,10 +427,8 @@ class Loss(nn.Module):
             sf_diff2[~sf_occ_b].detach_()
 
             if self.static_cons_w > 0.0:
-                pose_sf_f = pose2flow(depth_l1.squeeze(dim=1), None, K_l1_s, torch.inverse(K_l1_s), pose_mat=pose_f)
-                pose_sf_b = pose2flow(depth_l2.squeeze(dim=1), None, K_l2_s, torch.inverse(K_l2_s), pose_mat=pose_b)
-                cons_loss_f = _elementwise_epe(pose_sf_f * mask_l1, flow_f)
-                cons_loss_b = _elementwise_epe(pose_sf_b * mask_l2, flow_b)
+                cons_loss_f = _elementwise_epe(pose_sf_f * mask_l1, flow_f).mean()
+                cons_loss_b = _elementwise_epe(pose_sf_b * mask_l2, flow_b).mean()
                 cons_loss = (cons_loss_f + cons_loss_b) * self.static_cons_w
             else:
                 cons_loss = torch.tensor(0.0, requires_grad=False)
