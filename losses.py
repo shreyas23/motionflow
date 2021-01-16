@@ -318,6 +318,7 @@ class Loss(nn.Module):
                                 mask_sm_loss1 * self.mask_sm_w
                     mask_loss2 = mask_reg_loss2 * self.mask_reg_w + \
                                 mask_sm_loss2 * self.mask_sm_w
+
                     mask_reg_loss = mask_reg_loss1 + mask_reg_loss2
                     mask_sm_loss = mask_sm_loss1 + mask_sm_loss2
                     mask_loss = mask_loss1 + mask_loss2
@@ -335,15 +336,19 @@ class Loss(nn.Module):
                             sf_pts_diff1 = sf_pts_diff1 * flow_mask_l1.detach()
                             sf_pts_diff2 = sf_pts_diff2 * flow_mask_l2.detach()
 
-                    mask_loss1 = mask_sm_loss1 * self.mask_sm_w + \
-                                mask_census_loss1 * self.mask_census_w
-                    mask_loss2 = mask_sm_loss2 * self.mask_sm_w + \
-                                mask_census_loss2 * self.mask_census_w
+                    mask_loss1 = mask_reg_loss1 * self.mask_reg_w + \
+                                 mask_sm_loss1 * self.mask_sm_w + \
+                                 mask_census_loss1 * self.mask_census_w
+
+                    mask_loss2 = mask_reg_loss1 * self.mask_reg_w + \
+                                 mask_sm_loss2 * self.mask_sm_w + \
+                                 mask_census_loss2 * self.mask_census_w
 
                     mask_sm_loss = mask_sm_loss1 + mask_sm_loss2
                     mask_census_loss = mask_census_loss1 + mask_census_loss2
+                    mask_reg_loss = mask_reg_loss1 + mask_reg_loss2
                     mask_loss = mask_loss1 + mask_loss2
-                    mask_reg_loss = torch.tensor(0, requires_grad=False)
+                    # mask_reg_loss = torch.tensor(0, requires_grad=False)
             else:
                 mask_loss = torch.tensor(0, requires_grad=False)
                 mask_reg_loss = torch.tensor(0, requires_grad=False)
