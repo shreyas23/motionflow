@@ -194,7 +194,7 @@ class Model(nn.Module):
         x1_features = self.encoder(input_dict['input_l1_aug'])
         x2_features = self.encoder(input_dict['input_l2_aug'])
 
-        pose_features = self.pose_encoder(torch.cat(input_dict['input_l1_aug'], input_dict['input_l2_aug'], dim=1))
+        pose_features = self.pose_encoder(torch.cat((input_dict['input_l1_aug'], input_dict['input_l2_aug']), dim=1))
 
         ## Left
         output_dict = self.run_pwc(input_dict, x1_features, x2_features, input_dict['input_k_l1_aug'], input_dict['input_k_l2_aug'])
@@ -274,8 +274,8 @@ class Model(nn.Module):
                 K2 = input_dict['input_k_l2_aug']
                 aug_size = input_dict['aug_size']
 
-                flow_f_pp = pose_process_flow(img_l1, img_l2, output_dict['pose_f'][ii], flow_f_pp, disps_l1_pp[ii], K1, aug_size)
-                flow_b_pp = pose_process_flow(img_l2, img_l1, output_dict['pose_b'][ii], flow_b_pp, disps_l2_pp[ii], K2, aug_size)
+                flow_f_pp = pose_process_flow(img_l1, img_l2, output_dict['pose_f'], flow_f_pp, disps_l1_pp[ii], K1, aug_size)
+                flow_b_pp = pose_process_flow(img_l2, img_l1, output_dict['pose_b'], flow_b_pp, disps_l2_pp[ii], K2, aug_size)
                 flows_f_pp.append(flow_f_pp)
                 flows_b_pp.append(flow_b_pp)
 
