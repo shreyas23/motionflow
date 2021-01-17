@@ -10,10 +10,11 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --encoder_name='resnet' \
                       --num_examples=-1 \
                       --num_workers=16 \
-                      --start_epoch=4 \
+                      --start_epoch=1 \
                       --epochs=40 \
                       --batch_size=2 \
                       --lr=2e-4 \
+                      --weight_decay=1e-4 \
                       --lr_gamma=0.5 \
                       --lr_sched_type='step' \
                       --milestones 10 20 30 \

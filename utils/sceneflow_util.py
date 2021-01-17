@@ -4,13 +4,67 @@ import torch
 from torch import nn
 import torch.nn.functional as tf
 
-from .inverse_warp import pose_vec2mat
+from models.modules_sceneflow import WarpingLayer_SF, WarpingLayer_Pose
+from .loss_utils import _disp2depth_kitti_K, _adaptive_disocc_detection, _reconstruction_error
+from .inverse_warp import pose_vec2mat, pose2flow, pose2sceneflow
+from .helpers import BackprojectDepth, Project3D
 
 from sys import exit
 
+def reconstruction_err(disp, src, tgt, K, sf=None, T=None, mode='pose', ssim_w=0.85):
+    """ Calculate the difference between the src and tgt images 
+    Inputs:
+    disp: disparity from left to right (B, 1, H, W)
+    src/tgt: consecutive images from left camera
+    flow: scene flow from tgt to src (B, 3, H, W)
+    pose: pose transform from tgt to src (B, 3, 3)
+    """
 
-def pose_process_flow(pose_sf, sf):
-    return 
+    b, _, h, w = disp.shape
+    depth = _disp2depth_kitti_K(disp, K[:, 0, 0])
+    
+    if mode == 'pose':
+        assert (T is not None), "T cannot be None when mode=pose"
+        of = pose2flow(depth.squeeze(dim=1), None, K, torch.inverse(K), pose_mat=T)
+    elif mode == 'sf':
+        assert (sf is not None), "sf cannot be None when mode=sf"
+        of = projectSceneFlow2Flow(K, sf, disp)
+    occ_mask = _adaptive_disocc_detection(of).detach()
+
+    back_proj = BackprojectDepth(b, h, w).to(device=disp.device)
+    proj = Project3D(b, h, w).to(device=disp.device)
+
+    cam_points = back_proj(depth, torch.inverse(K), mode=mode)
+    grid = proj(cam_points, K, T=T, sf=sf, mode=mode)
+    ref_warp = tf.grid_sample(src, grid, mode='bilinear', padding_mode="zeros")
+
+    img_diff = _reconstruction_error(tgt, ref_warp, ssim_w)
+
+    return img_diff, occ_mask, (cam_points, grid), occ_mask
+
+
+def pose_process_flow(src_img, tgt_img, pose, sf, disp, K, aug_size):
+
+    # denormalize disparity
+    _, _, h, w = disp.shape 
+    disp = disp * w
+
+    local_scale = torch.zeros_like(aug_size)
+    local_scale[:, 0] = h
+    local_scale[:, 1] = w
+
+    rel_scale = local_scale / aug_size
+
+    K_s = intrinsic_scale(K, rel_scale[:, 0], rel_scale[:, 1])
+
+    depth = _disp2depth_kitti_K(disp, K_s[:, 0, 0])
+    pose_sf = pose2flow(depth.squeeze(dim=1), None, K, torch.inverse(K_s), pose_mat=pose)
+    pose_diff, _, (_, _), _ = reconstruction_err(disp=disp, src=src_img, tgt=tgt_img, K=K, sf=pose_sf, mode='sf')
+    sf_diff, _, (_, _), _ = reconstruction_err(disp=disp, src=src_img, tgt=tgt_img, K=K, sf=sf, mode='sf')
+
+    processed_flow = torch.where(pose_diff < sf_diff, pose_sf, sf)
+
+    return processed_flow
 
 
 def post_processing(l_disp, r_disp):

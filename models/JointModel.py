@@ -16,9 +16,9 @@ from .encoders import FeatureExtractor, ResnetEncoder
 
 from utils.inverse_warp import pose_vec2mat
 from utils.interpolation import interpolate2d_as
-from utils.sceneflow_util import flow_horizontal_flip, intrinsic_scale, get_pixelgrid, post_processing
+from utils.sceneflow_util import flow_horizontal_flip, intrinsic_scale, get_pixelgrid, post_processing, pose_process_flow
 from utils.helpers import Warp_SceneFlow, Warp_Pose, add_pose, invert_pose
-from.common import UpConv
+from .common import UpConv
 
 
 class JointModel(nn.Module):
@@ -261,27 +261,38 @@ class JointModel(nn.Module):
 
             output_dict_flip = self.run_pwc(input_dict, input_l1_flip, input_l2_flip, k_l1_flip, k_l2_flip)
 
-            flow_f_pp = []
-            flow_b_pp = []
-            disp_l1_pp = []
-            disp_l2_pp = []
-            mask_l1_pp = []
-            mask_l2_pp = []
+            flows_f_pp = []
+            flows_b_pp = []
+            disps_l1_pp = []
+            disps_l2_pp = []
+            masks_l1_pp = []
+            masks_l2_pp = []
 
             for ii in range(0, len(output_dict_flip['flows_f'])):
 
-                flow_f_pp.append(post_processing(output_dict['flows_f'][ii], flow_horizontal_flip(output_dict_flip['flows_f'][ii])))
-                flow_b_pp.append(post_processing(output_dict['flows_b'][ii], flow_horizontal_flip(output_dict_flip['flows_b'][ii])))
-                disp_l1_pp.append(post_processing(output_dict['disps_l1'][ii], torch.flip(output_dict_flip['disps_l1'][ii], [3])))
-                disp_l2_pp.append(post_processing(output_dict['disps_l2'][ii], torch.flip(output_dict_flip['disps_l2'][ii], [3])))
-                mask_l1_pp.append(post_processing(output_dict['masks_l1'][ii], torch.flip(output_dict_flip['masks_l1'][ii], [3])))
-                mask_l2_pp.append(post_processing(output_dict['masks_l2'][ii], torch.flip(output_dict_flip['masks_l2'][ii], [3])))
+                flow_f_pp = post_processing(output_dict['flows_f'][ii], flow_horizontal_flip(output_dict_flip['flows_f'][ii]))
+                flow_b_pp = post_processing(output_dict['flows_b'][ii], flow_horizontal_flip(output_dict_flip['flows_b'][ii]))
+                disps_l1_pp.append(post_processing(output_dict['disps_l1'][ii], torch.flip(output_dict_flip['disps_l1'][ii], [3])))
+                disps_l2_pp.append(post_processing(output_dict['disps_l2'][ii], torch.flip(output_dict_flip['disps_l2'][ii], [3])))
+                masks_l1_pp.append(post_processing(output_dict['masks_l1'][ii], torch.flip(output_dict_flip['masks_l1'][ii], [3])))
+                masks_l2_pp.append(post_processing(output_dict['masks_l2'][ii], torch.flip(output_dict_flip['masks_l2'][ii], [3])))
 
-            output_dict['flows_f_pp'] = flow_f_pp
-            output_dict['flows_b_pp'] = flow_b_pp
-            output_dict['disps_l1_pp'] = disp_l1_pp
-            output_dict['disps_l2_pp'] = disp_l2_pp
-            output_dict['masks_l1_pp'] = disp_l1_pp
-            output_dict['masks_l2_pp'] = disp_l2_pp
+                img_l1 = input_dict['input_l1_aug']
+                img_l2 = input_dict['input_l2_aug']
+                K1 = input_dict['input_k_l1_aug']
+                K2 = input_dict['input_k_l2_aug']
+                aug_size = input_dict['aug_size']
+
+                flow_f_pp = pose_process_flow(img_l1, img_l2, output_dict['pose_f'][ii], flow_f_pp, disps_l1_pp[ii], K1, aug_size)
+                flow_b_pp = pose_process_flow(img_l2, img_l1, output_dict['pose_b'][ii], flow_b_pp, disps_l2_pp[ii], K2, aug_size)
+                flow_f_pp.append(flow_f_pp)
+                flow_b_pp.append(flow_b_pp)
+
+            output_dict['flows_f_pp'] = flows_f_pp
+            output_dict['flows_b_pp'] = flows_b_pp
+            output_dict['disps_l1_pp'] = disps_l1_pp
+            output_dict['disps_l2_pp'] = disps_l2_pp
+            output_dict['masks_l1_pp'] = masks_l1_pp
+            output_dict['masks_l2_pp'] = masks_l2_pp
 
         return output_dict
