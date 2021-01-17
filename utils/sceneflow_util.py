@@ -4,12 +4,10 @@ import torch
 from torch import nn
 import torch.nn.functional as tf
 
-from models.modules_sceneflow import WarpingLayer_SF, WarpingLayer_Pose
 from .loss_utils import _disp2depth_kitti_K, _adaptive_disocc_detection, _reconstruction_error
 from .inverse_warp import pose_vec2mat, pose2flow, pose2sceneflow
-from .helpers import BackprojectDepth, Project3D
+from .interpolation import interpolate2d_as
 
-from sys import exit
 
 def reconstruction_err(disp, src, tgt, K, sf=None, T=None, mode='pose', ssim_w=0.85):
     """ Calculate the difference between the src and tgt images 
@@ -19,6 +17,8 @@ def reconstruction_err(disp, src, tgt, K, sf=None, T=None, mode='pose', ssim_w=0
     flow: scene flow from tgt to src (B, 3, H, W)
     pose: pose transform from tgt to src (B, 3, 3)
     """
+
+    from .helpers import BackprojectDepth, Project3D
 
     b, _, h, w = disp.shape
     depth = _disp2depth_kitti_K(disp, K[:, 0, 0])
@@ -45,6 +45,9 @@ def reconstruction_err(disp, src, tgt, K, sf=None, T=None, mode='pose', ssim_w=0
 
 def pose_process_flow(src_img, tgt_img, pose, sf, disp, K, aug_size):
 
+    src_img = interpolate2d_as(src_img, disp)
+    tgt_img = interpolate2d_as(tgt_img, disp)
+
     # denormalize disparity
     _, _, h, w = disp.shape 
     disp = disp * w
@@ -58,7 +61,7 @@ def pose_process_flow(src_img, tgt_img, pose, sf, disp, K, aug_size):
     K_s = intrinsic_scale(K, rel_scale[:, 0], rel_scale[:, 1])
 
     depth = _disp2depth_kitti_K(disp, K_s[:, 0, 0])
-    pose_sf = pose2flow(depth.squeeze(dim=1), None, K, torch.inverse(K_s), pose_mat=pose)
+    pose_sf = pose2sceneflow(depth, None, K, torch.inverse(K_s), pose_mat=pose)
     pose_diff, _, (_, _), _ = reconstruction_err(disp=disp, src=src_img, tgt=tgt_img, K=K, sf=pose_sf, mode='sf')
     sf_diff, _, (_, _), _ = reconstruction_err(disp=disp, src=src_img, tgt=tgt_img, K=K, sf=sf, mode='sf')
 
