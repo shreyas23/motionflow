@@ -33,6 +33,7 @@ class Model(nn.Module):
 
         self.encoder = ResnetEncoder(args, num_layers=18, pretrained=args.pt_encoder, num_input_images=1)
         self.encoder_chs = self.encoder.num_ch_enc
+        self.pose_encoder = ResnetEncoder(args, num_layers=18, pretrained=args.pt_encoder, num_input_images=2)
 
         self.disp_decoder = DispDecoder(num_ch_enc=self.encoder_chs, scales=range(5))
         self.pose_decoder = PoseDecoder(self.encoder_chs, 2)
@@ -193,6 +194,8 @@ class Model(nn.Module):
         x1_features = self.encoder(input_dict['input_l1_aug'])
         x2_features = self.encoder(input_dict['input_l2_aug'])
 
+        pose_features = self.pose_encoder(torch.cat(input_dict['input_l1_aug'], input_dict['input_l2_aug'], dim=1))
+
         ## Left
         output_dict = self.run_pwc(input_dict, x1_features, x2_features, input_dict['input_k_l1_aug'], input_dict['input_k_l2_aug'])
         if self.args.do_pose_c2f:
@@ -201,7 +204,8 @@ class Model(nn.Module):
             output_dict['pose_f'] = poses_f[::-1]
             output_dict['pose_b'] = poses_b[::-1]
         else:
-            pose_vec_f = self.pose_decoder([x1_features, x2_features]).squeeze(dim=1)
+            # pose_vec_f = self.pose_decoder([x1_features, x2_features]).squeeze(dim=1)
+            pose_vec_f = self.pose_decoder(pose_features[-1]).squeeze(dim=1)
             pose_mat_f = pose_vec2mat(pose_vec_f)
             output_dict["pose_f"] = pose_mat_f
             output_dict["pose_b"] = invert_pose(pose_mat_f)
@@ -246,32 +250,41 @@ class Model(nn.Module):
 
             output_dict_flip = self.run_pwc(input_dict, x1_features, x2_features, k_l1_flip, k_l2_flip)
 
-            flow_f_pp = []
-            flow_b_pp = []
-            disp_l1_pp = []
-            disp_l2_pp = []
-            mask_l1_pp = []
-            mask_l2_pp = []
+            flows_f_pp = []
+            flows_b_pp = []
+            disps_l1_pp = []
+            disps_l2_pp = []
+            masks_l1_pp = []
+            masks_l2_pp = []
 
             for ii in range(0, len(output_dict_flip['flows_f'])):
 
-                flow_f_pp.append(post_processing(output_dict['flows_f'][ii], flow_horizontal_flip(output_dict_flip['flows_f'][ii])))
-                flow_b_pp.append(post_processing(output_dict['flows_b'][ii], flow_horizontal_flip(output_dict_flip['flows_b'][ii])))
-                disp_l1_pp.append(post_processing(output_dict['disps_l1'][ii], torch.flip(output_dict_flip['disps_l1'][ii], [3])))
-                disp_l2_pp.append(post_processing(output_dict['disps_l2'][ii], torch.flip(output_dict_flip['disps_l2'][ii], [3])))
+                flow_f_pp = post_processing(output_dict['flows_f'][ii], flow_horizontal_flip(output_dict_flip['flows_f'][ii]))
+                flow_b_pp = post_processing(output_dict['flows_b'][ii], flow_horizontal_flip(output_dict_flip['flows_b'][ii]))
+
+                disps_l1_pp.append(post_processing(output_dict['disps_l1'][ii], torch.flip(output_dict_flip['disps_l1'][ii], [3])))
+                disps_l2_pp.append(post_processing(output_dict['disps_l2'][ii], torch.flip(output_dict_flip['disps_l2'][ii], [3])))
                 if self.use_mask:
-                    mask_l1_pp.append(post_processing(output_dict['masks_l1'][ii], torch.flip(output_dict_flip['masks_l1'][ii], [3])))
-                    mask_l2_pp.append(post_processing(output_dict['masks_l2'][ii], torch.flip(output_dict_flip['masks_l2'][ii], [3])))
+                    masks_l1_pp.append(post_processing(output_dict['masks_l1'][ii], torch.flip(output_dict_flip['masks_l1'][ii], [3])))
+                    masks_l2_pp.append(post_processing(output_dict['masks_l2'][ii], torch.flip(output_dict_flip['masks_l2'][ii], [3])))
 
-            # flow_f_pp = pose_process_flow()
-            # flow_b_pp = pose_process_flow()
+                img_l1 = input_dict['input_l1_aug']
+                img_l2 = input_dict['input_l2_aug']
+                K1 = input_dict['input_k_l1_aug']
+                K2 = input_dict['input_k_l2_aug']
+                aug_size = input_dict['aug_size']
 
-            output_dict['flows_f_pp'] = flow_f_pp
-            output_dict['flows_b_pp'] = flow_b_pp
-            output_dict['disps_l1_pp'] = disp_l1_pp
-            output_dict['disps_l2_pp'] = disp_l2_pp
+                flow_f_pp = pose_process_flow(img_l1, img_l2, output_dict['pose_f'][ii], flow_f_pp, disps_l1_pp[ii], K1, aug_size)
+                flow_b_pp = pose_process_flow(img_l2, img_l1, output_dict['pose_b'][ii], flow_b_pp, disps_l2_pp[ii], K2, aug_size)
+                flows_f_pp.append(flow_f_pp)
+                flows_b_pp.append(flow_b_pp)
+
+            output_dict['flows_f_pp'] = flows_f_pp
+            output_dict['flows_b_pp'] = flows_b_pp
+            output_dict['disps_l1_pp'] = disps_l1_pp
+            output_dict['disps_l2_pp'] = disps_l2_pp
             if self.use_mask:
-                output_dict['masks_l1_pp'] = disp_l1_pp
-                output_dict['masks_l2_pp'] = disp_l2_pp
+                output_dict['masks_l1_pp'] = disps_l1_pp
+                output_dict['masks_l2_pp'] = disps_l2_pp
 
         return output_dict

@@ -14,7 +14,6 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --epochs=40 \
                       --batch_size=2 \
                       --lr=2e-4 \
-                      --weight_decay=1e-4 \
                       --lr_gamma=0.5 \
                       --lr_sched_type='step' \
                       --milestones 10 20 30 \
