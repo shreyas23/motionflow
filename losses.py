@@ -45,7 +45,8 @@ class Loss(nn.Module):
 
         self.use_mask = args.train_exp_mask or args.train_census_mask
 
-        self.scale_weights = [1.0, 1.0, 1.0, 1.0, 1.0]
+        # self.scale_weights = [1.0, 1.0, 1.0, 1.0, 1.0]
+        self.scale_weights = [4.0, 2.0, 1.0, 1.0, 1.0]
 
 
     def depth_loss(self, disp_l, disp_r, img_l, img_r, scale):
@@ -427,8 +428,14 @@ class Loss(nn.Module):
             sf_diff2[~sf_occ_b].detach_()
 
             if self.static_cons_w > 0.0:
-                cons_loss_f = _elementwise_epe(pose_sf_f * mask_l1, flow_f).mean()
-                cons_loss_b = _elementwise_epe(pose_sf_b * mask_l2, flow_b).mean()
+                if self.args.apply_mask:
+                    static_mask_l1 = mask_l1
+                    static_mask_l2 = mask_l2
+                else:
+                    static_mask_l1 = torch.ones_like(mask_l1, requires_grad=False)
+                    static_mask_l2 = torch.ones_like(mask_l2, requires_grad=False)
+                cons_loss_f = (_elementwise_epe(pose_sf_f * mask_l1, flow_f) * static_mask_l1).mean()
+                cons_loss_b = (_elementwise_epe(pose_sf_b * mask_l2, flow_b) * static_mask_l2).mean()
                 cons_loss = (cons_loss_f + cons_loss_b) * self.static_cons_w
             else:
                 cons_loss = torch.tensor(0.0, requires_grad=False)
@@ -447,10 +454,19 @@ class Loss(nn.Module):
             sf_sm_sum = sf_sm_sum + loss_sf_sm
             flow_pts_sum = flow_pts_sum + pts_loss
             disp_sm_sum = disp_sm_sum + loss_disp_sm
-        
-        loss_dict = {}
-        loss_dict["total_loss"] = (depth_loss_sum + flow_loss_sum + mask_loss_sum + cons_loss_sum) # / num_scales
 
+        d_loss = depth_loss_sum.detach()
+        f_loss = flow_loss_sum.detach()
+
+        m = max(d_loss, f_loss)
+
+        d_weight = m / d_loss
+        f_weight = m / f_loss
+
+        total_loss = depth_loss_sum * d_weight + flow_loss_sum * f_weight + mask_loss_sum + cons_loss_sum
+
+        loss_dict = {}
+        loss_dict["total_loss"] = total_loss
         loss_dict["depth_loss"] = depth_loss_sum.detach()
         loss_dict["flow_loss"] = flow_loss_sum.detach()
         loss_dict["pts_loss"] = flow_pts_sum.detach()
