@@ -12,7 +12,7 @@ from utils.loss_utils import _generate_image_left, _generate_image_right, _smoot
 from utils.loss_utils import _SSIM, _reconstruction_error, _disp2depth_kitti_K, logical_or, _elementwise_epe
 from utils.loss_utils import _adaptive_disocc_detection, _adaptive_disocc_detection_disp
 from utils.loss_utils import _gradient_x_2nd, _gradient_y_2nd
-from utils.sceneflow_util import projectSceneFlow2Flow, intrinsic_scale
+from utils.sceneflow_util import projectSceneFlow2Flow, intrinsic_scale, reconstructPts
 
 eps = 1e-7
 
@@ -119,14 +119,14 @@ class Loss(nn.Module):
         return census_target_mask
 
 
-    def structure_loss(self, pts1, pts2, grid1, grid2, sf=None, T=None, mode='pose', s=None):
+    def structure_loss(self, pts1, pts2, grid1, grid2, sf=None, T=None, mode='pose'):
         b, _, h, w = pts1.shape
 
         pts_norm1 = torch.norm(pts1, p=2, dim=1, keepdim=True)
         pts_norm2 = torch.norm(pts2, p=2, dim=1, keepdim=True)
 
-        pts2_warp = tf.grid_sample(pts2, grid1)
-        pts1_warp = tf.grid_sample(pts1, grid2)
+        pts2_warp = reconstructPts(grid1.permute(0, 3, 1, 2), pts2)
+        pts1_warp = reconstructPts(grid2.permute(0, 3, 1, 2), pts1)
 
         if mode == 'sf':
             pts1_tf = pts1 + sf[0]
@@ -161,10 +161,10 @@ class Loss(nn.Module):
         mask_census_loss_sum = 0
         flow_pts_sum = 0
 
-        img_l1 = target['input_l1']
-        img_l2 = target['input_l2']
-        img_r1 = target['input_r1']
-        img_r2 = target['input_r2']
+        img_l1 = target['input_l1_aug']
+        img_l2 = target['input_l2_aug']
+        img_r1 = target['input_r1_aug']
+        img_r2 = target['input_r2_aug']
 
         K_l1 = target['input_k_l1_aug']
         K_l2 = target['input_k_l2_aug']
@@ -268,8 +268,8 @@ class Loss(nn.Module):
             loss_sf_sm = loss_sf_sm * self.flow_sm_w
 
             """ 3D STRUCTURE LOSS """
-            pose_pts_diff1, pose_pts_diff2 = self.structure_loss(pts1, pts2, pose_grid1, pose_grid2, T=[pose_f, pose_b], mode='pose', s=s)
-            sf_pts_diff1, sf_pts_diff2 = self.structure_loss(pts1, pts2, sf_grid1, sf_grid2, sf=[flow_f, flow_b], mode='sf', s=s)
+            pose_pts_diff1, pose_pts_diff2 = self.structure_loss(pts1, pts2, pose_grid1, pose_grid2, sf=[pose_sf_f, pose_sf_b], mode='sf')
+            sf_pts_diff1, sf_pts_diff2 = self.structure_loss(pts1, pts2, sf_grid1, sf_grid2, sf=[flow_f, flow_b], mode='sf')
 
             """ DEPTH LOSS """
             disp_mask1 = left_occ1
@@ -288,10 +288,6 @@ class Loss(nn.Module):
             depth_loss = depth_loss1 + depth_loss2
 
             """ CENSUS MASK """
-            # of_f = projectSceneFlow2Flow(K_l1_s, flow_f, disp_l1)
-            # of_b = projectSceneFlow2Flow(K_l2_s, flow_b, disp_l2)
-            # pose_of_f = pose2flow(depth_l1.squeeze(dim=1), None, K_l1_s, torch.inverse(K_l1_s), pose_mat=pose_f)
-            # pose_of_b = pose2flow(depth_l2.squeeze(dim=1), None, K_l2_s, torch.inverse(K_l2_s), pose_mat=pose_b)
             flow_diff_f = _elementwise_epe(pose_sf_f, flow_f)
             flow_diff_b = _elementwise_epe(pose_sf_b, flow_b)
             census_mask_tgt_l1 = self.create_census_mask(flow_diff_f, pose_diff1, sf_diff1)
@@ -463,7 +459,7 @@ class Loss(nn.Module):
         d_weight = m / d_loss
         f_weight = m / f_loss
 
-        total_loss = depth_loss_sum * d_weight + flow_loss_sum * f_weight + mask_loss_sum + cons_loss_sum
+        total_loss = (depth_loss_sum * d_weight + flow_loss_sum * f_weight + mask_loss_sum + cons_loss_sum) / num_scales
 
         loss_dict = {}
         loss_dict["total_loss"] = total_loss
@@ -586,8 +582,8 @@ class MonoDepthSFLoss(nn.Module):
         pts_norm1 = torch.norm(pts1, p=2, dim=1, keepdim=True)
         pts_norm2 = torch.norm(pts2, p=2, dim=1, keepdim=True)
 
-        pts2_warp = tf.grid_sample(pts2, grid1)
-        pts1_warp = tf.grid_sample(pts1, grid2)
+        pts2_warp = tf.grid_sample(pts2, grid1.transpose(2, 3).transpose(1, 2))
+        pts2_warp = tf.grid_sample(pts1, grid2.transpose(2, 3).transpose(1, 2))
 
         if mode == 'sf':
             pts1_tf = pts1 + sf[0]
