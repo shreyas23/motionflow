@@ -11,12 +11,11 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --num_examples=-1 \
                       --num_workers=16 \
                       --start_epoch=1 \
-                      --epochs=52 \
+                      --epochs=20 \
                       --batch_size=2 \
                       --lr=2e-4 \
                       --lr_gamma=0.5 \
-                      --lr_sched_type='step' \
-                      --milestones 23 39 47 \
+                      --lr_sched_type='none' \
                       --flow_reduce_mode='sum' \
                       --disp_sm_w=0.1 \
                       --flow_sm_w=200 \
