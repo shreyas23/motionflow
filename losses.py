@@ -300,19 +300,19 @@ class Loss(nn.Module):
                 mask_reg_loss1, mask_sm_loss1, mask_census_loss1 = self.mask_loss(img_l1, mask_l1, census_mask_tgt_l1, s)
                 mask_reg_loss2, mask_sm_loss2, mask_census_loss2 = self.mask_loss(img_l2, mask_l2, census_mask_tgt_l2, s)
 
+                if self.args.apply_mask:
+                    pose_diff1 = pose_diff1 * mask_l1
+                    pose_diff2 = pose_diff2 * mask_l2
+                    pose_pts_diff1 = pose_pts_diff1 * mask_l1
+                    pose_pts_diff2 = pose_pts_diff2 * mask_l2
+
+                    if self.args.apply_flow_mask:
+                        sf_diff1 = sf_diff1 * flow_mask_l1
+                        sf_diff2 = sf_diff2 * flow_mask_l2
+                        sf_pts_diff1 = sf_pts_diff1 * flow_mask_l1
+                        sf_pts_diff2 = sf_pts_diff2 * flow_mask_l2
+
                 if self.args.train_exp_mask:
-                    if self.args.apply_mask:
-                        pose_diff1 = pose_diff1 * mask_l1
-                        pose_diff2 = pose_diff2 * mask_l2
-                        pose_pts_diff1 = pose_pts_diff1 * mask_l1
-                        pose_pts_diff2 = pose_pts_diff2 * mask_l2
-
-                        if self.args.apply_flow_mask:
-                            sf_diff1 = sf_diff1 * flow_mask_l1
-                            sf_diff2 = sf_diff2 * flow_mask_l2
-                            sf_pts_diff1 = sf_pts_diff1 * flow_mask_l1
-                            sf_pts_diff2 = sf_pts_diff2 * flow_mask_l2
-
                     mask_loss1 = mask_reg_loss1 * self.mask_reg_w + \
                                 mask_sm_loss1 * self.mask_sm_w
                     mask_loss2 = mask_reg_loss2 * self.mask_reg_w + \
@@ -324,17 +324,6 @@ class Loss(nn.Module):
                     mask_census_loss = torch.tensor(0, requires_grad=False)
 
                 elif self.args.train_census_mask:
-                    if self.args.apply_mask:
-                        pose_diff1 = pose_diff1 * mask_l1.detach()
-                        pose_diff2 = pose_diff2 * mask_l2.detach()
-                        pose_pts_diff1 = pose_pts_diff1 * mask_l1.detach()
-                        pose_pts_diff2 = pose_pts_diff2 * mask_l2.detach()
-                        if self.args.apply_flow_mask:
-                            sf_diff1 = sf_diff1 * flow_mask_l1.detach()
-                            sf_diff2 = sf_diff2 * flow_mask_l2.detach()
-                            sf_pts_diff1 = sf_pts_diff1 * flow_mask_l1.detach()
-                            sf_pts_diff2 = sf_pts_diff2 * flow_mask_l2.detach()
-
                     mask_loss1 = mask_reg_loss1 * self.mask_reg_w + \
                                  mask_sm_loss1 * self.mask_sm_w + \
                                  mask_census_loss1 * self.mask_census_w
@@ -347,7 +336,6 @@ class Loss(nn.Module):
                     mask_census_loss = mask_census_loss1 + mask_census_loss2
                     mask_reg_loss = mask_reg_loss1 + mask_reg_loss2
                     mask_loss = mask_loss1 + mask_loss2
-                    # mask_reg_loss = torch.tensor(0, requires_grad=False)
             else:
                 mask_loss = torch.tensor(0, requires_grad=False)
                 mask_reg_loss = torch.tensor(0, requires_grad=False)
@@ -459,7 +447,7 @@ class Loss(nn.Module):
         d_weight = m / d_loss
         f_weight = m / f_loss
 
-        total_loss = (depth_loss_sum * d_weight + flow_loss_sum * f_weight + mask_loss_sum + cons_loss_sum) / num_scales
+        total_loss = (depth_loss_sum * d_weight + flow_loss_sum * f_weight + mask_loss_sum + cons_loss_sum) #/ num_scales
 
         loss_dict = {}
         loss_dict["total_loss"] = total_loss
@@ -521,7 +509,8 @@ class MonoDepthSFLoss(nn.Module):
 
         self.use_mask = args.train_exp_mask or args.train_census_mask
 
-        self.scale_weights = [1.0, 1.0, 1.0, 1.0, 1.0]
+        # self.scale_weights = [1.0, 1.0, 1.0, 1.0, 1.0]
+        self.scale_weights = [4.0, 2.0, 1.0, 1.0, 1.0]
 
 
     def depth_loss(self, disp_l, disp_r, img_l, img_r, scale):
@@ -573,17 +562,17 @@ class MonoDepthSFLoss(nn.Module):
 
         img_diff = _reconstruction_error(tgt, ref_warp, self.ssim_w)
 
-        return img_diff, occ_mask, (cam_points, grid)
+        return img_diff, occ_mask, (cam_points, grid), occ_mask
 
 
-    def structure_loss(self, pts1, pts2, grid1, grid2, sf=None, T=None, mode='pose', s=None):
+    def structure_loss(self, pts1, pts2, grid1, grid2, sf=None, T=None, mode='pose'):
         b, _, h, w = pts1.shape
 
         pts_norm1 = torch.norm(pts1, p=2, dim=1, keepdim=True)
         pts_norm2 = torch.norm(pts2, p=2, dim=1, keepdim=True)
 
-        pts2_warp = tf.grid_sample(pts2, grid1.transpose(2, 3).transpose(1, 2))
-        pts2_warp = tf.grid_sample(pts1, grid2.transpose(2, 3).transpose(1, 2))
+        pts2_warp = reconstructPts(grid1.permute(0, 3, 1, 2), pts2)
+        pts1_warp = reconstructPts(grid2.permute(0, 3, 1, 2), pts1)
 
         if mode == 'sf':
             pts1_tf = pts1 + sf[0]
@@ -611,10 +600,10 @@ class MonoDepthSFLoss(nn.Module):
         disp_sm_sum = 0
         flow_pts_sum = 0
 
-        img_l1 = target['input_l1']
-        img_l2 = target['input_l2']
-        img_r1 = target['input_r1']
-        img_r2 = target['input_r2']
+        img_l1 = target['input_l1_aug']
+        img_l2 = target['input_l2_aug']
+        img_r1 = target['input_r1_aug']
+        img_r2 = target['input_r2_aug']
 
         K_l1 = target['input_k_l1_aug']
         K_l2 = target['input_k_l2_aug']
@@ -627,7 +616,7 @@ class MonoDepthSFLoss(nn.Module):
         disps_r2 = output['output_dict_r']['disps_l2']
         flows_f = output['flows_f']
         flows_b = output['flows_b']
-        
+
         assert(len(disps_l1) == len(flows_f))
         assert(len(disps_l2) == len(flows_b))
 
@@ -665,9 +654,12 @@ class MonoDepthSFLoss(nn.Module):
             K_l1_s = intrinsic_scale(K_l1, rel_scale[:, 0], rel_scale[:, 1])
             K_l2_s = intrinsic_scale(K_l2, rel_scale[:, 0], rel_scale[:, 1])
 
+            depth_l1 = _disp2depth_kitti_K(disp_l1, K_l1_s[:, 0, 0])
+            depth_l2 = _disp2depth_kitti_K(disp_l2, K_l2_s[:, 0, 0])
+
             # sf diffs
-            sf_diff1, sf_occ_b, (pts1, sf_grid1)  = self.flow_loss(disp=disp_l1, src=img_l2, tgt=img_l1, K=K_l1_s, sf=flow_f, mode='sf')
-            sf_diff2, sf_occ_f, (pts2, sf_grid2)  = self.flow_loss(disp=disp_l2, src=img_l1, tgt=img_l2, K=K_l2_s, sf=flow_b, mode='sf')                
+            sf_diff1, sf_occ_b, (pts1, sf_grid1), sf_occ_f = self.flow_loss(disp=disp_l1, src=img_l2, tgt=img_l1, K=K_l1_s, sf=flow_f, mode='sf')
+            sf_diff2, sf_occ_f, (pts2, sf_grid2), sf_occ_b  = self.flow_loss(disp=disp_l2, src=img_l1, tgt=img_l2, K=K_l2_s, sf=flow_b, mode='sf')                
 
             """ SF SMOOTHNESS LOSS """
             pts_norm1 = torch.norm(pts1, p=2, dim=1, keepdim=True)
@@ -677,7 +669,7 @@ class MonoDepthSFLoss(nn.Module):
             loss_sf_sm = loss_sf_sm * self.flow_sm_w
 
             """ 3D STRUCTURE LOSS """
-            sf_pts_diff1, sf_pts_diff2 = self.structure_loss(pts1, pts2, sf_grid1, sf_grid2, sf=[flow_f, flow_b], mode='sf', s=s)
+            sf_pts_diff1, sf_pts_diff2 = self.structure_loss(pts1, pts2, sf_grid1, sf_grid2, sf=[flow_f, flow_b], mode='sf')
 
             """ DEPTH LOSS """
             disp_mask1 = left_occ1
@@ -692,14 +684,6 @@ class MonoDepthSFLoss(nn.Module):
             sf_occ_f = sf_occ_f * left_occ1
             sf_occ_b = sf_occ_b * left_occ2
 
-            # remove static pixels from loss calculation
-            if self.args.use_static_mask:
-                static_diff = _reconstruction_error(img_l1, img_l2, self.ssim_w)
-                sf_static_thresh1 =  sf_diff1 < static_diff
-                sf_static_thresh2 =  sf_diff2 < static_diff
-                sf_occ_f = sf_occ_f * sf_static_thresh1
-                sf_occ_b = sf_occ_b * sf_static_thresh2
-
             """ FLOW LOSS """
             flow_loss1 = (sf_diff1 * sf_occ_f.float()).sum(dim=1).mean()
             flow_loss2 = (sf_diff2 * sf_occ_b.float()).sum(dim=1).mean()
@@ -710,6 +694,7 @@ class MonoDepthSFLoss(nn.Module):
                 flow_pts_loss1 = torch.tensor(0.0, requires_grad=False)
                 flow_pts_loss2 = torch.tensor(0.0, requires_grad=False)
 
+            # calculate losses for logging
             sf_im_loss = (sf_diff1.mean(dim=1, keepdim=True)[sf_occ_f].mean() + \
                           sf_diff2.mean(dim=1, keepdim=True)[sf_occ_b].mean()).detach()
 
@@ -729,10 +714,19 @@ class MonoDepthSFLoss(nn.Module):
             sf_sm_sum = sf_sm_sum + loss_sf_sm
             flow_pts_sum = flow_pts_sum + pts_loss
             disp_sm_sum = disp_sm_sum + loss_disp_sm
-        
-        loss_dict = {}
-        loss_dict["total_loss"] = (depth_loss_sum + flow_loss_sum) / num_scales
 
+        d_loss = depth_loss_sum.detach()
+        f_loss = flow_loss_sum.detach()
+
+        m = max(d_loss, f_loss)
+
+        d_weight = m / d_loss
+        f_weight = m / f_loss
+
+        total_loss = (depth_loss_sum * d_weight + flow_loss_sum * f_weight)
+
+        loss_dict = {}
+        loss_dict["total_loss"] = total_loss
         loss_dict["depth_loss"] = depth_loss_sum.detach()
         loss_dict["flow_loss"] = flow_loss_sum.detach()
         loss_dict["pts_loss"] = flow_pts_sum.detach()

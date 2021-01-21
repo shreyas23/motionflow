@@ -15,8 +15,8 @@ class MonoSceneFlowDecoder(nn.Module):
             Conv(64, 32, use_bn=use_bn)
         )
 
-        self.conv_sf = Conv(32, 3)
-        self.conv_d1 = Conv(32, 1)
+        self.conv_sf = Conv(32, 3, nonlin='none')
+        self.conv_d1 = Conv(32, 1, nonlin='none')
 
     def forward(self, x):
         x_out = self.convs(x)

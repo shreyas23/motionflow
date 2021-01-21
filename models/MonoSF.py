@@ -9,7 +9,7 @@ from .correlation_package.correlation import Correlation
 
 from .modules_sceneflow import get_grid, WarpingLayer_SF
 from .modules_sceneflow import initialize_msra, upsample_outputs_as
-from .common import UpConv as upconv
+from .common import UpConv
 from .encoders import FeatureExtractor
 from .decoders import MonoSceneFlowDecoder, ContextNetwork
 
@@ -45,7 +45,7 @@ class MonoSceneFlow(nn.Module):
                 num_ch_in = self.dim_corr + ch 
             else:
                 num_ch_in = self.dim_corr + ch + 32 + 3 + 1
-                self.upconv_layers.append(upconv(32, 32, 3, 2))
+                self.upconv_layers.append(UpConv(32, 32, 3, 2))
 
             layer_sf = MonoSceneFlowDecoder(num_ch_in)            
             self.flow_estimators.append(layer_sf)            
@@ -61,8 +61,8 @@ class MonoSceneFlow(nn.Module):
         output_dict = {}
 
         # on the bottom level are original images
-        x1_pyramid = self.feature_pyramid_extractor(x1_raw) + [x1_raw]
-        x2_pyramid = self.feature_pyramid_extractor(x2_raw) + [x2_raw]
+        x1_pyramid = self.feature_pyramid_extractor(x1_raw)[::-1] + [x1_raw]
+        x2_pyramid = self.feature_pyramid_extractor(x2_raw)[::-1] + [x2_raw]
 
         # outputs
         sceneflows_f = []
@@ -123,10 +123,10 @@ class MonoSceneFlow(nn.Module):
 
         x1_rev = x1_pyramid[::-1]
 
-        output_dict['flow_f'] = upsample_outputs_as(sceneflows_f[::-1], x1_rev)
-        output_dict['flow_b'] = upsample_outputs_as(sceneflows_b[::-1], x1_rev)
-        output_dict['disp_l1'] = upsample_outputs_as(disps_1[::-1], x1_rev)
-        output_dict['disp_l2'] = upsample_outputs_as(disps_2[::-1], x1_rev)
+        output_dict['flows_f'] = upsample_outputs_as(sceneflows_f[::-1], x1_rev)
+        output_dict['flows_b'] = upsample_outputs_as(sceneflows_b[::-1], x1_rev)
+        output_dict['disps_l1'] = upsample_outputs_as(disps_1[::-1], x1_rev)
+        output_dict['disps_l2'] = upsample_outputs_as(disps_2[::-1], x1_rev)
         
         return output_dict
 
@@ -149,11 +149,11 @@ class MonoSceneFlow(nn.Module):
 
             output_dict_r = self.run_pwc(input_dict, input_r1_flip, input_r2_flip, k_r1_flip, k_r2_flip)
 
-            for ii in range(0, len(output_dict_r['flow_f'])):
-                output_dict_r['flow_f'][ii] = flow_horizontal_flip(output_dict_r['flow_f'][ii])
-                output_dict_r['flow_b'][ii] = flow_horizontal_flip(output_dict_r['flow_b'][ii])
-                output_dict_r['disp_l1'][ii] = torch.flip(output_dict_r['disp_l1'][ii], [3])
-                output_dict_r['disp_l2'][ii] = torch.flip(output_dict_r['disp_l2'][ii], [3])
+            for ii in range(0, len(output_dict_r['flows_f'])):
+                output_dict_r['flows_f'][ii] = flow_horizontal_flip(output_dict_r['flows_f'][ii])
+                output_dict_r['flows_b'][ii] = flow_horizontal_flip(output_dict_r['flows_b'][ii])
+                output_dict_r['disps_l1'][ii] = torch.flip(output_dict_r['disps_l1'][ii], [3])
+                output_dict_r['disps_l2'][ii] = torch.flip(output_dict_r['disps_l2'][ii], [3])
 
             output_dict['output_dict_r'] = output_dict_r
 
@@ -169,21 +169,21 @@ class MonoSceneFlow(nn.Module):
 
             output_dict_flip = self.run_pwc(input_dict, input_l1_flip, input_l2_flip, k_l1_flip, k_l2_flip)
 
-            flow_f_pp = []
-            flow_b_pp = []
-            disp_l1_pp = []
-            disp_l2_pp = []
+            flows_f_pp = []
+            flows_b_pp = []
+            disps_l1_pp = []
+            disps_l2_pp = []
 
-            for ii in range(0, len(output_dict_flip['flow_f'])):
+            for ii in range(0, len(output_dict_flip['flows_f'])):
 
-                flow_f_pp.append(post_processing(output_dict['flow_f'][ii], flow_horizontal_flip(output_dict_flip['flow_f'][ii])))
-                flow_b_pp.append(post_processing(output_dict['flow_b'][ii], flow_horizontal_flip(output_dict_flip['flow_b'][ii])))
-                disp_l1_pp.append(post_processing(output_dict['disp_l1'][ii], torch.flip(output_dict_flip['disp_l1'][ii], [3])))
-                disp_l2_pp.append(post_processing(output_dict['disp_l2'][ii], torch.flip(output_dict_flip['disp_l2'][ii], [3])))
+                flows_f_pp.append(post_processing(output_dict['flows_f'][ii], flow_horizontal_flip(output_dict_flip['flows_f'][ii])))
+                flows_b_pp.append(post_processing(output_dict['flows_b'][ii], flow_horizontal_flip(output_dict_flip['flows_b'][ii])))
+                disps_l1_pp.append(post_processing(output_dict['disps_l1'][ii], torch.flip(output_dict_flip['disps_l1'][ii], [3])))
+                disps_l2_pp.append(post_processing(output_dict['disps_l2'][ii], torch.flip(output_dict_flip['disps_l2'][ii], [3])))
 
-            output_dict['flow_f_pp'] = flow_f_pp
-            output_dict['flow_b_pp'] = flow_b_pp
-            output_dict['disp_l1_pp'] = disp_l1_pp
-            output_dict['disp_l2_pp'] = disp_l2_pp
+            output_dict['flows_f_pp'] = flows_f_pp
+            output_dict['flows_b_pp'] = flows_b_pp
+            output_dict['disps_l1_pp'] = disps_l1_pp
+            output_dict['disps_l2_pp'] = disps_l2_pp
 
         return output_dict

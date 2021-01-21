@@ -19,8 +19,8 @@ class FeatureExtractor(nn.Module):
 
         for l, (ch_in, ch_out) in enumerate(zip(num_chs[:-1], num_chs[1:])):
             layer = nn.Sequential(
-                Conv(ch_in, ch_out, stride=2, use_bn=use_bn),
-                Conv(ch_out, ch_out, use_bn=use_bn)
+                Conv(ch_in, ch_out, stride=2),
+                Conv(ch_out, ch_out)
             )
             self.convs.append(layer)
 
@@ -29,8 +29,8 @@ class FeatureExtractor(nn.Module):
         for conv in self.convs:
             x = conv(x)
             feature_pyramid.append(x)
-        return feature_pyramid
 
+        return feature_pyramid
 
 class ResNetMultiImageInput(models.ResNet):
     """Constructs a resnet model with varying number of input images.

@@ -22,6 +22,7 @@ from models.JointModel import JointModel
 from models.Model import Model
 from models.ResModel import ResModel
 from models.MonoDepthSFModel import MonoDepthSFModel
+from models.MonoSF import MonoSceneFlow
 from losses import Loss, MonoDepthSFLoss
 
 from params import Params
@@ -67,7 +68,8 @@ def train(args):
         loss = MonoDepthSFLoss(args).cuda()
     else:
         print("Using split scene flow model")
-        model = Model(args).cuda() 
+        model = MonoSceneFlow(args).cuda() 
+        loss = MonoDepthSFLoss(args).cuda()
 
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"The model has {num_params} learnable parameters")
