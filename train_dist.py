@@ -26,6 +26,7 @@ from models.JointModel import JointModel
 from models.Model import Model
 from models.ResModel import ResModel
 from models.MonoDepthSFModel import MonoDepthSFModel
+from models.MonoSF import MonoSceneFlow as MonoSF
 from losses import Loss, MonoDepthSFLoss
 from losses_eval import Eval_SceneFlow_KITTI_Train
 from old_losses import Loss_SceneFlow_SelfSup_JointIter
@@ -99,6 +100,9 @@ def train(gpu, args):
         model = ResModel(args).cuda(device=gpu)
     elif args.model_name == 'monodepth':
         model = MonoDepthSFModel(args).cuda()
+        loss = MonoDepthSFLoss(args).cuda()
+    elif args.model_name == 'monosf':
+        model = MonoSF(args).cuda()
         loss = MonoDepthSFLoss(args).cuda()
     else:
         raise NotImplementedError
