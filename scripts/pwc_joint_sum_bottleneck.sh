@@ -1,8 +1,8 @@
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --test_data_root="/mnt/data/kitti_jpg/kitti2015/" \
                       --log_root="/ceph/checkpoints/" \
-                      --exp_dir="resnet_joint_sum" \
-                      --exp_name="v4_bottleneck_census_cons_pwc" \
+                      --exp_dir="pwc_joint_sum" \
+                      --exp_name="v1_bottleneck_census_cons" \
                       --log_freq=1 \
                       --save_freq=1 \
                       --dataset_name="KITTI_EIGEN" \
@@ -30,8 +30,8 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --test_data_root="/mnt/data/kitti_jpg/kitti2015/" \
                       --log_root="/ceph/checkpoints/" \
-                      --exp_dir="resnet_joint_sum" \
-                      --exp_name="v4_bottleneck_census_cons_pwc" \
+                      --exp_dir="pwc_joint_sum" \
+                      --exp_name="v1_bottleneck_census_cons" \
                       --log_freq=1 \
                       --save_freq=1 \
                       --dataset_name="KITTI_EIGEN" \
@@ -45,7 +45,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --lr=1e-4 \
                       --lr_gamma=0.5 \
                       --lr_sched_type='step' \
-                      --milestones 40 50 \
+                      --milestones 39 47 54 \
                       --flow_reduce_mode='sum' \
                       --disp_sm_w=0.1 \
                       --flow_sm_w=200 \
