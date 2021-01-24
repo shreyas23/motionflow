@@ -8,12 +8,35 @@ from utils.sceneflow_util import pixel2pts_ms, pts2pixel_pose_ms, intrinsic_scal
 from utils.inverse_warp import inverse_warp
 from utils.helpers import upsample
 
+def conv(in_planes, out_planes, kernel_size=3, stride=1, dilation=1, isReLU=True):
+    if isReLU:
+        return nn.Sequential(
+            nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, dilation=dilation,
+                      padding=((kernel_size - 1) * dilation) // 2, bias=True),
+            nn.LeakyReLU(0.1, inplace=True)
+        )
+    else:
+        return nn.Sequential(
+            nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, dilation=dilation,
+                      padding=((kernel_size - 1) * dilation) // 2, bias=True)
+        )
+
+
+class upconv(nn.Module):
+    def __init__(self, num_in_layers, num_out_layers, kernel_size, scale):
+        super(upconv, self).__init__()
+        self.scale = scale
+        self.conv1 = conv(num_in_layers, num_out_layers, kernel_size, 1)
+
+    def forward(self, x):
+        x = nn.functional.interpolate(x, scale_factor=self.scale, mode='nearest')
+        return self.conv1(x)
 
 class UpConv(nn.Module):
-    def __init__(self, num_in_layers, num_out_layers, kernel_size, scale, use_bn=False):
+    def __init__(self, num_in_layers, num_out_layers, kernel_size, scale, pad_mode='reflection', use_bn=False):
         super(UpConv, self).__init__()
         self.scale = scale
-        self.conv1 = Conv(num_in_layers, num_out_layers, kernel_size, stride=1, use_bn=use_bn)
+        self.conv1 = Conv(num_in_layers, num_out_layers, kernel_size, stride=1, use_bn=use_bn, pad_mode=pad_mode)
 
     def forward(self, x):
         x = nn.functional.interpolate(x, scale_factor=self.scale, mode='nearest')

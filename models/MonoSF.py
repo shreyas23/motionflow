@@ -9,7 +9,7 @@ from .correlation_package.correlation import Correlation
 
 from .modules_sceneflow import get_grid, WarpingLayer_SF
 from .modules_sceneflow import initialize_msra, upsample_outputs_as
-from .common import UpConv
+from .common import upconv
 from .encoders import FeatureExtractor
 from .decoders import MonoSceneFlowDecoder, ContextNetwork
 
@@ -45,9 +45,9 @@ class MonoSceneFlow(nn.Module):
                 num_ch_in = self.dim_corr + ch 
             else:
                 num_ch_in = self.dim_corr + ch + 32 + 3 + 1
-                self.upconv_layers.append(UpConv(32, 32, 3, 2))
+                self.upconv_layers.append(upconv(32, 32, 3, 2))
 
-            layer_sf = MonoSceneFlowDecoder(num_ch_in)            
+            layer_sf = MonoSceneFlowDecoder(num_ch_in)
             self.flow_estimators.append(layer_sf)            
 
         self.corr_params = {"pad_size": self.search_range, "kernel_size": 1, "max_disp": self.search_range, "stride1": 1, "stride2": 1, "corr_multiply": 1}        

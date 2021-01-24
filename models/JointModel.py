@@ -38,7 +38,7 @@ class JointModel(nn.Module):
             self.num_chs = self.feature_pyramid_extractor.num_ch_enc
         elif self.args.encoder_name == 'pwc':
             self.num_chs = [3, 32, 64, 96, 128, 192, 256]
-            self.feature_pyramid_extractor = FeatureExtractor(self.num_chs, use_bn=args.use_bn)
+            self.feature_pyramid_extractor = FeatureExtractor(self.num_chs)
         else:
             raise NotImplementedError
 

@@ -9,18 +9,18 @@ import torch.utils.model_zoo as model_zoo
 import numpy as np
 import logging
 
-from .common import Conv
+from .common import Conv, conv
 
 class FeatureExtractor(nn.Module):
-    def __init__(self, num_chs, use_bn=False):
+    def __init__(self, num_chs):
         super(FeatureExtractor, self).__init__()
         self.num_chs = num_chs
         self.convs = nn.ModuleList()
 
         for l, (ch_in, ch_out) in enumerate(zip(num_chs[:-1], num_chs[1:])):
             layer = nn.Sequential(
-                Conv(ch_in, ch_out, stride=2),
-                Conv(ch_out, ch_out)
+                conv(ch_in, ch_out, stride=2),
+                conv(ch_out, ch_out)
             )
             self.convs.append(layer)
 

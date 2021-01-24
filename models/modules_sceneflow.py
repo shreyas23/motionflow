@@ -41,7 +41,8 @@ def initialize_msra(modules):
     logging.info("Initializing MSRA")
     for layer in modules:
         if isinstance(layer, nn.Conv2d):
-            nn.init.kaiming_normal_(layer.weight)
+            nn.init.kaiming_uniform_(layer.weight)
+            # nn.init.kaiming_normal_(layer.weight)
             if layer.bias is not None:
                 nn.init.constant_(layer.bias, 0)
 

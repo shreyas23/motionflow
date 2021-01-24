@@ -464,6 +464,7 @@ class Loss(nn.Module):
         loss_dict["mask_reg_loss"] = mask_reg_loss_sum.detach()
         loss_dict["mask_sm_loss"] = mask_sm_loss_sum.detach()
         loss_dict["mask_census_loss"] = mask_census_loss_sum.detach()
+        loss_dict["flow_cons_loss"] = cons_loss_sum.detach()
 
         output['census_masks_l1'] = census_masks_l1
         output['census_masks_l2'] = census_masks_l2

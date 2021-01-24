@@ -25,6 +25,8 @@ from models.MonoDepthSFModel import MonoDepthSFModel
 from models.MonoSF import MonoSceneFlow, MonoSFLoss
 from losses import Loss, MonoDepthSFLoss
 
+from test_losses import Loss_SceneFlow_SelfSup
+
 from params import Params
 from utils.train_utils import step, evaluate, train_one_epoch, visualize_output
 
@@ -59,6 +61,7 @@ def train(args):
     if args.model_name == 'joint':
         print("Using joint scene flow model")
         model = JointModel(args).cuda()
+        # loss = Loss_SceneFlow_SelfSup(args).cuda()
     elif args.model_name == 'residual':
         print("Using joint residual scene flow model")
         model = ResModel(args).cuda()
@@ -66,10 +69,11 @@ def train(args):
         print("Using monodepth scene flow model")
         model = MonoDepthSFModel(args).cuda()
         loss = MonoDepthSFLoss(args).cuda()
-    else:
-        print("Using split scene flow model")
-        model = MonoSceneFlow(args).cuda() 
+    elif args.model_name == 'monosf':
+        model = MonoSceneFlow(args).cuda()
         loss = MonoSFLoss(args).cuda()
+    else:
+        raise NotImplementedError
 
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"The model has {num_params} learnable parameters")
