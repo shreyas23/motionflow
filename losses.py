@@ -360,35 +360,14 @@ class Loss(nn.Module):
                 sf_occ_b = sf_occ_b * sf_static_thresh2
 
             """ FLOW LOSS """
-            # do not use min reduction for now... 
-            if self.flow_reduce_mode == 'min':
-                assert (not self.use_mask), "Cannot use min flow reduction while using explainability mask."
-                flow_diffs1 = torch.cat([pose_diff1, sf_diff1], dim=1)
-                flow_diffs2 = torch.cat([pose_diff2, sf_diff2], dim=1)
-                min_flow_diff1, _ = flow_diffs1.min(dim=1, keepdim=True)
-                min_flow_diff2, _ = flow_diffs2.min(dim=1, keepdim=True)
-                occ_f = pose_occ_f *  sf_occ_f
-                occ_b = pose_occ_b *  sf_occ_b
-                flow_loss1 = min_flow_diff1[occ_f].mean()
-                flow_loss2 = min_flow_diff2[occ_b].mean()
-            elif self.flow_reduce_mode == 'avg':
-                flow_loss1 = ((pose_diff1 * pose_occ_f.float()) + (sf_diff1 * sf_occ_f.float())).mean(dim=1).mean()
-                flow_loss2 = ((pose_diff2 * pose_occ_b.float()) + (sf_diff2 * sf_occ_b.float())).mean(dim=1).mean()
-                if self.flow_pts_w > 0.0:
-                    flow_pts_loss1 = ((pose_pts_diff1 * pose_occ_f.float()) + (sf_pts_diff1 * sf_occ_f.float())).mean(dim=1).mean()
-                    flow_pts_loss2 = ((pose_pts_diff2 * pose_occ_b.float()) + (sf_pts_diff2 * sf_occ_b.float())).mean(dim=1).mean()
-                else:
-                    flow_pts_loss1 = torch.tensor(0.0, requires_grad=False)
-                    flow_pts_loss2 = torch.tensor(0.0, requires_grad=False)
-            elif self.flow_reduce_mode == 'sum':
-                flow_loss1 = ((pose_diff1 * pose_occ_f.float()) + (sf_diff1 * sf_occ_f.float())).sum(dim=1).mean()
-                flow_loss2 = ((pose_diff2 * pose_occ_b.float()) + (sf_diff2 * sf_occ_b.float())).sum(dim=1).mean()
-                if self.flow_pts_w > 0.0:
-                    flow_pts_loss1 = pose_pts_diff1.mean(dim=1, keepdim=True)[pose_occ_f].mean() + sf_pts_diff1.mean(dim=1, keepdim=True)[sf_occ_f].mean()
-                    flow_pts_loss2 = pose_pts_diff2.mean(dim=1, keepdim=True)[pose_occ_b].mean() + sf_pts_diff2.mean(dim=1, keepdim=True)[sf_occ_b].mean()
-                else:
-                    flow_pts_loss1 = torch.tensor(0.0, requires_grad=False)
-                    flow_pts_loss2 = torch.tensor(0.0, requires_grad=False)
+            flow_loss1 = ((pose_diff1 * pose_occ_f.float()) + (sf_diff1 * sf_occ_f.float())).sum(dim=1).mean()
+            flow_loss2 = ((pose_diff2 * pose_occ_b.float()) + (sf_diff2 * sf_occ_b.float())).sum(dim=1).mean()
+            if self.flow_pts_w > 0.0:
+                flow_pts_loss1 = pose_pts_diff1.mean(dim=1, keepdim=True)[pose_occ_f].mean() + sf_pts_diff1.mean(dim=1, keepdim=True)[sf_occ_f].mean()
+                flow_pts_loss2 = pose_pts_diff2.mean(dim=1, keepdim=True)[pose_occ_b].mean() + sf_pts_diff2.mean(dim=1, keepdim=True)[sf_occ_b].mean()
+            else:
+                flow_pts_loss1 = torch.tensor(0.0, requires_grad=False)
+                flow_pts_loss2 = torch.tensor(0.0, requires_grad=False)
 
             # calculate losses for logging
             pose_im_loss = (pose_diff1.mean(dim=1, keepdim=True)[pose_occ_f].mean() + \
@@ -440,7 +419,7 @@ class Loss(nn.Module):
             disp_sm_sum = disp_sm_sum + loss_disp_sm
 
         d_loss = depth_loss_sum.detach()
-        f_loss = flow_loss_sum.detach()
+        f_loss = flow_loss_sum.detach() / 2.0  # average out pose/sf loss
 
         m = torch.max(d_loss, f_loss)
 
