@@ -442,12 +442,12 @@ class Loss(nn.Module):
         d_loss = depth_loss_sum.detach()
         f_loss = flow_loss_sum.detach()
 
-        m = max(d_loss, f_loss)
+        m = torch.max(d_loss, f_loss)
 
         d_weight = m / d_loss
         f_weight = m / f_loss
 
-        total_loss = (depth_loss_sum * d_weight + flow_loss_sum * f_weight + mask_loss_sum + cons_loss_sum) #/ num_scales
+        total_loss = depth_loss_sum * d_weight + flow_loss_sum * f_weight + mask_loss_sum + cons_loss_sum
 
         loss_dict = {}
         loss_dict["total_loss"] = total_loss
@@ -723,7 +723,7 @@ class MonoDepthSFLoss(nn.Module):
         d_weight = m / d_loss
         f_weight = m / f_loss
 
-        total_loss = (depth_loss_sum * d_weight + flow_loss_sum * f_weight)
+        total_loss = depth_loss_sum * d_weight + flow_loss_sum * f_weight
 
         loss_dict = {}
         loss_dict["total_loss"] = total_loss
