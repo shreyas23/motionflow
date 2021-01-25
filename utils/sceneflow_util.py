@@ -43,11 +43,7 @@ def reconstruction_err(disp, src, tgt, K, sf=None, T=None, mode='pose', ssim_w=0
     return img_diff, occ_mask, (cam_points, grid), occ_mask
 
 
-def pose_process_flow(src_img, tgt_img, pose, sf, disp, K, aug_size):
-
-    src_img = interpolate2d_as(src_img, disp)
-    tgt_img = interpolate2d_as(tgt_img, disp)
-
+def pose_process_flow(src_img, tgt_img, pose, sf, disp, mask, K, aug_size, use_mask=True, mask_thresh=0.5):
     # denormalize disparity
     _, _, h, w = disp.shape 
     disp = disp * w
@@ -61,11 +57,18 @@ def pose_process_flow(src_img, tgt_img, pose, sf, disp, K, aug_size):
     K_s = intrinsic_scale(K, rel_scale[:, 0], rel_scale[:, 1])
 
     depth = _disp2depth_kitti_K(disp, K_s[:, 0, 0])
-    pose_sf = pose2sceneflow(depth, None, K, torch.inverse(K_s), pose_mat=pose)
-    pose_diff, _, (_, _), _ = reconstruction_err(disp=disp, src=src_img, tgt=tgt_img, K=K, sf=pose_sf, mode='sf')
-    sf_diff, _, (_, _), _ = reconstruction_err(disp=disp, src=src_img, tgt=tgt_img, K=K, sf=sf, mode='sf')
+    pose_sf = pose2sceneflow(depth, None, K_s, torch.inverse(K_s), pose_mat=pose)
 
-    processed_flow = torch.where(pose_diff < sf_diff, pose_sf, sf)
+    if use_mask is True:
+        processed_flow = torch.where(mask < mask_thresh, sf, pose_sf)
+    else:
+        src_img = interpolate2d_as(src_img, disp)
+        tgt_img = interpolate2d_as(tgt_img, disp)
+
+        pose_diff, _, (_, _), _ = reconstruction_err(disp=disp, src=src_img, tgt=tgt_img, K=K_s, sf=pose_sf, mode='sf')
+        sf_diff, _, (_, _), _ = reconstruction_err(disp=disp, src=src_img, tgt=tgt_img, K=K_s, sf=sf, mode='sf')
+
+        processed_flow = torch.where(pose_diff < sf_diff, pose_sf, sf)
 
     return processed_flow
 

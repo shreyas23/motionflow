@@ -18,6 +18,11 @@ def _reconstruction_error(tgt_img, ref_img_warped, ssim_w):
             _SSIM(tgt_img, ref_img_warped) * ssim_w).mean(dim=1, keepdim=True)
     return diff
 
+def robust_reconstruction_error(tgt_img, ref_img_warped, ssim_w):
+    residual = tgt_img - ref_img_warped
+    diff = (robust_l1_per_pix(residual) * (1.0 - ssim_w) +
+            _SSIM(tgt_img, ref_img_warped) * ssim_w).mean(dim=1, keepdim=True)
+    return diff
 
 def _elementwise_epe(input_flow, target_flow):
     residual = target_flow - input_flow
@@ -33,6 +38,9 @@ def _elementwise_robust_epe_char(input_flow, target_flow):
     residual = target_flow - input_flow
     return torch.pow(torch.norm(residual, p=2, dim=1, keepdim=True) + 0.01, 0.4)
 
+def robust_l1_per_pix(x, q=0.5, eps=1e-2):
+    x = torch.pow((x.pow(2) + eps), q)
+    return x
 
 def _SSIM(x, y):
     C1 = 0.01 ** 2

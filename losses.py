@@ -9,7 +9,7 @@ from utils.helpers import BackprojectDepth, Project3D
 from utils.interpolation import interpolate2d_as
 from utils.inverse_warp import pose2flow, pose2sceneflow, pose_vec2mat
 from utils.loss_utils import _generate_image_left, _generate_image_right, _smoothness_motion_2nd, disp_smooth_loss
-from utils.loss_utils import _SSIM, _reconstruction_error, _disp2depth_kitti_K, logical_or, _elementwise_epe
+from utils.loss_utils import _SSIM, _reconstruction_error, _disp2depth_kitti_K, logical_or, _elementwise_epe, robust_reconstruction_error
 from utils.loss_utils import _adaptive_disocc_detection, _adaptive_disocc_detection_disp
 from utils.loss_utils import _gradient_x_2nd, _gradient_y_2nd
 from utils.sceneflow_util import projectSceneFlow2Flow, intrinsic_scale, reconstructPts
@@ -96,7 +96,7 @@ class Loss(nn.Module):
         grid = proj(cam_points, K, T=T, sf=sf, mode=mode)
         ref_warp = tf.grid_sample(src, grid, mode='bilinear', padding_mode="zeros")
 
-        img_diff = _reconstruction_error(tgt, ref_warp, self.ssim_w)
+        img_diff = robust_reconstruction_error(tgt, ref_warp, self.ssim_w)
 
         return img_diff, occ_mask, (cam_points, grid), occ_mask
 
@@ -349,7 +349,7 @@ class Loss(nn.Module):
 
             # remove static pixels from loss calculation
             if self.args.use_static_mask:
-                static_diff = _reconstruction_error(img_l1, img_l2, self.ssim_w)
+                static_diff = robust_reconstruction_error(img_l1, img_l2, self.ssim_w)
                 pose_static_thresh1 =  pose_diff1 < static_diff
                 pose_static_thresh2 =  pose_diff2 < static_diff
                 sf_static_thresh1 =  sf_diff1 < static_diff
@@ -392,13 +392,13 @@ class Loss(nn.Module):
 
             if self.static_cons_w > 0.0:
                 if self.args.apply_mask:
-                    static_mask_l1 = mask_l1
-                    static_mask_l2 = mask_l2
+                    static_mask_l1 = mask_l1.detach()
+                    static_mask_l2 = mask_l2.detach()
                 else:
                     static_mask_l1 = torch.ones_like(mask_l1, requires_grad=False)
                     static_mask_l2 = torch.ones_like(mask_l2, requires_grad=False)
-                cons_loss_f = (_elementwise_epe(pose_sf_f * mask_l1, flow_f) * static_mask_l1).mean()
-                cons_loss_b = (_elementwise_epe(pose_sf_b * mask_l2, flow_b) * static_mask_l2).mean()
+                cons_loss_f = (_elementwise_epe(pose_sf_f, flow_f) * static_mask_l1).mean()
+                cons_loss_b = (_elementwise_epe(pose_sf_b, flow_b) * static_mask_l2).mean()
                 cons_loss = (cons_loss_f + cons_loss_b) * self.static_cons_w
             else:
                 cons_loss = torch.tensor(0.0, requires_grad=False)
@@ -505,7 +505,7 @@ class MonoDepthSFLoss(nn.Module):
         left_occ = _adaptive_disocc_detection_disp(disp_r)
 
         img_r_warp = _generate_image_left(img_r, disp_l)
-        img_diff = _reconstruction_error(img_l, img_r_warp, self.ssim_w)
+        img_diff = robust_reconstruction_error(img_l, img_r_warp, self.ssim_w)
         img_diff[~left_occ].detach_()
 
         smooth_loss = _smoothness_motion_2nd(disp_l, img_l, beta=10.0).mean() / (2**scale)
@@ -540,7 +540,7 @@ class MonoDepthSFLoss(nn.Module):
         grid = proj(cam_points, K, T=T, sf=sf, mode=mode)
         ref_warp = tf.grid_sample(src, grid, mode='bilinear', padding_mode="zeros")
 
-        img_diff = _reconstruction_error(tgt, ref_warp, self.ssim_w)
+        img_diff = robust_reconstruction_error(tgt, ref_warp, self.ssim_w)
 
         return img_diff, occ_mask, (cam_points, grid), occ_mask
 

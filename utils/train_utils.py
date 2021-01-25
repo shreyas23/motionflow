@@ -273,6 +273,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer, prefix):
     # writer.add_mesh(tag='pc_l2', vertices=pts, colors=colors)
 
     # motion mask
+    mask = (mask_l2 > 0.5).float()
     if use_mask:
         writer.add_images(prefix + 'mask', mask_l2, epoch)
     if 'census_masks_l2' in output_dict:
