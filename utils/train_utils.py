@@ -275,6 +275,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer, prefix):
     # motion mask
     mask = (mask_l2 > 0.5).float()
     if use_mask:
+        writer.add_images(prefix + 'thresh_mask', mask, epoch)
         writer.add_images(prefix + 'mask', mask_l2, epoch)
     if 'census_masks_l2' in output_dict:
         writer.add_images(prefix + 'target_census_mask', census_mask_l2, epoch)
