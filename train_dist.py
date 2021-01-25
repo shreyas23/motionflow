@@ -29,7 +29,7 @@ from models.MonoDepthSFModel import MonoDepthSFModel
 from models.MonoSF import MonoSceneFlow as MonoSF, MonoSFLoss
 from losses import Loss, MonoDepthSFLoss
 from losses_eval import Eval_SceneFlow_KITTI_Train
-from old_losses import Loss_SceneFlow_SelfSup_JointIter
+from test_losses import Loss_SceneFlow_SelfSup
 
 from params import Params
 from utils.train_utils import step, evaluate, train_one_epoch, visualize_output
