@@ -22,10 +22,11 @@ from utils.inverse_warp import pose2sceneflow
 class Loss_SceneFlow_SelfSup(nn.Module):
     def __init__(self, args):
         super(Loss_SceneFlow_SelfSup, self).__init__()
-                
+
+        self.args = args
         self.weights = [4.0, 2.0, 1.0, 1.0, 1.0]
-        self.ssim_w = 0.85
-        self.disp_smooth_w = 0.1
+        self.ssim_w = args.ssim_w
+        self.disp_smooth_w = args.disp_sm_w
         self.sf_3d_pts = args.flow_pts_w
         self.sf_3d_sm = args.flow_sm_w
         self.apply_mask = args.apply_mask
