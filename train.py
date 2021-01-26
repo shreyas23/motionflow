@@ -23,8 +23,8 @@ from models.Model import Model
 from models.ResModel import ResModel
 from models.MonoDepthSFModel import MonoDepthSFModel
 from models.MonoSF import MonoSceneFlow, MonoSFLoss
-from losses import Loss, MonoDepthSFLoss
-
+from losses import Loss
+from monodepth_losses import MonoDepthSFLoss
 from test_losses import Loss_SceneFlow_SelfSup
 
 from params import Params
@@ -61,7 +61,7 @@ def train(args):
     if args.model_name == 'joint':
         print("Using joint scene flow model")
         model = JointModel(args).cuda()
-        loss = Loss_SceneFlow_SelfSup(args).cuda()
+        # loss = Loss_SceneFlow_SelfSup(args).cuda()
     elif args.model_name == 'residual':
         print("Using joint residual scene flow model")
         model = ResModel(args).cuda()

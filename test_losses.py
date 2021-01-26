@@ -193,10 +193,10 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             img_r2_aug = interpolate2d_as(target_dict["input_r2_aug"], sf_b)
 
             ## Disp Loss
-            loss_disp_l1, disp_occ_l1 = self.depth_loss_left_img(disp_l1, disp_r1, img_l1_aug, img_r1_aug, ii)
-            loss_disp_l2, disp_occ_l2 = self.depth_loss_left_img(disp_l2, disp_r2, img_l2_aug, img_r2_aug, ii)
+            loss_disp_l1, loss_disp_lr_l1, disp_occ_l1 = self.depth_loss_left_img(disp_l1, disp_r1, img_l1_aug, img_r1_aug, ii)
+            loss_disp_l2, loss_disp_lr_l2, disp_occ_l2 = self.depth_loss_left_img(disp_l2, disp_r2, img_l2_aug, img_r2_aug, ii)
             loss_dp_sum = loss_dp_sum + (loss_disp_l1 + loss_disp_l2) * self.weights[ii]
-
+            loss_disp_lr_sum = loss_disp_lr_sum + (loss_disp_lr_l1 + loss_disp_lr_l2) * self.disp_lr_w
 
             ## Sceneflow Loss           
             if self.apply_flow_mask:
@@ -300,6 +300,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
 
         loss_dict = {}
         loss_dict["dp"] = loss_dp_sum.detach()
+        loss_dict['disp_lr'] = loss_disp_lr_sum.detach()
         loss_dict["sf"] = loss_sf_sum.detach()
         loss_dict["s_2"] = loss_sf_2d.detach()
         loss_dict["s_3"] = loss_sf_3d.detach()
