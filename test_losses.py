@@ -1,3 +1,5 @@
+from pprint import pprint
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as tf
@@ -293,22 +295,22 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         f_weight = max_val / f_loss
         d_weight = max_val / d_loss
 
-        total_loss = loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * f_weight
+        total_loss = loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * f_weight + loss_mask_sum + loss_cons_sum
 
         loss_dict = {}
-        loss_dict["dp"] = loss_dp_sum
-        loss_dict["sf"] = loss_sf_sum
-        loss_dict["s_2"] = loss_sf_2d
-        loss_dict["s_3"] = loss_sf_3d
-        loss_dict["s_3s"] = loss_sf_sm
-        loss_dict["pose"] = loss_pose_sum
-        loss_dict["pose_2"] = loss_pose_2d
-        loss_dict["pose_3"] = loss_pose_3d
-        loss_dict["mask"] = loss_mask_sum
-        loss_dict["mask_sm"] = loss_mask_sm_sum
-        loss_dict["mask_census"] = loss_mask_census_sum
-        loss_dict["mask_reg"] = loss_mask_reg_sum
-        loss_dict["static_cons"] = loss_cons_sum
+        loss_dict["dp"] = loss_dp_sum.detach()
+        loss_dict["sf"] = loss_sf_sum.detach()
+        loss_dict["s_2"] = loss_sf_2d.detach()
+        loss_dict["s_3"] = loss_sf_3d.detach()
+        loss_dict["s_3s"] = loss_sf_sm.detach()
+        loss_dict["pose"] = loss_pose_sum.detach()
+        loss_dict["pose_2"] = loss_pose_2d.detach()
+        loss_dict["pose_3"] = loss_pose_3d.detach()
+        loss_dict["mask"] = loss_mask_sum.detach()
+        loss_dict["mask_sm"] = loss_mask_sm_sum.detach()
+        loss_dict["mask_census"] = loss_mask_census_sum.detach()
+        loss_dict["mask_reg"] = loss_mask_reg_sum.detach()
+        loss_dict["static_cons"] = loss_cons_sum.detach()
         loss_dict["total_loss"] = total_loss
 
         self.detaching_grad_of_outputs(output_dict['output_dict_r'])
