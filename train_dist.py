@@ -95,7 +95,6 @@ def train(gpu, args):
     loss = Loss(args).cuda(device=gpu)
     if args.model_name == 'joint':
         model = JointModel(args).cuda(device=gpu)
-        loss = Loss_SceneFlow_SelfSup(args).cuda()
     elif args.model_name == 'split':
         model = Model(args).cuda(device=gpu)
     elif args.model_name == 'residual':
