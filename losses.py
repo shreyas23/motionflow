@@ -45,7 +45,6 @@ class Loss(nn.Module):
 
         self.use_mask = args.train_exp_mask or args.train_census_mask
 
-        # self.scale_weights = [1.0, 1.0, 1.0, 1.0, 1.0]
         self.scale_weights = [4.0, 2.0, 1.0, 1.0, 1.0]
 
 
@@ -114,7 +113,6 @@ class Loss(nn.Module):
 
     def mask_loss(self, image, mask, census_target, scale):
         reg_loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
-        # sm_loss = (_gradient_x_2nd(mask).abs() + _gradient_y_2nd(mask).abs()).mean()
         sm_loss = _smoothness_motion_2nd(mask, image, beta=10.0).mean() / (2**scale)
         census_loss = tf.binary_cross_entropy(mask, census_target)
 
@@ -289,8 +287,8 @@ class Loss(nn.Module):
             disp_mask2 = left_occ2
             if self.use_disp_min:
                 # calculate min disparity diff across (L+1 and R)
-                mask_disp_diff1 = (disp_diff1 < pose_diff1).detach()
-                mask_disp_diff2 = (disp_diff2 < pose_diff2).detach()
+                mask_disp_diff1 = logical_or((disp_diff1 < pose_diff1).detach(), (disp_diff1 < sf_diff1).detach()) 
+                mask_disp_diff2 = logical_or((disp_diff2 < pose_diff2).detach(), (disp_diff2 < sf_diff2).detach()) 
                 disp_mask1 = disp_mask1 * mask_disp_diff1
                 disp_mask2 = disp_mask2 * mask_disp_diff2
 
@@ -322,8 +320,8 @@ class Loss(nn.Module):
                     if self.args.apply_flow_mask:
                         sf_diff1 = sf_diff1 * flow_mask_l1
                         sf_diff2 = sf_diff2 * flow_mask_l2
-                        sf_pts_diff1 = sf_pts_diff1 * flow_mask_l1
-                        sf_pts_diff2 = sf_pts_diff2 * flow_mask_l2
+                        sf_pts_diff1 = sf_pts_diff1 * flow_mask_l1.detach()
+                        sf_pts_diff2 = sf_pts_diff2 * flow_mask_l2.detach()
 
                 if self.args.train_exp_mask:
                     mask_loss1 = mask_reg_loss1 * self.mask_reg_w + \

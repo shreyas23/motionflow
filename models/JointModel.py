@@ -12,7 +12,7 @@ from .encoders import PoseBottleNeck
 from .modules_sceneflow import get_grid, WarpingLayer_SF, WarpingLayer_Pose
 from .modules_sceneflow import initialize_msra, upsample_outputs_as
 from .joint_decoders import JointDecoder, JointContextNetwork
-from .encoders import FeatureExtractor, ResnetEncoder
+from .encoders import PWCEncoder, ResnetEncoder
 
 from utils.inverse_warp import pose_vec2mat
 from utils.interpolation import interpolate2d_as
@@ -38,7 +38,7 @@ class JointModel(nn.Module):
             self.num_chs = self.feature_pyramid_extractor.num_ch_enc
         elif self.args.encoder_name == 'pwc':
             self.num_chs = [3, 32, 64, 96, 128, 192, 256]
-            self.feature_pyramid_extractor = FeatureExtractor(self.num_chs)
+            self.feature_pyramid_extractor = PWCEncoder(self.num_chs)
         else:
             raise NotImplementedError
 

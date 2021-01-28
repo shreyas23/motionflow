@@ -11,30 +11,30 @@ import logging
 
 from .common import Conv, conv
 
-# class FeatureExtractor(nn.Module):
-#     def __init__(self, num_chs):
-#         super(FeatureExtractor, self).__init__()
-#         self.num_chs = num_chs
-#         self.convs = nn.ModuleList()
-
-#         for l, (ch_in, ch_out) in enumerate(zip(num_chs[:-1], num_chs[1:])):
-#             layer = nn.Sequential(
-#                 conv(ch_in, ch_out, stride=2),
-#                 conv(ch_out, ch_out)
-#             )
-#             self.convs.append(layer)
-
-#     def forward(self, x):
-#         feature_pyramid = []
-#         for conv in self.convs:
-#             x = conv(x)
-#             feature_pyramid.append(x)
-
-#         return feature_pyramid
-
 class FeatureExtractor(nn.Module):
-    def __init__(self, num_chs, use_bn=False):
+    def __init__(self, num_chs):
         super(FeatureExtractor, self).__init__()
+        self.num_chs = num_chs
+        self.convs = nn.ModuleList()
+
+        for l, (ch_in, ch_out) in enumerate(zip(num_chs[:-1], num_chs[1:])):
+            layer = nn.Sequential(
+                conv(ch_in, ch_out, stride=2),
+                conv(ch_out, ch_out)
+            )
+            self.convs.append(layer)
+
+    def forward(self, x):
+        feature_pyramid = []
+        for conv in self.convs:
+            x = conv(x)
+            feature_pyramid.append(x)
+
+        return feature_pyramid
+
+class PWCEncoder(nn.Module):
+    def __init__(self, num_chs, use_bn=False):
+        super(PWCEncoder, self).__init__()
         self.num_chs = num_chs
         self.convs = nn.ModuleList()
 

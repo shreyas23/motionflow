@@ -21,7 +21,6 @@ from utils.inverse_warp import pose_vec2mat
 from .modules_sceneflow import upsample_outputs_as
 
 
-
 class Model(nn.Module):
 
     def __init__(self, args):

@@ -102,5 +102,9 @@ class Params:
         self.parser.add_argument('--cuda_seed', default=543987, help='random seed for reproducibility')
 
         self.args = self.parser.parse_args()
+
         if self.args.train_exp_mask or self.args.train_census_mask:
             assert (self.args.train_exp_mask ^ self.args.train_census_mask), "Can only either train exp mask or census mask"
+        
+        if self.args.pt_encoder:
+            assert (self.args.batch_size > 1), "Batch size must be greater than one if training using pre-trained resnet encoder"
