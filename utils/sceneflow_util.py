@@ -43,7 +43,7 @@ def reconstruction_err(disp, src, tgt, K, sf=None, T=None, mode='pose', ssim_w=0
     return img_diff, occ_mask, (cam_points, grid), occ_mask
 
 
-def pose_process_flow(src_img, tgt_img, pose, sf, disp, mask, K, aug_size, use_mask=True, mask_thresh=0.5):
+def pose_process_flow(src_img, tgt_img, pose, sf, disp, mask, K, aug_size, use_mask=True, mask_thresh=0.3):
     # denormalize disparity
     _, _, h, w = disp.shape 
     disp = disp * w
