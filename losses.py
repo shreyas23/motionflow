@@ -288,10 +288,10 @@ class Loss(nn.Module):
             disp_mask2 = left_occ2
             if self.use_disp_min:
                 # calculate min disparity diff across (L+1 and R)
-                mask_disp_diff1 = logical_or((disp_diff1 < pose_diff1).detach(), (disp_diff1 < sf_diff1).detach()) 
-                mask_disp_diff2 = logical_or((disp_diff2 < pose_diff2).detach(), (disp_diff2 < sf_diff2).detach()) 
-                disp_mask1 = disp_mask1 * mask_disp_diff1
-                disp_mask2 = disp_mask2 * mask_disp_diff2
+                mask_disp_diff1 = logical_or((disp_diff1 < pose_diff1).float().detach(), (disp_diff1 < sf_diff1).float().detach()) 
+                mask_disp_diff2 = logical_or((disp_diff2 < pose_diff2).float().detach(), (disp_diff2 < sf_diff2).float().detach()) 
+                disp_mask1 = disp_mask1 * mask_disp_diff1.bool()
+                disp_mask2 = disp_mask2 * mask_disp_diff2.bool()
 
             depth_loss1 = disp_diff1[disp_mask1].mean()
             depth_loss2 = disp_diff2[disp_mask2].mean()

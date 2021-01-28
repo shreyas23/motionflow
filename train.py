@@ -61,7 +61,6 @@ def train(args):
     if args.model_name == 'joint':
         print("Using joint scene flow model")
         model = JointModel(args).cuda()
-        # loss = Loss_SceneFlow_SelfSup(args).cuda()
     elif args.model_name == 'residual':
         print("Using joint residual scene flow model")
         model = ResModel(args).cuda()
