@@ -9,7 +9,7 @@ from utils.helpers import BackprojectDepth, Project3D
 from utils.interpolation import interpolate2d_as
 from utils.inverse_warp import pose2flow, pose2sceneflow, pose_vec2mat
 from utils.loss_utils import _generate_image_left, _generate_image_right, _smoothness_motion_2nd, disp_smooth_loss
-from utils.loss_utils import _SSIM, _reconstruction_error, _disp2depth_kitti_K, logical_or, _elementwise_epe
+from utils.loss_utils import _SSIM, _reconstruction_error, _disp2depth_kitti_K, logical_or, _elementwise_epe, _elementwise_l1
 from utils.loss_utils import _adaptive_disocc_detection, _adaptive_disocc_detection_disp
 from utils.loss_utils import _gradient_x_2nd, _gradient_y_2nd
 from utils.sceneflow_util import projectSceneFlow2Flow, intrinsic_scale, reconstructPts
@@ -42,6 +42,7 @@ class Loss(nn.Module):
         self.static_cons_w = args.static_cons_w
         self.mask_census_w = args.mask_cons_w
         self.flow_diff_thresh = args.flow_diff_thresh
+        self.flow_cycle_w = args.flow_cycle_w
 
         self.use_mask = args.train_exp_mask or args.train_census_mask
 
@@ -127,8 +128,19 @@ class Loss(nn.Module):
 
         return census_target_mask
 
+    def flow_cycle_loss(self, grid1, grid2, flow_f, flow_b, occ_f, occ_b):
+        flow_b_warp = reconstructPts(grid1.permute(0, 3, 1, 2), flow_b)
+        flow_f_warp = reconstructPts(grid2.permute(0, 3, 1, 2), flow_f)
 
-    def structure_loss(self, pts1, pts2, grid1, grid2, sf=None, T=None, mode='pose'):
+        flow_f_diff= flow_f + flow_b_warp
+        flow_b_diff = flow_b + flow_f_warp
+
+        cycle_loss = torch.norm(flow_f_diff, p=1, dim=1, keepdim=True)[occ_f].mean() + \
+                        torch.norm(flow_b_diff, p=1, dim=1, keepdim=True)[occ_b].mean()
+
+        return cycle_loss
+
+    def structure_loss(self, pts1, pts2, grid1, grid2, sf=None, T=None):
         b, _, h, w = pts1.shape
 
         pts_norm1 = torch.norm(pts1, p=2, dim=1, keepdim=True)
@@ -137,16 +149,8 @@ class Loss(nn.Module):
         pts2_warp = reconstructPts(grid1.permute(0, 3, 1, 2), pts2)
         pts1_warp = reconstructPts(grid2.permute(0, 3, 1, 2), pts1)
 
-        if mode == 'sf':
-            pts1_tf = pts1 + sf[0]
-            pts2_tf = pts2 + sf[1]
-        else:
-            # homogenize points
-            ones = torch.ones((b, 1, h*w), requires_grad=False).cuda(device=pts1.device)
-            pts1_cat = torch.cat([pts1.view(b, 3, -1), ones], dim=1)
-            pts2_cat = torch.cat([pts2.view(b, 3, -1), ones], dim=1)
-            pts1_tf = torch.bmm(T[0], pts1_cat).view(b, 3, h, w)
-            pts2_tf = torch.bmm(T[1], pts2_cat).view(b, 3, h, w)
+        pts1_tf = pts1 + sf[0]
+        pts2_tf = pts2 + sf[1]
 
         pts_diff1 = _elementwise_epe(pts1_tf, pts2_warp).mean(dim=1, keepdim=True) / (pts_norm1 + 1e-8)
         pts_diff2 = _elementwise_epe(pts2_tf, pts1_warp).mean(dim=1, keepdim=True) / (pts_norm2 + 1e-8)
@@ -165,6 +169,7 @@ class Loss(nn.Module):
         sf_im_loss_sum = 0
         sf_pts_loss_sum = 0
         sf_sm_sum = 0
+        flow_cycle_sum = 0
         mask_loss_sum = 0
         mask_reg_loss_sum = 0
         mask_sm_loss_sum = 0
@@ -241,8 +246,8 @@ class Loss(nn.Module):
             # depth diffs
             disp_diff1, left_occ1, loss_disp_sm1, loss_lr1 = self.depth_loss(disp_l1, disp_r1, img_l1, img_r1, s)
             disp_diff2, left_occ2, loss_disp_sm2, loss_lr2 = self.depth_loss(disp_l2, disp_r2, img_l2, img_r2, s)
-            loss_disp_sm = (loss_disp_sm1 + loss_disp_sm2) * self.disp_sm_w
-            loss_disp_lr = (loss_lr1 + loss_lr2) * self.disp_lr_w
+            loss_disp_sm = loss_disp_sm1 + loss_disp_sm2
+            loss_disp_lr = loss_lr1 + loss_lr2
 
             # denormalize disparity
             _, _, h, w = disp_l1.shape 
@@ -276,11 +281,14 @@ class Loss(nn.Module):
             pts_norm2 = torch.norm(pts2, p=2, dim=1, keepdim=True)
             loss_sf_sm = ( (_smoothness_motion_2nd(flow_f, img_l1, beta=10.0) / (pts_norm1 + 1e-8)).mean() + \
                 (_smoothness_motion_2nd(flow_b, img_l2, beta=10.0) / (pts_norm2 + 1e-8)).mean() ) / (2 ** s)
-            loss_sf_sm = loss_sf_sm * self.flow_sm_w
+            loss_sf_sm = loss_sf_sm
 
             """ 3D STRUCTURE LOSS """
-            pose_pts_diff1, pose_pts_diff2 = self.structure_loss(pts1, pts2, pose_grid1, pose_grid2, sf=[pose_sf_f, pose_sf_b], mode='sf')
-            sf_pts_diff1, sf_pts_diff2 = self.structure_loss(pts1, pts2, sf_grid1, sf_grid2, sf=[flow_f, flow_b], mode='sf')
+            pose_pts_diff1, pose_pts_diff2 = self.structure_loss(pts1, pts2, pose_grid1, pose_grid2, sf=[pose_sf_f, pose_sf_b])
+            sf_pts_diff1, sf_pts_diff2 = self.structure_loss(pts1, pts2, sf_grid1, sf_grid2, sf=[flow_f, flow_b])
+
+            """ SCENE FLOW BACKWARD/FORWARD CONSISTENCY """
+            sf_bw_loss = self.flow_cycle_loss(sf_grid1, sf_grid2, flow_f, flow_b, sf_occ_f, sf_occ_b)
 
             """ DEPTH LOSS """
             disp_mask1 = left_occ1
@@ -299,8 +307,8 @@ class Loss(nn.Module):
             depth_loss = depth_loss1 + depth_loss2
 
             """ CENSUS MASK """
-            flow_diff_f = _elementwise_epe(pose_sf_f, flow_f)
-            flow_diff_b = _elementwise_epe(pose_sf_b, flow_b)
+            flow_diff_f = _elementwise_l1(pose_sf_f, flow_f)
+            flow_diff_b = _elementwise_l1(pose_sf_b, flow_b)
             census_mask_tgt_l1 = self.create_census_mask(flow_diff_f, pose_diff1, sf_diff1)
             census_mask_tgt_l2 = self.create_census_mask(flow_diff_b, pose_diff2, sf_diff2)
             census_masks_l1.append(census_mask_tgt_l1)
@@ -393,7 +401,7 @@ class Loss(nn.Module):
                            sf_pts_diff2[sf_occ_b].mean()).detach()
 
             flow_loss = flow_loss1 + flow_loss2
-            pts_loss = (flow_pts_loss1 + flow_pts_loss2) * self.flow_pts_w
+            pts_loss = (flow_pts_loss1 + flow_pts_loss2)
 
             pose_diff1[~pose_occ_f].detach_()
             sf_diff1[~sf_occ_f].detach_()
@@ -407,16 +415,16 @@ class Loss(nn.Module):
                 else:
                     static_mask_l1 = torch.ones_like(mask_l1, requires_grad=False)
                     static_mask_l2 = torch.ones_like(mask_l2, requires_grad=False)
-                cons_loss_f = (_elementwise_epe(pose_sf_f, flow_f) * static_mask_l1).mean()
-                cons_loss_b = (_elementwise_epe(pose_sf_b, flow_b) * static_mask_l2).mean()
-                cons_loss = (cons_loss_f + cons_loss_b) * self.static_cons_w
+                cons_loss_f = (_elementwise_l1(pose_sf_f, flow_f) * static_mask_l1).mean()
+                cons_loss_b = (_elementwise_l1(pose_sf_b, flow_b) * static_mask_l2).mean()
+                cons_loss = (cons_loss_f + cons_loss_b)
             else:
                 cons_loss = torch.tensor(0.0, requires_grad=False)
 
-            depth_loss_sum = depth_loss_sum + (depth_loss + loss_disp_sm + loss_disp_lr) * self.scale_weights[s]
-            flow_loss_sum = flow_loss_sum + (flow_loss + loss_sf_sm + pts_loss) * self.scale_weights[s] 
+            depth_loss_sum = depth_loss_sum + (depth_loss + loss_disp_sm * self.disp_sm_w + loss_disp_lr * self.disp_lr_w) * self.scale_weights[s]
+            flow_loss_sum = flow_loss_sum + (flow_loss + loss_sf_sm * self.flow_sm_w + pts_loss * self.flow_pts_w + sf_bw_loss * self.flow_cycle_w) * self.scale_weights[s] 
+            cons_loss_sum = cons_loss_sum + cons_loss * self.static_cons_w * self.scale_weights[s]
             mask_loss_sum = mask_loss_sum + mask_loss * self.scale_weights[s]
-            cons_loss_sum = cons_loss_sum + cons_loss * self.scale_weights[s]
             mask_sm_loss_sum += mask_sm_loss
             mask_reg_loss_sum += mask_reg_loss
             mask_census_loss_sum += mask_census_loss
@@ -426,6 +434,7 @@ class Loss(nn.Module):
             sf_pts_loss_sum = sf_pts_loss_sum + sf_pts_loss
             sf_sm_sum = sf_sm_sum + loss_sf_sm
             flow_pts_sum = flow_pts_sum + pts_loss
+            flow_cycle_sum = flow_cycle_sum + sf_bw_loss
             disp_sm_sum = disp_sm_sum + loss_disp_sm
             disp_lr_sum = disp_lr_sum + loss_disp_lr
 
@@ -456,6 +465,7 @@ class Loss(nn.Module):
         loss_dict["mask_sm_loss"] = mask_sm_loss_sum.detach()
         loss_dict["mask_census_loss"] = mask_census_loss_sum.detach()
         loss_dict["flow_cons_loss"] = cons_loss_sum.detach()
+        loss_dict["flow_cycle_loss"] = flow_cycle_sum.detach()
 
         output['census_masks_l1'] = census_masks_l1
         output['census_masks_l2'] = census_masks_l2

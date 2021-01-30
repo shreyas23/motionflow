@@ -28,11 +28,9 @@ def _elementwise_epe(input_flow, target_flow):
     residual = target_flow - input_flow
     return torch.norm(residual, p=2, dim=1, keepdim=True)
 
-
 def _elementwise_l1(input_flow, target_flow):
     residual = target_flow - input_flow
     return torch.norm(residual, p=1, dim=1, keepdim=True)
-
 
 def _elementwise_robust_epe_char(input_flow, target_flow):
     residual = target_flow - input_flow

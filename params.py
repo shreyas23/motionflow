@@ -44,6 +44,7 @@ class Params:
         self.parser.add_argument('--use_ppm', type=bool, default=False, help="whether to use consensus mask in training procedure")
         self.parser.add_argument('--num_scales', type=int, default=4, help="whether to use consensus mask in training procedure")
         self.parser.add_argument('--do_pose_c2f', type=bool, default=False, help="whether to use consensus mask in training procedure")
+        self.parser.add_argument('--use_bottleneck', type=bool, default=False, help="whether to use consensus mask in training procedure")
 
         # dataset params
         self.parser.add_argument('--dataset_name', default='KITTI', help='KITTI or Eigen')
@@ -64,15 +65,16 @@ class Params:
         # weight params
         self.parser.add_argument('--ssim_w', type=float, default=0.85, help='mask consensus weight')
         self.parser.add_argument('--flow_pts_w', type=float, default=0.0, help='mask consensus weight')
+        self.parser.add_argument('--flow_cycle_w', type=float, default=0.0, help='mask consensus weight')
         self.parser.add_argument('--flow_sm_w', type=float, default=200, help='mask consensus weight')
         self.parser.add_argument('--disp_sm_w', type=float, default=0.2, help='mask consensus weight')
         self.parser.add_argument('--disp_lr_w', type=float, default=0.0, help='mask consensus weight')
-        self.parser.add_argument('--mask_sm_w', type=float, default=0.0, help='mask consensus weight')
-        self.parser.add_argument('--mask_reg_w', type=float, default=0.0, help='mask consensus weight')
+        self.parser.add_argument('--mask_sm_w', type=float, default=0.1, help='mask consensus weight')
+        self.parser.add_argument('--mask_reg_w', type=float, default=0.3, help='mask consensus weight')
         self.parser.add_argument('--static_cons_w', type=float, default=0.0, help='mask consensus weight')
-        self.parser.add_argument('--mask_cons_w', type=float, default=0.0, help='mask consensus weight')
-        self.parser.add_argument('--flow_diff_thresh', type=float, default=1e-3, help='mask consensus weight')
-        self.parser.add_argument('--mask_thresh', type=float, default=0.5, help='mask consensus weight')
+        self.parser.add_argument('--mask_cons_w', type=float, default=0.2, help='mask consensus weight')
+        self.parser.add_argument('--flow_diff_thresh', type=float, default=0.1, help='mask consensus weight')
+        self.parser.add_argument('--mask_thresh', type=float, default=0.3, help='mask consensus weight')
 
         # learning params
         self.parser.add_argument('--lr', type=float, default=1e-4, help='initial learning rate')
