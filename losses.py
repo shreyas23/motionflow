@@ -9,8 +9,7 @@ from utils.helpers import BackprojectDepth, Project3D
 from utils.interpolation import interpolate2d_as
 from utils.inverse_warp import pose2flow, pose2sceneflow, pose_vec2mat
 from utils.loss_utils import _generate_image_left, _generate_image_right, _smoothness_motion_2nd, disp_smooth_loss
-from utils.loss_utils import _SSIM, _reconstruction_error, _disp2depth_kitti_K, logical_or, _elementwise_epe, robust_reconstruction_error
-from utils.loss_utils import _elementwise_robust_epe_char
+from utils.loss_utils import _SSIM, _reconstruction_error, _disp2depth_kitti_K, logical_or, _elementwise_epe
 from utils.loss_utils import _adaptive_disocc_detection, _adaptive_disocc_detection_disp
 from utils.loss_utils import _gradient_x_2nd, _gradient_y_2nd
 from utils.sceneflow_util import projectSceneFlow2Flow, intrinsic_scale, reconstructPts
@@ -62,7 +61,7 @@ class Loss(nn.Module):
         right_occ = _adaptive_disocc_detection_disp(disp_l).detach()
 
         img_r_warp = _generate_image_left(img_r, disp_l)
-        img_diff = robust_reconstruction_error(img_l, img_r_warp, self.ssim_w)
+        img_diff = _reconstruction_error(img_l, img_r_warp, self.ssim_w)
         img_diff[~left_occ].detach_()
 
         smooth_loss = _smoothness_motion_2nd(disp_l, img_l, beta=10.0).mean() / (2**scale)
@@ -107,7 +106,7 @@ class Loss(nn.Module):
         grid = proj(cam_points, K, T=T, sf=sf, mode=mode)
         ref_warp = tf.grid_sample(src, grid, mode='bilinear', padding_mode="zeros")
 
-        img_diff = robust_reconstruction_error(tgt, ref_warp, self.ssim_w)
+        img_diff = _reconstruction_error(tgt, ref_warp, self.ssim_w)
 
         return img_diff, occ_mask, (cam_points, grid), occ_mask
 
@@ -149,8 +148,8 @@ class Loss(nn.Module):
             pts1_tf = torch.bmm(T[0], pts1_cat).view(b, 3, h, w)
             pts2_tf = torch.bmm(T[1], pts2_cat).view(b, 3, h, w)
 
-        pts_diff1 = _elementwise_robust_epe_char(pts1_tf, pts2_warp).mean(dim=1, keepdim=True) / (pts_norm1 + 1e-8)
-        pts_diff2 = _elementwise_robust_epe_char(pts2_tf, pts1_warp).mean(dim=1, keepdim=True) / (pts_norm2 + 1e-8)
+        pts_diff1 = _elementwise_epe(pts1_tf, pts2_warp).mean(dim=1, keepdim=True) / (pts_norm1 + 1e-8)
+        pts_diff2 = _elementwise_epe(pts2_tf, pts1_warp).mean(dim=1, keepdim=True) / (pts_norm2 + 1e-8)
 
         return pts_diff1, pts_diff2
 
@@ -300,8 +299,8 @@ class Loss(nn.Module):
             depth_loss = depth_loss1 + depth_loss2
 
             """ CENSUS MASK """
-            flow_diff_f = _elementwise_robust_epe_char(pose_sf_f, flow_f)
-            flow_diff_b = _elementwise_robust_epe_char(pose_sf_b, flow_b)
+            flow_diff_f = _elementwise_epe(pose_sf_f, flow_f)
+            flow_diff_b = _elementwise_epe(pose_sf_b, flow_b)
             census_mask_tgt_l1 = self.create_census_mask(flow_diff_f, pose_diff1, sf_diff1)
             census_mask_tgt_l2 = self.create_census_mask(flow_diff_b, pose_diff2, sf_diff2)
             census_masks_l1.append(census_mask_tgt_l1)
@@ -319,10 +318,10 @@ class Loss(nn.Module):
                     pose_pts_diff2 = pose_pts_diff2 * mask_l2
 
                     if self.args.apply_flow_mask:
-                        sf_diff1 = sf_diff1 * flow_mask_l1.detach()
-                        sf_diff2 = sf_diff2 * flow_mask_l2.detach()
-                        sf_pts_diff1 = sf_pts_diff1 * flow_mask_l1.detach()
-                        sf_pts_diff2 = sf_pts_diff2 * flow_mask_l2.detach()
+                        sf_diff1 = sf_diff1 * flow_mask_l1
+                        sf_diff2 = sf_diff2 * flow_mask_l2
+                        sf_pts_diff1 = sf_pts_diff1 * flow_mask_l1
+                        sf_pts_diff2 = sf_pts_diff2 * flow_mask_l2
 
                 if self.args.train_exp_mask:
                     mask_loss1 = mask_reg_loss1 * self.mask_reg_w + \
@@ -361,7 +360,7 @@ class Loss(nn.Module):
 
             # remove static pixels from loss calculation
             if self.args.use_static_mask:
-                static_diff = robust_reconstruction_error(img_l1, img_l2, self.ssim_w)
+                static_diff = _reconstruction_error(img_l1, img_l2, self.ssim_w)
                 pose_static_thresh1 =  pose_diff1 < static_diff
                 pose_static_thresh2 =  pose_diff2 < static_diff
                 sf_static_thresh1 =  sf_diff1 < static_diff
@@ -394,7 +393,7 @@ class Loss(nn.Module):
                            sf_pts_diff2[sf_occ_b].mean()).detach()
 
             flow_loss = flow_loss1 + flow_loss2
-            pts_loss = (flow_pts_loss1 + flow_pts_loss2).detach() * self.flow_pts_w
+            pts_loss = (flow_pts_loss1 + flow_pts_loss2) * self.flow_pts_w
 
             pose_diff1[~pose_occ_f].detach_()
             sf_diff1[~sf_occ_f].detach_()
@@ -403,19 +402,19 @@ class Loss(nn.Module):
 
             if self.static_cons_w > 0.0:
                 if self.args.apply_mask:
-                    static_mask_l1 = mask_l1.detach()
-                    static_mask_l2 = mask_l2.detach()
+                    static_mask_l1 = mask_l1
+                    static_mask_l2 = mask_l2
                 else:
                     static_mask_l1 = torch.ones_like(mask_l1, requires_grad=False)
                     static_mask_l2 = torch.ones_like(mask_l2, requires_grad=False)
-                cons_loss_f = (_elementwise_robust_epe_char(pose_sf_f, flow_f) * static_mask_l1).mean()
-                cons_loss_b = (_elementwise_robust_epe_char(pose_sf_b, flow_b) * static_mask_l2).mean()
+                cons_loss_f = (_elementwise_epe(pose_sf_f, flow_f) * static_mask_l1).mean()
+                cons_loss_b = (_elementwise_epe(pose_sf_b, flow_b) * static_mask_l2).mean()
                 cons_loss = (cons_loss_f + cons_loss_b) * self.static_cons_w
             else:
                 cons_loss = torch.tensor(0.0, requires_grad=False)
 
             depth_loss_sum = depth_loss_sum + (depth_loss + loss_disp_sm + loss_disp_lr) * self.scale_weights[s]
-            flow_loss_sum = flow_loss_sum + (flow_loss + loss_sf_sm) * self.scale_weights[s] 
+            flow_loss_sum = flow_loss_sum + (flow_loss + loss_sf_sm + pts_loss) * self.scale_weights[s] 
             mask_loss_sum = mask_loss_sum + mask_loss * self.scale_weights[s]
             cons_loss_sum = cons_loss_sum + cons_loss * self.scale_weights[s]
             mask_sm_loss_sum += mask_sm_loss
