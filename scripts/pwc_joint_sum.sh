@@ -12,7 +12,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --num_workers=16 \
                       --start_epoch=1 \
                       --epochs=20 \
-                      --batch_size=2 \
+                      --batch_size=4 \
                       --lr=3e-4 \
                       --lr_gamma=0.66666 \
                       --lr_sched_type='step' \
@@ -44,11 +44,11 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --num_workers=16 \
                       --start_epoch=21 \
                       --epochs=45 \
-                      --batch_size=2 \
-                      --lr=1e-4 \
+                      --batch_size=4 \
+                      --lr=2e-4 \
                       --lr_gamma=0.5 \
                       --lr_sched_type='step' \
-                      --milestones 40 50 60 \
+                      --milestones 30 45 55 \
                       --flow_reduce_mode='sum' \
                       --disp_sm_w=0.1 \
                       --disp_lr_w=0.0 \
