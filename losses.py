@@ -238,10 +238,19 @@ class Loss(nn.Module):
                 pose_f = poses_f
                 pose_b = poses_b
 
-            img_l1 = interpolate2d_as(img_l1, disp_l1)
-            img_l2 = interpolate2d_as(img_l2, disp_l2)
-            img_r1 = interpolate2d_as(img_r1, disp_r1)
-            img_r2 = interpolate2d_as(img_r2, disp_r2)
+            # img_l1 = interpolate2d_as(img_l1, disp_l1)
+            # img_l2 = interpolate2d_as(img_l2, disp_l2)
+            # img_r1 = interpolate2d_as(img_r1, disp_r1)
+            # img_r2 = interpolate2d_as(img_r2, disp_r2)
+
+            disp_l1 = interpolate2d_as(disp_l1, img_l1)
+            disp_l2 = interpolate2d_as(disp_l2, img_l2)
+            disp_r1 = interpolate2d_as(disp_r1, img_l1)
+            disp_r2 = interpolate2d_as(disp_r2, img_l2)
+            mask_l1 = interpolate2d_as(mask_l1, img_l1)
+            mask_l2 = interpolate2d_as(mask_l2, img_l2)
+            flow_f = interpolate2d_as(flow_f, img_l1)
+            flow_b = interpolate2d_as(flow_b, img_l2)
 
             # depth diffs
             disp_diff1, left_occ1, loss_disp_sm1, loss_lr1 = self.depth_loss(disp_l1, disp_r1, img_l1, img_r1, s)
