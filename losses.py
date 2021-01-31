@@ -287,9 +287,6 @@ class Loss(nn.Module):
             pose_pts_diff1, pose_pts_diff2 = self.structure_loss(pts1, pts2, pose_grid1, pose_grid2, sf=[pose_sf_f, pose_sf_b])
             sf_pts_diff1, sf_pts_diff2 = self.structure_loss(pts1, pts2, sf_grid1, sf_grid2, sf=[flow_f, flow_b])
 
-            """ SCENE FLOW BACKWARD/FORWARD CONSISTENCY """
-            sf_bw_loss = self.flow_cycle_loss(sf_grid1, sf_grid2, flow_f, flow_b, sf_occ_f, sf_occ_b)
-
             """ DEPTH LOSS """
             disp_mask1 = left_occ1
             disp_mask2 = left_occ2
@@ -387,6 +384,9 @@ class Loss(nn.Module):
             else:
                 flow_pts_loss1 = torch.tensor(0.0, requires_grad=False)
                 flow_pts_loss2 = torch.tensor(0.0, requires_grad=False)
+
+            """ SCENE FLOW BACKWARD/FORWARD CONSISTENCY """
+            sf_bw_loss = self.flow_cycle_loss(sf_grid1, sf_grid2, flow_f, flow_b, sf_occ_f, sf_occ_b)
 
             # calculate losses for logging
             pose_im_loss = (pose_diff1[pose_occ_f].mean() + pose_diff2[pose_occ_b].mean()).detach()
