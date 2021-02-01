@@ -107,7 +107,6 @@ class JointModel(nn.Module):
         x1_pyramid = [input_dict['input_l1_aug']] + x1_pyramid
         x2_pyramid = [input_dict['input_l2_aug']] + x2_pyramid
 
-
         # outputs
         sceneflows_f = []
         sceneflows_b = []

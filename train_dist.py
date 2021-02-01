@@ -100,11 +100,11 @@ def train(gpu, args):
     elif args.model_name == 'residual':
         model = ResModel(args).cuda(device=gpu)
     elif args.model_name == 'monodepth':
-        model = MonoDepthSFModel(args).cuda()
-        loss = MonoDepthSFLoss(args).cuda()
+        model = MonoDepthSFModel(args).cuda(device=gpu)
+        loss = MonoDepthSFLoss(args).cuda(device=gpu)
     elif args.model_name == 'monosf':
-        model = MonoSF(args).cuda()
-        loss = MonoSFLoss(args).cuda()
+        model = MonoSF(args).cuda(device=gpu)
+        loss = MonoSFLoss(args).cuda(device=gpu)
     else:
         raise NotImplementedError
 
@@ -174,7 +174,7 @@ def train(gpu, args):
     if args.lr_sched_type == 'plateau':
         print("Using plateau lr schedule")
         lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, factor=args.lr_gamma, verbose=True, mode='min', patience=1)
+            optimizer, factor=args.lr_gamma, verbose=True, mode='min', patience=2)
     elif args.lr_sched_type == 'step':
         assert (args.milestones is not None), "Need to specify miletones in params"
         print("Using step lr schedule")
