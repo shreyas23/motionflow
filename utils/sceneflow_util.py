@@ -216,6 +216,16 @@ def reconstructPts(coord, pts):
     return pts_warp * mask
 
 
+def reconstructFlow(coord, flow):
+    grid = coord.transpose(1, 2).transpose(2, 3)
+    flow_warp = tf.grid_sample(flow, grid)
+
+    mask = torch.ones_like(flow, requires_grad=False)
+    mask = tf.grid_sample(mask, grid)
+    mask = (mask >= 1.0).float()
+    return flow_warp * mask
+
+
 def projectSceneFlow2Flow(intrinsic, sceneflow, disp):
 
     _, _, h, w = disp.size()

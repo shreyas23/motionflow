@@ -22,6 +22,7 @@ from augmentations import Augmentation_SceneFlow, Augmentation_Resize_Only
 from datasets.kitti_raw_monosf import KITTI_Raw_KittiSplit_Train, KITTI_Raw_KittiSplit_Valid
 from datasets.kitti_raw_monosf import KITTI_Raw_EigenSplit_Train, KITTI_Raw_EigenSplit_Valid
 from datasets.kitti_2015_train import KITTI_2015_MonoSceneFlow
+from datasets.kitti_raw_monosf import KITTI_Odom_Test
 from models.JointModel import JointModel
 from models.Model import Model
 from models.ResModel import ResModel
@@ -110,6 +111,10 @@ def train(gpu, args):
         raise NotImplementedError
 
     test_loss = Eval_SceneFlow_KITTI_Train(args).cuda(device=gpu)
+    # odom_09_dataset = KITTI_Odom_Test(args, root=DATA_ROOT, seq="09")
+    # odom_09_dataloader = DataLoader(odom_09_dataset, shuffle=False, batch_size=1, pin_memory=True)
+    # odom_10_dataset = KITTI_Odom_Test(args, root=DATA_ROOT, seq="10")
+    # odom_10_dataloader = DataLoader(odom_10_dataset, shuffle=False, batch_size=1, pin_memory=True)
 
     if args.use_bn:
         model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
