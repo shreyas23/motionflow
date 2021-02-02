@@ -74,6 +74,8 @@ class Eval_SceneFlow_KITTI_Train(nn.Module):
         loss_dict["d_abs"] = dict_disp0_occ['abs_rel']
         loss_dict["d_sq"] = dict_disp0_occ['sq_rel']
         loss_dict["d1"] = dict_disp0_occ['otl']
+        loss_dict['rms'] = dict_disp0_occ['rms']
+        loss_dict['log_rms'] = dict_disp0_occ['log_rms']
         loss_dict["acc1"] = dict_disp0_occ['a1']
         loss_dict["acc2"] = dict_disp0_occ['a2']
         loss_dict["acc3"] = dict_disp0_occ['a3']

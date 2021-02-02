@@ -100,7 +100,7 @@ def _adaptive_disocc_detection(flow):
     flow = flow.transpose(1, 2).transpose(2, 3)
 
     disocc = torch.clamp(forward_warp()(mask, flow), 0, 1)
-    disocc_map = (disocc > 0.3)
+    disocc_map = (disocc > 0.5)
 
     if disocc_map.float().sum() < (b * h * w / 2):
         disocc_map = torch.ones(
@@ -175,8 +175,7 @@ def _smoothness_motion_2nd(sf, img, beta=1):
 
 def _disp2depth_kitti_K(disp, fx, min_depth=1e-3, max_depth=80):
 
-    mask = (disp > 0).float()
-    depth = fx.unsqueeze(1).unsqueeze(1).unsqueeze(1) * 0.54 / (disp + eps + (1.0 - mask))
+    depth = fx.unsqueeze(1).unsqueeze(1).unsqueeze(1) * 0.54 / (disp + eps)
     depth = torch.clamp(depth, min_depth, max_depth)
 
     return depth

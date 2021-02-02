@@ -8,6 +8,8 @@ from .loss_utils import _disp2depth_kitti_K, _adaptive_disocc_detection, _recons
 from .inverse_warp import pose_vec2mat, pose2flow, pose2sceneflow
 from .interpolation import interpolate2d_as
 
+eps = 1e-8
+
 
 def reconstruction_err(disp, src, tgt, K, sf=None, T=None, mode='pose', ssim_w=0.85):
     """ Calculate the difference between the src and tgt images 
@@ -93,7 +95,7 @@ def flow_horizontal_flip(flow_input):
 
 def disp2depth_kitti(pred_disp, fx, min_depth=1e-3, max_depth=80):
 
-    pred_depth = fx.unsqueeze(1).unsqueeze(1).unsqueeze(1) * 0.54 / (pred_disp + 1e-8)
+    pred_depth = fx.unsqueeze(1).unsqueeze(1).unsqueeze(1) * 0.54 / (pred_disp + eps) 
     pred_depth = torch.clamp(pred_depth, min_depth, max_depth)
 
     return pred_depth
