@@ -16,7 +16,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --lr=3e-4 \
                       --lr_gamma=0.66666 \
                       --lr_sched_type='step' \
-                      --milestones 7 \
+                      --milestones 5 \
                       --flow_reduce_mode='sum' \
                       --disp_sm_w=0.1 \
                       --flow_sm_w=200 \
