@@ -119,7 +119,7 @@ def train(gpu, args):
     if args.use_bn:
         model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
 
-    model = nn.parallel.DistributedDataParallel(model, find_unused_parameters=True, check_reduction=True)
+    model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu], output_device=gpu, find_unused_parameters=True)
 
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"The model has {num_params} learnable parameters")
