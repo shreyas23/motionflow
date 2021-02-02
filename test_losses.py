@@ -6,7 +6,7 @@ import torch.nn.functional as tf
 
 from utils.loss_utils import _generate_image_left, _elementwise_epe, _elementwise_l1, _smoothness_motion_2nd
 from utils.loss_utils import _adaptive_disocc_detection_disp, _adaptive_disocc_detection, _SSIM, logical_or
-from utils.loss_utils import _reconstruction_error, robust_reconstruction_error, _elementwise_robust_epe_char
+from utils.loss_utils import _reconstruction_error
 from models.forwardwarp_package.forward_warp import forward_warp
 from utils.interpolation import interpolate2d_as
 from utils.sceneflow_util import pixel2pts_ms, pts2pixel_ms, reconstructImg, reconstructPts, projectSceneFlow2Flow, disp2depth_kitti
@@ -43,8 +43,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         left_occ = _adaptive_disocc_detection_disp(disp_r).detach()
 
         ## Photometric loss
-        # img_diff = (_elementwise_l1(img_l_aug, img_r_warp) * (1.0 - self.ssim_w) + _SSIM(img_l_aug, img_r_warp) * self.ssim_w).mean(dim=1, keepdim=True)        
-        img_diff = robust_reconstruction_error(img_l_aug, img_r_warp, self.ssim_w)
+        img_diff = (_elementwise_l1(img_l_aug, img_r_warp) * (1.0 - self.ssim_w) + _SSIM(img_l_aug, img_r_warp) * self.ssim_w).mean(dim=1, keepdim=True)        
         loss_img = (img_diff[left_occ]).mean()
         img_diff[~left_occ].detach_()
 
@@ -56,7 +55,6 @@ class Loss_SceneFlow_SelfSup(nn.Module):
 
     def mask_loss(self, image, mask, census_target, scale):
         reg_loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
-        # sm_loss = (_gradient_x_2nd(mask).abs() + _gradient_y_2nd(mask).abs()).mean()
         sm_loss = _smoothness_motion_2nd(mask, image, beta=10.0).mean() / (2**scale)
         census_loss = tf.binary_cross_entropy(mask, census_target)
 
@@ -101,10 +99,8 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         img_l2_warp = reconstructImg(coord1, img_l2_aug)
         img_l1_warp = reconstructImg(coord2, img_l1_aug)
 
-        # img_diff1 = (_elementwise_l1(img_l1_aug, img_l2_warp) * (1.0 - self.ssim_w) + _SSIM(img_l1_aug, img_l2_warp) * self.ssim_w).mean(dim=1, keepdim=True)
-        # img_diff2 = (_elementwise_l1(img_l2_aug, img_l1_warp) * (1.0 - self.ssim_w) + _SSIM(img_l2_aug, img_l1_warp) * self.ssim_w).mean(dim=1, keepdim=True)
-        img_diff1 = robust_reconstruction_error(img_l1_aug, img_l2_warp, self.ssim_w)
-        img_diff2 = robust_reconstruction_error(img_l2_aug, img_l1_warp, self.ssim_w)
+        img_diff1 = (_elementwise_l1(img_l1_aug, img_l2_warp) * (1.0 - self.ssim_w) + _SSIM(img_l1_aug, img_l2_warp) * self.ssim_w).mean(dim=1, keepdim=True)
+        img_diff2 = (_elementwise_l1(img_l2_aug, img_l1_warp) * (1.0 - self.ssim_w) + _SSIM(img_l2_aug, img_l1_warp) * self.ssim_w).mean(dim=1, keepdim=True)
 
         loss_im1 = (img_diff1 * mask_l1)[occ_map_f].mean()
         loss_im2 = (img_diff2 * mask_l2)[occ_map_b].mean()
@@ -116,10 +112,8 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         ## Point reconstruction Loss
         pts_norm1 = torch.norm(pts1, p=2, dim=1, keepdim=True)
         pts_norm2 = torch.norm(pts2, p=2, dim=1, keepdim=True)
-        # pts_diff1 = _elementwise_epe(pts1_tf, pts2_warp).mean(dim=1, keepdim=True) / (pts_norm1 + 1e-8)
-        # pts_diff2 = _elementwise_epe(pts2_tf, pts1_warp).mean(dim=1, keepdim=True) / (pts_norm2 + 1e-8)
-        pts_diff1 = _elementwise_robust_epe_char(pts1_tf, pts2_warp).mean(dim=1, keepdim=True) / (pts_norm1 + 1e-8)
-        pts_diff2 = _elementwise_robust_epe_char(pts2_tf, pts1_warp).mean(dim=1, keepdim=True) / (pts_norm2 + 1e-8)
+        pts_diff1 = _elementwise_epe(pts1_tf, pts2_warp).mean(dim=1, keepdim=True) / (pts_norm1 + 1e-8)
+        pts_diff2 = _elementwise_epe(pts2_tf, pts1_warp).mean(dim=1, keepdim=True) / (pts_norm2 + 1e-8)
         loss_pts1 = (pts_diff1 * mask_l1)[occ_map_f].mean()
         loss_pts2 = (pts_diff2 * mask_l2)[occ_map_b].mean()
         pts_diff1[~occ_map_f].detach_()
@@ -193,10 +187,9 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             img_r2_aug = interpolate2d_as(target_dict["input_r2_aug"], sf_b)
 
             ## Disp Loss
-            loss_disp_l1, loss_disp_lr_l1, disp_occ_l1 = self.depth_loss_left_img(disp_l1, disp_r1, img_l1_aug, img_r1_aug, ii)
-            loss_disp_l2, loss_disp_lr_l2, disp_occ_l2 = self.depth_loss_left_img(disp_l2, disp_r2, img_l2_aug, img_r2_aug, ii)
+            loss_disp_l1, disp_occ_l1 = self.depth_loss_left_img(disp_l1, disp_r1, img_l1_aug, img_r1_aug, ii)
+            loss_disp_l2, disp_occ_l2 = self.depth_loss_left_img(disp_l2, disp_r2, img_l2_aug, img_r2_aug, ii)
             loss_dp_sum = loss_dp_sum + (loss_disp_l1 + loss_disp_l2) * self.weights[ii]
-            loss_disp_lr_sum = loss_disp_lr_sum + (loss_disp_lr_l1 + loss_disp_lr_l2) * self.disp_lr_w
 
             ## Sceneflow Loss           
             if self.apply_flow_mask:
@@ -257,8 +250,8 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             loss_pose_2d = loss_pose_2d + loss_pose_im
             loss_pose_3d = loss_pose_3d + loss_pose_pts
 
-            flow_diff_f = _elementwise_robust_epe_char(pose_sf_f, sf_f)
-            flow_diff_b = _elementwise_robust_epe_char(pose_sf_b, sf_b)
+            flow_diff_f = _elementwise_l1(pose_sf_f, sf_f)
+            flow_diff_b = _elementwise_l1(pose_sf_b, sf_b)
             census_tgt_l1 = self.create_census_mask(flow_diff_f, pose_diff_f, sf_diff_f, self.flow_diff_thresh)
             census_tgt_l2 = self.create_census_mask(flow_diff_b, pose_diff_b, sf_diff_b, self.flow_diff_thresh)
             mask_reg_loss_l1, mask_sm_loss_l1, mask_census_loss_l1 = self.mask_loss(img_l1_aug, mask_l1, census_tgt_l1, ii)
@@ -300,7 +293,6 @@ class Loss_SceneFlow_SelfSup(nn.Module):
 
         loss_dict = {}
         loss_dict["dp"] = loss_dp_sum.detach()
-        loss_dict['disp_lr'] = loss_disp_lr_sum.detach()
         loss_dict["sf"] = loss_sf_sum.detach()
         loss_dict["s_2"] = loss_sf_2d.detach()
         loss_dict["s_3"] = loss_sf_3d.detach()
