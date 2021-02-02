@@ -37,7 +37,7 @@ class JointModel(nn.Module):
             self.feature_pyramid_extractor = ResnetEncoder(args, num_layers=18, pretrained=args.pt_encoder, num_input_images=1)
             self.num_chs = self.feature_pyramid_extractor.num_ch_enc
         elif self.args.encoder_name == 'pwc':
-            self.num_chs = [3, 32, 64, 96, 128, 192, 256]
+            self.num_chs = [3, 32, 64, 96, 128, 256, 512]
             self.feature_pyramid_extractor = PWCEncoder(self.num_chs)
         else:
             raise NotImplementedError

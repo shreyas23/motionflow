@@ -244,10 +244,10 @@ class Loss(nn.Module):
             img_r1 = interpolate2d_as(img_r1, disp_r1)
             img_r2 = interpolate2d_as(img_r2, disp_r2)
 
-            assert (disp_l1[-2:].shape == disp_l2[-2:].shape)
-            assert (disp_l1[-2:].shape == mask_l1[-2:].shape)
-            assert (disp_l1[-2:].shape == flow_mask_l1[-2:].shape)
-            assert (disp_l1[-2:].shape == flow_f[-2:].shape)
+            assert (disp_l1.shape[-2:] == disp_l2.shape[-2:])
+            assert (disp_l1.shape[-2:] == mask_l1.shape[-2:])
+            assert (disp_l1.shape[-2:] == flow_mask_l1.shape[-2:])
+            assert (disp_l1.shape[-2:] == flow_f.shape[-2:])
 
             # disp_l1 = interpolate2d_as(disp_l1, img_l1)
             # disp_l2 = interpolate2d_as(disp_l2, img_l2)

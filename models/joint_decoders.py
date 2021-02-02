@@ -12,7 +12,7 @@ class JointDecoder(nn.Module):
         self.convs = nn.Sequential(
             Conv(ch_in, 256),
             Conv(256, 256), 
-            Conv(256, 128), 
+            Conv(256, 128),
             Conv(128, 96),
             Conv(96, 64),
             Conv(64, 32)
