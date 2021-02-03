@@ -82,10 +82,10 @@ def train(gpu, args):
         raise Exception
 
     # set some torch params
-    torch.manual_seed(args.torch_seed)
-    torch.cuda.manual_seed(args.cuda_seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+    # torch.manual_seed(args.torch_seed)
+    # torch.cuda.manual_seed(args.cuda_seed)
+    # torch.backends.cudnn.deterministic = True
+    # torch.backends.cudnn.benchmark = False
 
     DATASET_NAME = args.dataset_name
     DATA_ROOT = args.data_root
@@ -119,7 +119,7 @@ def train(gpu, args):
     if args.use_bn:
         model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
 
-    model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu], output_device=gpu, find_unused_parameters=True)
+    model = nn.parallel.DistributedDataParallel(model, device_ids=[gpu], find_unused_parameters=True)
 
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"The model has {num_params} learnable parameters")
