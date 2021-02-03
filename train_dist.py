@@ -325,7 +325,7 @@ def train(gpu, args):
 
                 if args.save_freq > 0:
                     if epoch % args.save_freq == 0 or epoch == args.epochs:
-                        print(f"Saving model for epoch: {epoch} to: {fp}")
+                        print(f"Saving {epoch}.ckpt to: {args.log_dir}")
                         torch.save({'model': model.state_dict(), 'optimizer': optimizer.state_dict()}, fp)
 
                 if epoch % args.log_freq == 0:
