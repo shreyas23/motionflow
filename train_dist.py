@@ -285,7 +285,7 @@ def train(gpu, args):
 
                 model.eval()
                 odom_09_ates_comb = []
-                odom_09_ates = evaluate(args, model, odom_loss, odom_10_dataloader, val_augmentations, gpu=0)
+                odom_09_ates = evaluate_pose(args, model, odom_loss, odom_10_dataloader, val_augmentations, gpu=0)
                 with torch.no_grad():
                     dist.gather(odom_09_ates, odom_09_ates_comb, dst=0)
                     if gpu == 0:
@@ -295,7 +295,7 @@ def train(gpu, args):
                         odom09_reduced_losses = {"odom09_mean": odom09_ates_mean, "odom09_std": odom09_ates_std}
 
                 odom_10_ates_comb = []
-                odom_10_ates = evaluate(args, model, odom_loss, odom_10_dataloader, val_augmentations, gpu=0)
+                odom_10_ates = evaluate_pose(args, model, odom_loss, odom_10_dataloader, val_augmentations, gpu=0)
                 with torch.no_grad():
                     dist.gather(odom_10_ates, odom_10_ates_comb, dst=0)
                     if gpu == 0:
