@@ -166,6 +166,52 @@ def evaluate(args, model, loss, dataloader, augmentations, gpu):
     return loss_dict_avg, output_dict, data_dict
 
 
+def evaluate_pose(args, model, loss, dataloader, augmentations, gpu):
+
+    def compute_ate(self, gtruth_xyz, pred_xyz):
+        alignment_error = pred_xyz - gtruth_xyz
+        rmse = np.sqrt(sum(alignment_error ** 2)) / gtruth_xyz.shape[0]
+        return rmse
+
+    model.eval()
+    assert (model.training == False)
+
+    loss_dict_sum = None
+
+    with torch.no_grad():
+        if gpu == 0:
+            dataloader_iter = tqdm(dataloader)
+        else:
+            dataloader_iter = dataloader
+
+        ates = []
+
+        for data_dict in dataloader_iter:
+            # Get input and target tensor keys
+            input_keys = list(filter(lambda x: "input" in x, data_dict.keys()))
+            target_keys = list(filter(lambda x: "target" in x, data_dict.keys()))
+            tensor_keys = input_keys + target_keys
+
+            # Possibly transfer to Cuda
+            if args.cuda:
+                for k, v in data_dict.items():
+                    if k in tensor_keys:
+                        data_dict[k] = v.cuda(non_blocking=True)
+
+            data_dict = augmentations(data_dict)
+            output_dict = model(data_dict)
+
+            pose_t = output_dict['pose_b'][0][:, :3, 3].double().cpu()
+            gt_t = data_dict['target_pose'][:, :3, 3].double().cpu()
+            
+            ate = compute_ate(gt_t, pose_t)
+            ates.append(np.array(ate))
+
+        ates = torch.tensor(ates)
+
+    return ates
+
+
 def visualize_output(args, input_dict, output_dict, epoch, writer, prefix):
 
     use_mask = args.train_exp_mask or args.train_census_mask
