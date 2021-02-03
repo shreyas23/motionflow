@@ -207,7 +207,7 @@ def evaluate_pose(args, model, loss, dataloader, augmentations, gpu):
             ate = compute_ate(gt_t, pose_t)
             ates.append(np.array(ate))
 
-        ates = torch.tensor(ates)
+        ates = torch.tensor(ates).cuda(device=gpu)
 
     return ates
 
