@@ -112,11 +112,11 @@ def train(gpu, args):
         raise NotImplementedError
 
     test_loss = Eval_SceneFlow_KITTI_Train(args).cuda(device=gpu)
-    odom_loss = Eval_Odom_KITTI_Raw(args).cuda(device=gpu)
-    odom_09_dataset = KITTI_Odom_Test(args, root=DATA_ROOT, seq="09")
-    odom_09_dataloader = DataLoader(odom_09_dataset, shuffle=False, batch_size=1, pin_memory=True)
-    odom_10_dataset = KITTI_Odom_Test(args, root=DATA_ROOT, seq="10")
-    odom_10_dataloader = DataLoader(odom_10_dataset, shuffle=False, batch_size=1, pin_memory=True)
+    #odom_loss = Eval_Odom_KITTI_Raw(args).cuda(device=gpu)
+    #odom_09_dataset = KITTI_Odom_Test(args, root=DATA_ROOT, seq="09", num_examples=10)
+    #odom_09_dataloader = DataLoader(odom_09_dataset, shuffle=False, batch_size=1, pin_memory=True)
+    #odom_10_dataset = KITTI_Odom_Test(args, root=DATA_ROOT, seq="10", num_examples=10)
+    #odom_10_dataloader = DataLoader(odom_10_dataset, shuffle=False, batch_size=1, pin_memory=True)
 
     if args.use_bn:
         model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
@@ -284,25 +284,25 @@ def train(gpu, args):
                         print("\n")
 
                 model.eval()
-                odom_09_ates_comb = []
-                odom_09_ates = evaluate_pose(args, model, odom_loss, odom_10_dataloader, val_augmentations, gpu=0)
-                with torch.no_grad():
-                    dist.gather(odom_09_ates, odom_09_ates_comb, dst=0)
-                    if gpu == 0:
-                        odom09_ates_comb = torch.cat(odom09_ates_comb)
-                        odom09_ates_mean = odom09_ates_comb.mean()
-                        odom09_ates_std = odom09_ates_comb.std()
-                        odom09_reduced_losses = {"odom09_mean": odom09_ates_mean, "odom09_std": odom09_ates_std}
+                #odom_09_ates = evaluate_pose(args, model, odom_loss, odom_10_dataloader, val_augmentations, gpu=gpu)
+                #odom_09_ates_comb = []
+                #with torch.no_grad():
+                #    dist.all_gather(odom_09_ates_comb, odom_09_ates)
+                #    if gpu == 0:
+                #        odom09_ates_comb = torch.cat(odom09_ates_comb)
+                #        odom09_ates_mean = odom09_ates_comb.mean()
+                #        odom09_ates_std = odom09_ates_comb.std()
+                #        odom09_reduced_losses = {"odom09_mean": odom09_ates_mean, "odom09_std": odom09_ates_std}
 
-                odom_10_ates_comb = []
-                odom_10_ates = evaluate_pose(args, model, odom_loss, odom_10_dataloader, val_augmentations, gpu=0)
-                with torch.no_grad():
-                    dist.gather(odom_10_ates, odom_10_ates_comb, dst=0)
-                    if gpu == 0:
-                        odom10_ates_comb = torch.cat(odom10_ates_comb)
-                        odom10_ates_mean = odom10_ates_comb.mean()
-                        odom10_ates_std = odom10_ates_comb.std()
-                        odom10_reduced_losses = {"odom10_mean": odom10_ates_mean, "odom10_std": odom10_ates_std}
+                #odom_10_ates_comb = []
+                #odom_10_ates = evaluate_pose(args, model, odom_loss, odom_10_dataloader, val_augmentations, gpu=gpu)
+                #with torch.no_grad():
+                #    dist.all_gather(odom_10_ates_comb, odom_10_ates)
+                #    if gpu == 0:
+                #        odom10_ates_comb = torch.cat(odom10_ates_comb)
+                #        odom10_ates_mean = odom10_ates_comb.mean()
+                #        odom10_ates_std = odom10_ates_comb.std()
+                #        odom10_reduced_losses = {"odom10_mean": odom10_ates_mean, "odom10_std": odom10_ates_std}
 
                 test_loss_avg_dict, test_output_dict, test_input_dict = evaluate(args, model, test_loss, test_dataloader, val_augmentations, gpu)
 
@@ -321,8 +321,8 @@ def train(gpu, args):
                         all_losses /= len(test_dataset)
                         test_reduced_losses = {k: v for k, v in zip(loss_names, all_losses)}
 
-                        test_reduced_losses.update(odom09_reduced_losses)
-                        test_reduced_losses.update(odom10_reduced_losses)
+                        #test_reduced_losses.update(odom09_reduced_losses)
+                        #test_reduced_losses.update(odom10_reduced_losses)
 
                         print(f"Test epoch: {epoch}...\n")
                         print(f"\t Epoch {epoch} test loss avg:")

@@ -22,6 +22,8 @@ from .interpolation import interpolate2d_as
 from .sceneflow_util import projectSceneFlow2Flow, intrinsic_scale
 from .helpers import BackprojectDepth, Project3D
 
+import numpy as np
+
 def get_model(args):
     if args.model_name == 'joint':
         model = JointModel(args)
@@ -168,7 +170,7 @@ def evaluate(args, model, loss, dataloader, augmentations, gpu):
 
 def evaluate_pose(args, model, loss, dataloader, augmentations, gpu):
 
-    def compute_ate(self, gtruth_xyz, pred_xyz):
+    def compute_ate(gtruth_xyz, pred_xyz):
         alignment_error = pred_xyz - gtruth_xyz
         rmse = np.sqrt(sum(alignment_error ** 2)) / gtruth_xyz.shape[0]
         return rmse
