@@ -34,7 +34,7 @@ from test_losses import Loss_SceneFlow_SelfSup
 from monodepth_losses import MonoDepthSFLoss
 
 from params import Params
-from utils.train_utils import step, evaluate, train_one_epoch, visualize_output
+from utils.train_utils import step, evaluate, evaluate_pose, train_one_epoch, visualize_output
 
 args = Params().args
 
