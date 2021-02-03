@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 import torch.nn as nn
 from utils.interpolation import interpolate2d_as
 from utils.sceneflow_util import projectSceneFlow2Flow
@@ -160,3 +161,30 @@ class Eval_SceneFlow_KITTI_Test(nn.Module):
         loss_dict['sf'] = (out_disp_l1_next * 0).sum()
 
         return loss_dict
+
+
+class Eval_Odom_KITTI_Raw(nn.Module):
+    def __init__(self, args):
+        super(Eval_Odom_KITTI_Raw, self).__init__()
+
+    def compute_ate(self, gtruth_xyz, pred_xyz):
+        alignment_error = pred_xyz - gtruth_xyz
+        rmse = np.sqrt(sum(alignment_error ** 2)) / gtruth_xyz.shape[0]
+        return rmse
+
+    def forward(self, output, target):
+        pose_t = output['pose_b'][0][:, :3, 3].double().cpu()
+        gt_t = target['target_pose'][:, :3, 3].double().cpu()
+        
+        pose_R = output['pose_b'][0][:, :3, :3][0].double().cpu()
+        gt_R = target['target_pose'][:, :3, :3][0].double().cpu()
+        
+        R = torch.matmul(gt_R, torch.inverse(pose_R))
+        s = np.linalg.norm([R[0, 1]-R[1, 0],
+                            R[1, 2]-R[2, 1],
+                            R[0, 2]-R[2, 0]])
+        c = np.trace(R) - 1
+        RE = torch.tensor(np.arctan2(s, c), requires_grad=False)
+        ATE = torch.tensor(np.array(self.compute_ate(gt_t, pose_t)), requires_grad=False)
+        
+        return {"re": RE, "ate": ATE}
