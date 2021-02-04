@@ -8,7 +8,6 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --dataset_name="KITTI_EIGEN" \
                       --model_name='joint' \
                       --encoder_name='resnet' \
-                      --use_bn=True \
                       --num_examples=-1 \
                       --num_workers=16 \
                       --start_epoch=1 \

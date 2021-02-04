@@ -123,8 +123,10 @@ class ResnetEncoder(nn.Module):
         if num_input_images > 1:
             self.encoder = resnet_multiimage_input(num_layers, pretrained, num_input_images)
         else:
-            self.encoder = resnets[num_layers](pretrained)
-            # self.encoder = resnet18(pretrained=pretrained)
+            if self.args.use_bn:
+                self.encoder = resnets[num_layers](pretrained)
+            else:
+                self.encoder = resnet18(pretrained=pretrained)
 
         if num_layers > 34:
             self.num_ch_enc[1:] *= 4
