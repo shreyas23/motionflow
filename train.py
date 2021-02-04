@@ -16,8 +16,9 @@ from torch.utils.tensorboard import SummaryWriter
 from augmentations import Augmentation_SceneFlow, Augmentation_Resize_Only
 from datasets.kitti_raw_monosf import KITTI_Raw_KittiSplit_Train, KITTI_Raw_KittiSplit_Valid
 from datasets.kitti_raw_monosf import KITTI_Raw_EigenSplit_Train, KITTI_Raw_EigenSplit_Valid
+from datasets.kitti_raw_monosf import KITTI_Odom_Test
 from datasets.kitti_2015_train import KITTI_2015_MonoSceneFlow
-from losses_eval import Eval_SceneFlow_KITTI_Train
+from losses_eval import Eval_SceneFlow_KITTI_Train, Eval_Odom_KITTI_Raw
 from models.JointModel import JointModel
 from models.Model import Model
 from models.ResModel import ResModel
@@ -56,11 +57,13 @@ def train(args):
     TEST_DATA_ROOT = args.test_data_root
 
     loss = Loss(args).cuda()
-    test_loss = Eval_SceneFlow_KITTI_Train(args).cuda()
+    test_loss = Eval_SceneFlow_KITTI_Train(args)
+    odom_loss = Eval_Odom_KITTI_Raw(args)
 
     if args.model_name == 'joint':
         print("Using joint scene flow model")
         model = JointModel(args).cuda()
+        loss = Loss_SceneFlow_SelfSup(args).cuda()
     elif args.model_name == 'residual':
         print("Using joint residual scene flow model")
         model = ResModel(args).cuda()
@@ -103,6 +106,11 @@ def train(args):
 
     test_dataset = KITTI_2015_MonoSceneFlow(args, data_root=TEST_DATA_ROOT)
     test_dataloader = DataLoader(test_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True)
+
+    odom_09_dataset = KITTI_Odom_Test(args, root=DATA_ROOT, seq="09")
+    odom_09_dataloader = DataLoader(odom_09_dataset, shuffle=False, batch_size=1, pin_memory=True)
+    odom_10_dataset = KITTI_Odom_Test(args, root=DATA_ROOT, seq="10")
+    odom_10_dataloader = DataLoader(odom_10_dataset, shuffle=False, batch_size=1, pin_memory=True)
 
     # define augmentations
     train_augmentations = Augmentation_SceneFlow(args)
@@ -175,6 +183,12 @@ def train(args):
         print(f"\t Epoch {epoch} train loss avg:")
         pprint(train_loss_avg_dict)
         print("\n")
+        if epoch % args.log_freq == 0 and not args.no_logging:
+            visualize_output(args, input_dict, output_dict, epoch, writer, prefix='train')
+
+        del input_dict
+        del output_dict
+        del train_loss_avg_dict
 
         if args.validate:
             print(f"Validation epoch: {epoch}...\n")
@@ -186,15 +200,41 @@ def train(args):
             print(f"\t Epoch {epoch} val loss avg:")
             pprint(val_loss_avg_dict)
             print("\n")
+            if epoch % args.log_freq == 0 and not args.no_logging:
+                visualize_output(args, val_input_dict, val_output_dict, epoch, writer, prefix='val')
+            del val_input_dict
+            del val_output_dict
+            del val_loss_avg_dict
+            
+            odom_09_loss_avg_dict, odom_09_input_dict, odom_09_output_dict = evaluate(args, model, odom_loss, odom_09_dataloader, val_augmentations, gpu=0)
+            odom_10_loss_avg_dict, odom_10_input_dict, odom_10_output_dict = evaluate(args, model, odom_loss, odom_10_dataloader, val_augmentations, gpu=0)
+            del odom_09_input_dict
+            del odom_09_output_dict
+            del odom_10_input_dict
+            del odom_10_output_dict
+
+            for k, v in odom_09_loss_avg_dict.items():
+                odom_09_loss_avg_dict[k] = v / len(odom_09_loss_avg_dict)
+
+            for k, v in odom_10_loss_avg_dict.items():
+                odom_10_loss_avg_dict[k] = v / len(odom_10_loss_avg_dict)
 
             test_loss_avg_dict, test_output_dict, test_input_dict = evaluate(args, model, test_loss, test_dataloader, val_augmentations, gpu=0)
 
             for k, v in test_loss_avg_dict.items():
                 test_loss_avg_dict[k] = v / len(test_dataset)
 
+            test_loss_avg_dict.update(odom_09_loss_avg_dict)
+            test_loss_avg_dict.update(odom_10_loss_avg_dict)
+
             print(f"\t Epoch {epoch} test loss avg:")
             pprint(test_loss_avg_dict)
             print("\n")
+            if epoch % args.log_freq == 0 and not args.no_logging:
+                visualize_output(args, test_input_dict, test_output_dict, epoch, writer, prefix='test')
+            del test_input_dict
+            del test_output_dict
+            del test_loss_avg_dict
         else:
             val_output_dict, val_input_dict = None, None
             test_output_dict, test_input_dict = None, None
@@ -220,11 +260,20 @@ def train(args):
 
             if epoch % args.log_freq == 0:
                 visualize_output(args, input_dict, output_dict, epoch, writer, prefix='train')
+                del input_dict
+                del output_dict
+                del train_loss_avg_dict
 
                 if args.validate:
                     visualize_output(args, val_input_dict, val_output_dict, epoch, writer, prefix='val')
+                    del val_input_dict
+                    del val_output_dict
+                    del val_loss_avg_dict
 
                     visualize_output(args, test_input_dict, test_output_dict, epoch, writer, prefix='test')
+                    del test_input_dict
+                    del test_output_dict
+                    del test_loss_avg_dict
 
                 writer.flush()
 
@@ -232,17 +281,6 @@ def train(args):
                 if epoch % args.save_freq == 0:
                     model.load_state_dict(torch.load(fp)['model'])
                     optimizer.load_state_dict(torch.load(fp)['optimizer'])
-
-        del input_dict
-        del output_dict
-        del train_loss_avg_dict
-        if args.validate:
-            del val_input_dict
-            del val_output_dict
-            del val_loss_avg_dict
-            del test_input_dict
-            del test_output_dict
-            del test_loss_avg_dict
 
         gc.collect()
 

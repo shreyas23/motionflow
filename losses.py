@@ -120,9 +120,9 @@ class Loss(nn.Module):
         return reg_loss, sm_loss, census_loss
     
 
-    def create_census_mask(self, flow_diff, pose_err, sf_err, flow_diff_thresh=1e-3):
+    def create_census_mask(self, flow_diff, pose_err, sf_err, static_err, flow_diff_thresh=0.15):
         # mask consensus loss
-        target_mask = (pose_err <= sf_err).float().detach()
+        target_mask = ((pose_err <= sf_err) or (static_err <= sf_err)).float().detach()
         flow_similar = (flow_diff < flow_diff_thresh).float().detach()
         census_target_mask = logical_or(target_mask, flow_similar).detach()
 
@@ -225,11 +225,11 @@ class Loss(nn.Module):
                     flow_mask_l1 = 1.0 - mask_l1
                     flow_mask_l2 = 1.0 - mask_l2
                 else:
-                    flow_mask_l1 = None
-                    flow_mask_l2 = None
+                    flow_mask_l1 = torch.ones_like(disp_l1, requires_grad=False)
+                    flow_mask_l2 = torch.ones_like(disp_l1, requires_grad=False)
             else:
-                mask_l1 = None
-                mask_l2 = None
+                mask_l1 = torch.ones_like(disp_l1, requires_grad=False)
+                mask_l2 = torch.ones_like(disp_l1, requires_grad=False)
 
             if isinstance(poses_f, list) and isinstance(poses_b, list):
                 pose_b = poses_b[s]
@@ -322,8 +322,10 @@ class Loss(nn.Module):
             """ CENSUS MASK """
             flow_diff_f = _elementwise_l1(pose_sf_f, flow_f)
             flow_diff_b = _elementwise_l1(pose_sf_b, flow_b)
-            census_mask_tgt_l1 = self.create_census_mask(flow_diff_f, pose_diff1, sf_diff1)
-            census_mask_tgt_l2 = self.create_census_mask(flow_diff_b, pose_diff2, sf_diff2)
+            static_diff1 = _reconstruction_error(img_l1, img_l2, self.ssim_w)
+            static_diff2 = _reconstruction_error(img_l2, img_l1, self.ssim_w)
+            census_mask_tgt_l1 = self.create_census_mask(flow_diff_f, pose_diff1, sf_diff1, static_diff1)
+            census_mask_tgt_l2 = self.create_census_mask(flow_diff_b, pose_diff2, sf_diff2, static_diff2)
             census_masks_l1.append(census_mask_tgt_l1)
             census_masks_l2.append(census_mask_tgt_l2)
 
@@ -381,11 +383,10 @@ class Loss(nn.Module):
 
             # remove static pixels from loss calculation
             if self.args.use_static_mask:
-                static_diff = _reconstruction_error(img_l1, img_l2, self.ssim_w)
-                pose_static_thresh1 =  pose_diff1 < static_diff
-                pose_static_thresh2 =  pose_diff2 < static_diff
-                sf_static_thresh1 =  sf_diff1 < static_diff
-                sf_static_thresh2 =  sf_diff2 < static_diff
+                pose_static_thresh1 =  pose_diff1 < static_diff1
+                pose_static_thresh2 =  pose_diff2 < static_diff2
+                sf_static_thresh1 =  sf_diff1 < static_diff1
+                sf_static_thresh2 =  sf_diff2 < static_diff2
                 pose_occ_f = pose_occ_f * pose_static_thresh1
                 sf_occ_f = sf_occ_f * sf_static_thresh1
                 pose_occ_b = pose_occ_b * pose_static_thresh2
@@ -462,7 +463,7 @@ class Loss(nn.Module):
         d_weight = m / d_loss
         f_weight = m / f_loss
 
-        total_loss = depth_loss_sum * d_weight + flow_loss_sum * f_weight + mask_loss_sum * f_weight + cons_loss_sum * f_weight
+        total_loss = depth_loss_sum * d_weight + flow_loss_sum * f_weight + mask_loss_sum * f_weight + cons_loss_sum
 
         loss_dict = {}
         loss_dict["total_loss"] = total_loss

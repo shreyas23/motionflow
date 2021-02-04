@@ -133,8 +133,7 @@ class ResnetEncoder(nn.Module):
         else:
             x = input_image
         x = self.encoder.conv1(x)
-        if self.args.use_bn:
-            x = self.encoder.bn1(x)
+        x = self.encoder.bn1(x)
         self.features.append(self.encoder.relu(x))
         self.features.append(self.encoder.layer1(self.encoder.maxpool(self.features[-1])))
         self.features.append(self.encoder.layer2(self.features[-1]))

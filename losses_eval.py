@@ -185,6 +185,6 @@ class Eval_Odom_KITTI_Raw(nn.Module):
                             R[0, 2]-R[2, 0]])
         c = np.trace(R) - 1
         RE = torch.tensor(np.arctan2(s, c), requires_grad=False)
-        ATE = torch.tensor(np.array(self.compute_ate(gt_t, pose_t)), requires_grad=False)
+        ATE = torch.tensor(self.compute_ate(gt_t, pose_t), requires_grad=False)
         
         return {"re": RE, "ate": ATE}

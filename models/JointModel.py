@@ -21,6 +21,14 @@ from utils.helpers import Warp_SceneFlow, Warp_Pose, add_pose, invert_pose
 from .common import UpConv
 
 
+def make_leaky(model):
+    for child_name, child in model.named_children():
+        if isinstance(child, nn.ReLU):
+            setattr(model, child_name, nn.LeakyReLU(inplace=True))
+        else:
+            make_leaky(child)
+
+
 class JointModel(nn.Module):
     def __init__(self, args):
         super(JointModel, self).__init__()
@@ -36,6 +44,10 @@ class JointModel(nn.Module):
         if self.args.encoder_name == "resnet":
             self.feature_pyramid_extractor = ResnetEncoder(args, num_layers=18, pretrained=args.pt_encoder, num_input_images=1)
             self.num_chs = self.feature_pyramid_extractor.num_ch_enc
+            make_leaky(self.feature_pyramid_extractor)
+            for m in self.modules():
+                if isinstance(m, nn.Conv2d):
+                    nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='leaky_relu')
         elif self.args.encoder_name == 'pwc':
             self.num_chs = [3, 32, 64, 96, 128, 256, 512]
             self.feature_pyramid_extractor = PWCEncoder(self.num_chs)
@@ -69,7 +81,7 @@ class JointModel(nn.Module):
                     num_ch_in = self.dim_corr + ch + bottleneck_out_ch + self.out_ch_size + 3 + 1 + 6 + 1
                 else:
                     num_ch_in = self.dim_corr + ch + ch + self.out_ch_size + 3 + 1 + 6 + 1
-                self.upconv_layers.append(UpConv(self.out_ch_size, self.out_ch_size, 3, 2))
+                self.upconv_layers.append(UpConv(self.out_ch_size, self.out_ch_size, 3, 2, use_bn=args.use_bn))
 
             layer_sf = JointDecoder(args, num_ch_in, use_bn=args.use_bn)
             self.flow_estimators.append(layer_sf)
