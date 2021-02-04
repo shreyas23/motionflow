@@ -134,6 +134,9 @@ def train(args):
         milestones = []
         lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
             optimizer, milestones=milestones, gamma=args.lr_gamma)
+    elif args.lr_sched_type == 'cyclic':
+        lr_scheduler = torch.optim.lr_scheduler.CyclicLR(
+            optimizer, base_lr=5e-5, max_lr=2e-4,step_size_up=5,mode="triangular")
     elif args.lr_sched_type == 'none':
         lr_scheduler = None
 

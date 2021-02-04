@@ -110,3 +110,6 @@ class Params:
         
         if self.args.pt_encoder:
             assert (self.args.batch_size > 1), "Batch size must be greater than one if training using pre-trained resnet encoder"
+
+        if self.args.encoder_name == 'resnet':
+            assert (self.args.use_bn and self.args.batch_size > 1), "If using resnet encoder, must use batch norm with batch size greater than one."
