@@ -64,7 +64,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
 
     def create_census_mask(self, flow_diff, pose_err, sf_err, static_err, flow_diff_thresh=1e-3):
         # mask consensus loss
-        target_mask = ((pose_err <= sf_err) or (static_err <= sf_err)).float().detach()
+        target_mask = ((pose_err <= sf_err) * (static_err <= sf_err)).float().detach()
         flow_similar = (flow_diff < flow_diff_thresh).float().detach()
         census_target_mask = logical_or(target_mask, flow_similar).detach()
 
@@ -264,9 +264,10 @@ class Loss_SceneFlow_SelfSup(nn.Module):
 
             flow_diff_f = _elementwise_l1(pose_sf_f, sf_f)
             flow_diff_b = _elementwise_l1(pose_sf_b, sf_b)
-            static_diff = _reconstruction_error(img_l2_aug, img_l1_aug, self.ssim_w)
-            census_tgt_l1 = self.create_census_mask(flow_diff_f, pose_diff_f, sf_diff_f, static_diff, self.flow_diff_thresh)
-            census_tgt_l2 = self.create_census_mask(flow_diff_b, pose_diff_b, sf_diff_b, static_diff, self.flow_diff_thresh)
+            static_diff1 = _reconstruction_error(img_l1_aug, img_l2_aug, self.ssim_w)
+            static_diff2 = _reconstruction_error(img_l2_aug, img_l1_aug, self.ssim_w)
+            census_tgt_l1 = self.create_census_mask(flow_diff_f, pose_diff_f, sf_diff_f, static_diff1, self.flow_diff_thresh)
+            census_tgt_l2 = self.create_census_mask(flow_diff_b, pose_diff_b, sf_diff_b, static_diff2, self.flow_diff_thresh)
             mask_reg_loss_l1, mask_sm_loss_l1, mask_census_loss_l1 = self.mask_loss(img_l1_aug, mask_l1, census_tgt_l1, ii)
             mask_reg_loss_l2, mask_sm_loss_l2, mask_census_loss_l2 = self.mask_loss(img_l2_aug, mask_l2, census_tgt_l2, ii)
 

@@ -163,7 +163,7 @@ def evaluate(args, model, loss, dataloader, augmentations, gpu):
                 loss_dict_avg = {k:0 for k in loss_dict.keys()}
 
             for key in loss_dict.keys():
-                loss_dict_avg[key] += loss_dict[key].detach()
+                loss_dict_avg[key] += loss_dict[key]
 
     return loss_dict_avg, output_dict, data_dict
 
