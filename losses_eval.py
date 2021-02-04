@@ -184,7 +184,39 @@ class Eval_Odom_KITTI_Raw(nn.Module):
                             R[1, 2]-R[2, 1],
                             R[0, 2]-R[2, 0]])
         c = np.trace(R) - 1
-        RE = torch.tensor(np.arctan2(s, c), requires_grad=False)
-        ATE = torch.tensor(self.compute_ate(gt_t, pose_t), requires_grad=False)
+        RE = np.arctan2(s, c)
+        ATE = self.compute_ate(gt_t, pose_t)
         
         return {"re": RE, "ate": ATE}
+
+
+class Eval_MonoDepth_Eigen(nn.Module):
+    def __init__(self):
+        super(Eval_MonoDepth_Eigen, self).__init__()
+
+    def forward(self, output_dict, target_dict):
+        
+        loss_dict = {}
+
+        ## Depth Eval
+        gt_depth = target_dict['target_depth']
+
+        out_disp_l1 = interpolate2d_as(output_dict["disp_l1_pp"][0], gt_depth, mode="bilinear") * gt_depth.size(3)
+        out_depth_l1 = _disp2depth_kitti_K(out_disp_l1, target_dict['input_k_l1'][:, 0, 0])
+        out_depth_l1 = torch.clamp(out_depth_l1, 1e-3, 80)
+        gt_depth_mask = (gt_depth > 1e-3) * (gt_depth < 80)        
+
+        ## Compute metrics
+        abs_rel, sq_rel, rms, log_rms, a1, a2, a3 = compute_errors(gt_depth[gt_depth_mask], out_depth_l1[gt_depth_mask])
+
+        output_dict["out_disp_l_pp"] = out_disp_l1
+        output_dict["out_depth_l_pp"] = out_depth_l1
+        loss_dict["ab_r"] = abs_rel
+        loss_dict["sq_r"] = sq_rel
+        loss_dict["rms"] = rms
+        loss_dict["log_rms"] = log_rms
+        loss_dict["a1"] = a1
+        loss_dict["a2"] = a2
+        loss_dict["a3"] = a3
+
+        return loss_dict
