@@ -16,7 +16,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --batch_size=2 \
                       --lr=2e-4 \
                       --lr_gamma=0.5 \
-                      --lr_sched_type='step' \
+                      --lr_sched_type='cyclic' \
                       --milestones 20 \
                       --flow_reduce_mode='sum' \
                       --disp_sm_w=0.1 \
