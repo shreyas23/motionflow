@@ -329,6 +329,6 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         self.detaching_grad_of_outputs(output_dict['output_dict_r'])
 
         output_dict['census_masks_l1'] = census_masks_l1
-        output_dict['census_masks_l1'] = census_masks_l2
+        output_dict['census_masks_l2'] = census_masks_l2
 
         return loss_dict
