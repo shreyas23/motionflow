@@ -4,7 +4,7 @@ import torch
 from torch import nn
 import torch.nn.functional as tf
 
-from .loss_utils import _disp2depth_kitti_K, _adaptive_disocc_detection, _reconstruction_error
+from .loss_utils import _disp2depth_kitti_K, _adaptive_disocc_detection, _reconstruction_error, logical_or
 from .inverse_warp import pose_vec2mat, pose2flow, pose2sceneflow
 from .interpolation import interpolate2d_as
 
@@ -45,7 +45,7 @@ def reconstruction_err(disp, src, tgt, K, sf=None, T=None, mode='pose', ssim_w=0
     return img_diff, occ_mask, (cam_points, grid), occ_mask
 
 
-def pose_process_flow(src_img, tgt_img, pose, sf, disp, mask, K, aug_size, use_mask=True, mask_thresh=0.3):
+def pose_process_flow(src_img, tgt_img, pose, sf, disp, mask, K, aug_size, mask_thresh=0.3, flow_diff_thresh=0.1):
     # denormalize disparity
     _, _, h, w = disp.shape 
     disp = disp * w
@@ -61,17 +61,15 @@ def pose_process_flow(src_img, tgt_img, pose, sf, disp, mask, K, aug_size, use_m
     depth = _disp2depth_kitti_K(disp, K_s[:, 0, 0])
     pose_sf = pose2sceneflow(depth, None, K_s, torch.inverse(K_s), pose_mat=pose)
 
-    diff = (pose_sf - sf).abs()
-    thresh = (mask < mask_thresh)
+    rigidity_mask = (mask >= mask_thresh).float()
+    mask_flow_diff = ((pose_sf - sf).abs() < flow_diff_thresh).prod(dim=1, keepdim=True).float()
+    rigidity_mask_comb = logical_or(rigidity_mask, mask_flow_diff)
+    rigid_mask = (rigidity_mask_comb > 0).float()
+    non_rigid_mask = (rigidity_mask_comb == 0).float()
 
-    diff_x = (diff[0] * thresh).float()
-    diff_y = (diff[1] * thresh).float()
-    diff_z = (diff[2] * thresh).float()
-    census_mask = diff_x * diff_y * diff_z
+    processed_flow = rigid_mask.expand_as(pose_sf) + non_rigid_mask.expand_as(sf) * sf
 
-    census_mask * thresh
-
-    return processed_flow
+    return processed_flow, rigidity_mask_comb
 
 
 def post_processing(l_disp, r_disp):

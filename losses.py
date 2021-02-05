@@ -120,13 +120,11 @@ class Loss(nn.Module):
         return reg_loss, sm_loss, census_loss
     
 
-    def create_census_mask(self, flow_diff, pose_err, sf_err, static_err, flow_diff_thresh=0.15):
-        # mask consensus loss
-        target_mask = ((pose_err <= sf_err) or (static_err <= sf_err)).float().detach()
-        flow_similar = (flow_diff < flow_diff_thresh).float().detach()
-        census_target_mask = logical_or(target_mask, flow_similar).detach()
-
+    def create_census_mask(self, mask_flow_diff, pose_err, sf_err):
+        target_mask = (pose_err <= sf_err).float().detach()
+        census_target_mask = logical_or(target_mask, mask_flow_diff).detach()
         return census_target_mask
+        
 
     def flow_cycle_loss(self, grid1, grid2, flow_f, flow_b, occ_f, occ_b):
         flow_b_warp = reconstructPts(grid1.permute(0, 3, 1, 2), flow_b)
@@ -320,12 +318,10 @@ class Loss(nn.Module):
             depth_loss = depth_loss1 + depth_loss2
 
             """ CENSUS MASK """
-            flow_diff_f = _elementwise_l1(pose_sf_f, flow_f)
-            flow_diff_b = _elementwise_l1(pose_sf_b, flow_b)
-            static_diff1 = _reconstruction_error(img_l1, img_l2, self.ssim_w)
-            static_diff2 = _reconstruction_error(img_l2, img_l1, self.ssim_w)
-            census_mask_tgt_l1 = self.create_census_mask(flow_diff_f, pose_diff1, sf_diff1, static_diff1)
-            census_mask_tgt_l2 = self.create_census_mask(flow_diff_b, pose_diff2, sf_diff2, static_diff2)
+            mask_flow_diff_f = ((pose_sf_f - flow_f).abs() < self.flow_diff_thresh).prod(dim=1, keepdim=True).float()
+            mask_flow_diff_b = ((pose_sf_b - flow_b).abs() < self.flow_diff_thresh).prod(dim=1, keepdim=True).float()
+            census_mask_tgt_l1 = self.create_census_mask(mask_flow_diff_f, pose_diff1, sf_diff1)
+            census_mask_tgt_l2 = self.create_census_mask(mask_flow_diff_b, pose_diff2, sf_diff2)
             census_masks_l1.append(census_mask_tgt_l1)
             census_masks_l2.append(census_mask_tgt_l2)
 
@@ -383,6 +379,8 @@ class Loss(nn.Module):
 
             # remove static pixels from loss calculation
             if self.args.use_static_mask:
+                static_diff1 = _reconstruction_error(img_l1, img_l2, self.ssim_w)
+                static_diff2 = _reconstruction_error(img_l2, img_l1, self.ssim_w)
                 pose_static_thresh1 =  pose_diff1 < static_diff1
                 pose_static_thresh2 =  pose_diff2 < static_diff2
                 sf_static_thresh1 =  sf_diff1 < static_diff1

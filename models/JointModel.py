@@ -297,6 +297,8 @@ class JointModel(nn.Module):
             disps_l2_pp = []
             masks_l1_pp = []
             masks_l2_pp = []
+            rigidity_masks_l1 = []
+            rigidity_masks_l2 = []
 
             for ii in range(0, len(output_dict_flip['flows_f'])):
 
@@ -313,8 +315,10 @@ class JointModel(nn.Module):
                 K2 = input_dict['input_k_l2_aug']
                 aug_size = input_dict['aug_size']
 
-                flow_f_pp = pose_process_flow(img_l1, img_l2, output_dict['pose_f'][ii], flow_f_pp, disps_l1_pp[ii], masks_l1_pp[ii], K1, aug_size, self.args.mask_thresh)
-                flow_b_pp = pose_process_flow(img_l2, img_l1, output_dict['pose_b'][ii], flow_b_pp, disps_l2_pp[ii], masks_l1_pp[ii], K2, aug_size, self.args.mask_thresh)
+                flow_f_pp, rigidity_mask_l1 = pose_process_flow(img_l1, img_l2, output_dict['pose_f'][ii], flow_f_pp, disps_l1_pp[ii], masks_l1_pp[ii], K1, aug_size, self.args.mask_thresh, self.args.flow_diff_thresh)
+                flow_b_pp, rigidity_mask_l2 = pose_process_flow(img_l2, img_l1, output_dict['pose_b'][ii], flow_b_pp, disps_l2_pp[ii], masks_l1_pp[ii], K2, aug_size, self.args.mask_thresh, self.args.flow_diff_thresh)
+                rigidity_masks_l1.append(rigidity_mask_l1)
+                rigidity_masks_l2.append(rigidity_mask_l2)
                 flows_f_pp.append(flow_f_pp)
                 flows_b_pp.append(flow_b_pp)
 
@@ -324,5 +328,7 @@ class JointModel(nn.Module):
             output_dict['disps_l2_pp'] = disps_l2_pp
             output_dict['masks_l1_pp'] = masks_l1_pp
             output_dict['masks_l2_pp'] = masks_l2_pp
+            output_dict['rigidity_masks_l1_pp'] = rigidity_masks_l1
+            output_dict['rigidity_masks_l2_pp'] = rigidity_masks_l2
 
         return output_dict
