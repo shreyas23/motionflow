@@ -226,6 +226,8 @@ def train(gpu, args):
             torch.load(ckpt_fp, map_location=map_location)['model'])
         optimizer.load_state_dict(
             torch.load(ckpt_fp, map_location=map_location)['optimizer'])
+    
+    best_test_sf_otl = 100
 
     # run training loop
     for epoch in range(curr_epoch, curr_epoch + args.epochs):
@@ -309,6 +311,11 @@ def train(gpu, args):
 
                 test_loss_avg_dict, test_output_dict, test_input_dict = evaluate(args, model, test_loss, test_dataloader, val_augmentations, gpu)
 
+                sf_otl = test_loss_avg_dict['sf']
+                if sf_otl < best_test_sf_otl:
+                    best_test_sf_otl = sf_otl
+                    save_new_best = True
+
                 with torch.no_grad():
                     loss_names = []
                     all_losses = []
@@ -342,6 +349,7 @@ def train(gpu, args):
 
         if not args.no_logging:
             fp = os.path.join(args.log_dir, f"{epoch}.ckpt")
+            best_fp = os.path.join(args.log_dir, f"best_sf.ckpt")
             if gpu == 0:
                 for k, v in train_reduced_losses.items():
                     writer.add_scalar(f'train/{k}', v.item(), epoch)
@@ -355,6 +363,10 @@ def train(gpu, args):
                     if epoch % args.save_freq == 0 or epoch == args.epochs:
                         print(f"Saving {epoch}.ckpt to: {args.log_dir}")
                         torch.save({'model': model.state_dict(), 'optimizer': optimizer.state_dict()}, fp)
+                    if save_new_best:
+                        print(f"{epoch} is the new best model.")
+                        torch.save({'model': model.state_dict(), 'optimizer': optimizer.state_dict()}, best_fp)
+                        save_new_best=False
 
                 if epoch % args.log_freq == 0:
                     visualize_output(args, input_dict, output_dict, epoch, writer, prefix='train')
