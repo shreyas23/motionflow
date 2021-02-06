@@ -62,7 +62,7 @@ def pose_process_flow(src_img, tgt_img, pose, sf, disp, mask, K, aug_size, mask_
     pose_sf = pose2sceneflow(depth, None, K_s, torch.inverse(K_s), pose_mat=pose)
 
     rigidity_mask = (mask >= mask_thresh).float()
-    mask_flow_diff = ((pose_sf - sf).abs() < flow_diff_thresh).prod(dim=1, keepdim=True).float()
+    mask_flow_diff = ((pose_sf - sf).abs() <= flow_diff_thresh).prod(dim=1, keepdim=True).float()
     rigidity_mask_comb = logical_or(rigidity_mask, mask_flow_diff)
     rigid_mask = (rigidity_mask_comb > 0).float()
     non_rigid_mask = (rigidity_mask_comb == 0).float()

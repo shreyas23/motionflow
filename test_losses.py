@@ -262,8 +262,8 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             loss_pose_2d = loss_pose_2d + loss_pose_im
             loss_pose_3d = loss_pose_3d + loss_pose_pts
 
-            mask_flow_diff_f = ((pose_sf_f - sf_f).abs() < self.flow_diff_thresh).prod(dim=1, keepdim=True).float()
-            mask_flow_diff_b = ((pose_sf_b - sf_b).abs() < self.flow_diff_thresh).prod(dim=1, keepdim=True).float()
+            mask_flow_diff_f = ((pose_sf_f - sf_f).abs() <= self.flow_diff_thresh).prod(dim=1, keepdim=True).float()
+            mask_flow_diff_b = ((pose_sf_b - sf_b).abs() <= self.flow_diff_thresh).prod(dim=1, keepdim=True).float()
             census_tgt_l1 = self.create_census_mask(mask_flow_diff_f, pose_diff_f, sf_diff_f)
             census_tgt_l2 = self.create_census_mask(mask_flow_diff_b, pose_diff_b, sf_diff_b)
             mask_reg_loss_l1, mask_sm_loss_l1, mask_census_loss_l1 = self.mask_loss(img_l1_aug, mask_l1, census_tgt_l1, ii)
@@ -290,8 +290,8 @@ class Loss_SceneFlow_SelfSup(nn.Module):
                     static_mask_l1 = torch.ones_like(mask_l1, requires_grad=False)
                     static_mask_l2 = torch.ones_like(mask_l2, requires_grad=False)
 
-                flow_diff_f = _elementwise_l1(sf_f, pose_sf_f)
-                flow_diff_b = _elementwise_l1(sf_b, pose_sf_b)
+                flow_diff_f = _elementwise_epe(sf_f, pose_sf_f)
+                flow_diff_b = _elementwise_epe(sf_b, pose_sf_b)
                 cons_loss_f = (flow_diff_f * static_mask_l1).mean()
                 cons_loss_b = (flow_diff_b * static_mask_l2).mean()
                 cons_loss = (cons_loss_f + cons_loss_b) * self.static_cons_w

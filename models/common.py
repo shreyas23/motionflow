@@ -33,7 +33,7 @@ class upconv(nn.Module):
         return self.conv1(x)
 
 class UpConv(nn.Module):
-    def __init__(self, num_in_layers, num_out_layers, kernel_size, scale, pad_mode='zeros', use_bn=False):
+    def __init__(self, num_in_layers, num_out_layers, kernel_size, scale, pad_mode='reflection', use_bn=False):
         super(UpConv, self).__init__()
         self.scale = scale
         self.conv1 = Conv(num_in_layers, num_out_layers, kernel_size, stride=1, use_bn=use_bn, pad_mode=pad_mode)
@@ -46,7 +46,7 @@ class UpConv(nn.Module):
 class Conv(nn.Module):
     """ Conv layer with options for padding and ELU/LeakyReLU nonlinearity
     """
-    def __init__(self, in_chs, out_chs, kernel_size=3, stride=1, dilation=1, nonlin='leakyrelu', pad_mode='zeros', use_bn=False, bias=True):
+    def __init__(self, in_chs, out_chs, kernel_size=3, stride=1, dilation=1, nonlin='leakyrelu', pad_mode='reflection', use_bn=False, bias=True):
         super(Conv, self).__init__()
 
         nonlin_dict = {
