@@ -56,7 +56,7 @@ class JointModel(nn.Module):
 
         if args.use_bottleneck:
             self.bottlenecks = nn.ModuleList()
-            bottleneck_out_ch = 128
+            bottleneck_out_ch = 96
 
         self.warping_layer_sf = WarpingLayer_SF()
         self.warping_layer_pose = WarpingLayer_Pose()
