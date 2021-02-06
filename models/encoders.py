@@ -152,7 +152,7 @@ class PoseBottleNeck(nn.Module):
     def __init__(self, in_ch=6, use_bn=False):
         super(PoseBottleNeck, self).__init__()
 
-        conv_planes = [16, 32, 64, 128]
+        conv_planes = [16, 32, 64, 96]
         self.conv0 = Conv(in_ch, conv_planes[0], kernel_size=7, stride=1, use_bn=use_bn)
         self.conv1 = Conv(conv_planes[0], conv_planes[1], kernel_size=5, stride=1, use_bn=use_bn)
         self.conv2 = Conv(conv_planes[1], conv_planes[2], stride=1, use_bn=use_bn)

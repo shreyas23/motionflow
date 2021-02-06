@@ -67,7 +67,7 @@ def pose_process_flow(src_img, tgt_img, pose, sf, disp, mask, K, aug_size, mask_
     rigid_mask = (rigidity_mask_comb > 0).float()
     non_rigid_mask = (rigidity_mask_comb == 0).float()
 
-    processed_flow = rigid_mask.expand_as(pose_sf) + non_rigid_mask.expand_as(sf) * sf
+    processed_flow = rigid_mask.expand_as(pose_sf) * pose_sf + non_rigid_mask.expand_as(sf) * sf
 
     return processed_flow, rigidity_mask_comb
 
