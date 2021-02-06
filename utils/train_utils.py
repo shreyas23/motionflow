@@ -226,14 +226,21 @@ def visualize_output(args, input_dict, output_dict, epoch, writer, prefix):
     img_l2 = input_dict['input_l2'].detach()
     img_r2 = input_dict['input_r2'].detach()
     K = input_dict['input_k_l2_aug'].detach()
-    disp_l1 = interpolate2d_as(output_dict['disps_l1'][0].detach(), img_l1)
-    disp_l2 = interpolate2d_as(output_dict['disps_l2'][0].detach(), img_l1)
-    disp_r2 = interpolate2d_as(output_dict['output_dict_r']['disps_l2'][0].detach(), img_l1)
 
-    if use_mask:
-        mask_l2 = interpolate2d_as(output_dict['masks_l2'][0].detach(), img_l1)
-
-    sf_b = interpolate2d_as(output_dict['flows_b'][0].detach(), img_l1)
+    if prefix in {'val', 'test'}:
+        disp_l1 = interpolate2d_as(output_dict['disps_l1_pp'][0].detach(), img_l1)
+        disp_l2 = interpolate2d_as(output_dict['disps_l2_pp'][0].detach(), img_l1)
+        disp_r2 = interpolate2d_as(output_dict['output_dict_r']['disps_l2_pp'][0].detach(), img_l1)
+        sf_b = interpolate2d_as(output_dict['flows_b_pp'][0].detach(), img_l1)
+        if use_mask:
+            mask_l2 = interpolate2d_as(output_dict['masks_l2'][0].detach(), img_l1)
+    else:
+        disp_l1 = interpolate2d_as(output_dict['disps_l1'][0].detach(), img_l1)
+        disp_l2 = interpolate2d_as(output_dict['disps_l2'][0].detach(), img_l1)
+        disp_r2 = interpolate2d_as(output_dict['output_dict_r']['disps_l2'][0].detach(), img_l1)
+        sf_b = interpolate2d_as(output_dict['flows_b'][0].detach(), img_l1)
+        if use_mask:
+            mask_l2 = interpolate2d_as(output_dict['masks_l2_pp'][0].detach(), img_l1)
 
     if 'pose_b' in output_dict:
         poses_b = output_dict['pose_b']
