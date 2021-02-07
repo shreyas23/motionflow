@@ -364,8 +364,8 @@ def train(gpu, args):
                         print(f"Saving {epoch}.ckpt to: {args.log_dir}")
                         torch.save({'model': model.state_dict(), 'optimizer': optimizer.state_dict()}, fp)
                     if save_new_best:
-                        print(f"{epoch} is the new best model.")
-                        torch.save({'model': model.state_dict(), 'optimizer': optimizer.state_dict()}, best_fp)
+                        print(f"Epoch {epoch} is the new best model.")
+                        torch.save({'model': model.state_dict(), 'optimizer': optimizer.state_dict(), 'epoch': epoch, 'args': args, 'loss': test_reduced_losses}, best_fp)
                         save_new_best=False
 
                 if epoch % args.log_freq == 0:
