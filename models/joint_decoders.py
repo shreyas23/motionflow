@@ -19,10 +19,17 @@ class JointDecoder(nn.Module):
                 Conv(64, 32, use_bn=use_bn)
             )
         else:
+            # self.convs = nn.Sequential(
+            #     Conv(ch_in, 256, use_bn=use_bn),
+            #     Conv(256, 256, use_bn=use_bn), 
+            #     Conv(256, 128, use_bn=use_bn),
+            #     Conv(128, 96, use_bn=use_bn),
+            #     Conv(96, 64, use_bn=use_bn),
+            #     Conv(64, 32, use_bn=use_bn)
+            # )
             self.convs = nn.Sequential(
-                Conv(ch_in, 256, use_bn=use_bn),
-                Conv(256, 256, use_bn=use_bn), 
-                Conv(256, 128, use_bn=use_bn),
+                Conv(ch_in, 128, use_bn=use_bn),
+                Conv(128, 128, use_bn=use_bn),
                 Conv(128, 96, use_bn=use_bn),
                 Conv(96, 64, use_bn=use_bn),
                 Conv(64, 32, use_bn=use_bn)

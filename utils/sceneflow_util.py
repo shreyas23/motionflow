@@ -4,7 +4,7 @@ import torch
 from torch import nn
 import torch.nn.functional as tf
 
-from .loss_utils import _disp2depth_kitti_K, _adaptive_disocc_detection, _reconstruction_error, logical_or
+from .loss_utils import _disp2depth_kitti_K, _adaptive_disocc_detection, _reconstruction_error, logical_or, _elementwise_epe
 from .inverse_warp import pose_vec2mat, pose2flow, pose2sceneflow
 from .interpolation import interpolate2d_as
 
@@ -62,7 +62,8 @@ def pose_process_flow(src_img, tgt_img, pose, sf, disp, mask, K, aug_size, mask_
     pose_sf = pose2sceneflow(depth, None, K_s, torch.inverse(K_s), pose_mat=pose)
 
     rigidity_mask = (mask >= mask_thresh).float()
-    mask_flow_diff = ((pose_sf - sf).abs() <= flow_diff_thresh).prod(dim=1, keepdim=True).float()
+    mask_flow_diff = (_elementwise_epe(pose_sf, sf) <= flow_diff_thresh).float()
+    # mask_flow_diff = ((pose_sf - sf).abs() <= flow_diff_thresh).prod(dim=1, keepdim=True).float()
     rigidity_mask_comb = logical_or(rigidity_mask, mask_flow_diff)
     rigid_mask = (rigidity_mask_comb > 0).float()
     non_rigid_mask = (rigidity_mask_comb == 0).float()

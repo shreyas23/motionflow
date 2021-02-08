@@ -45,6 +45,7 @@ class Params:
         self.parser.add_argument('--num_scales', type=int, default=4, help="whether to use consensus mask in training procedure")
         self.parser.add_argument('--do_pose_c2f', type=bool, default=False, help="whether to use consensus mask in training procedure")
         self.parser.add_argument('--use_bottleneck', type=bool, default=False, help="whether to use consensus mask in training procedure")
+        self.parser.add_argument('--use_pose_corr', type=bool, default=False, help="whether to use consensus mask in training procedure")
 
         # dataset params
         self.parser.add_argument('--dataset_name', default='KITTI', help='KITTI or Eigen')
@@ -110,6 +111,8 @@ class Params:
         
         if self.args.pt_encoder:
             assert (self.args.batch_size > 1), "Batch size must be greater than one if training using pre-trained resnet encoder"
+
+        assert ((self.args.use_bottleneck ^ self.args.use_pose_corr) or not (self.args.use_bottleneck or self.args.use_pose_corr)), "Cannot use both at the same time"
 
         # if self.args.encoder_name == 'resnet':
         #     assert (self.args.use_bn and self.args.batch_size > 1), "If using resnet encoder, must use batch norm with batch size greater than one."

@@ -64,7 +64,7 @@ class KITTI_2015_Test(data.Dataset):
         ## loading calibration matrix
         self.intrinsic_dict_l = {}
         self.intrinsic_dict_r = {}        
-        self.intrinsic_dict_l, self.intrinsic_dict_r = read_calib_into_dict(path_dir)
+        self.intrinsic_dict_l, self.intrinsic_dict_r, _, _ = read_calib_into_dict(path_dir)
 
         self._to_tensor = vision_transforms.Compose([
             vision_transforms.ToPILImage(),
