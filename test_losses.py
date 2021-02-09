@@ -121,8 +121,8 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         flow_b_warp = reconstructFlow(coord1, flow_b)
         flow_f_warp = reconstructFlow(coord2, flow_f)
 
-        flow_f_cycle_diff= torch.norm(flow_f + flow_b_warp, p=1, dim=1, keepdim=True)
-        flow_b_cycle_diff= torch.norm(flow_b + flow_f_warp, p=1, dim=1, keepdim=True)
+        flow_f_cycle_diff = torch.norm(flow_f + flow_b_warp, p=1, dim=1, keepdim=True)
+        flow_b_cycle_diff = torch.norm(flow_b + flow_f_warp, p=1, dim=1, keepdim=True)
 
         cycle_occ = occ_map_f * occ_map_b
         cycle_loss = flow_f_cycle_diff[cycle_occ].mean() + flow_b_cycle_diff[cycle_occ].mean()
