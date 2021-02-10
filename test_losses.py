@@ -14,6 +14,7 @@ from utils.sceneflow_util import intrinsic_scale, reconstructFlow
 from models.modules_sceneflow import WarpingLayer_Flow
 
 from utils.inverse_warp import pose2sceneflow
+from models.common import GaussianSmoothing
 
 ###############################################
 ## Loss function
@@ -62,7 +63,12 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         return reg_loss, sm_loss, census_loss
     
 
-    def create_census_mask(self, mask_flow_diff, pose_err, sf_err):
+    def create_census_mask(self, mask_flow_diff, pose_err, sf_err, smooth=False):
+        if smooth:
+            _, c, _, _ = pose_err.shape
+            f = GaussianSmoothing(channels=c, kernel_size=3, sigma=1.0).to(device=pose_err.device)
+            pose_err = f(pose_err)
+            sf_err = f(sf_err)
         target_mask = (pose_err <= sf_err).float().detach()
         census_target_mask = logical_or(target_mask, mask_flow_diff).detach()
         return census_target_mask
