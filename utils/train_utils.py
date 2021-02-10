@@ -338,4 +338,3 @@ def visualize_output(args, input_dict, output_dict, epoch, writer, prefix):
         writer.add_images(prefix + 'rigidity_masks_l2_pp', rigid_mask, epoch)
 
     return
-
