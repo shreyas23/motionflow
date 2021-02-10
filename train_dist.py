@@ -209,6 +209,8 @@ def train(gpu, args):
             writer = None
 
     curr_epoch = args.start_epoch
+    
+    best_test_sf_otl = 100
 
     if args.ckpt != "":
         print(f"Loading model from {args.ckpt} onto gpu: {gpu}")
@@ -226,8 +228,9 @@ def train(gpu, args):
             torch.load(ckpt_fp, map_location=map_location)['model'])
         optimizer.load_state_dict(
             torch.load(ckpt_fp, map_location=map_location)['optimizer'])
-    
-    best_test_sf_otl = 100
+        
+        best_fp = os.path.join(args.log_dir, f"best_sf.ckpt")
+        best_test_sf_otl = torch.load(best_fp, map_location=map_location)['loss']['sf']
 
     # run training loop
     for epoch in range(curr_epoch, curr_epoch + args.epochs):
