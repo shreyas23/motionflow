@@ -394,6 +394,7 @@ def train(gpu, args):
         del input_dict
         del output_dict
         del train_loss_avg_dict
+
         if gpu == 0:
             del train_reduced_losses
 
@@ -404,10 +405,10 @@ def train(gpu, args):
             del test_input_dict
             del test_output_dict
             del test_loss_avg_dict
+
             if gpu == 0:
                 del val_reduced_losses
                 del test_reduced_losses
-
 
         gc.collect()
 
