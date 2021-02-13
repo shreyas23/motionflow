@@ -49,8 +49,8 @@ class JointModel(nn.Module):
                 if isinstance(m, nn.Conv2d):
                     nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='leaky_relu')
         elif self.args.encoder_name == 'pwc':
-            # self.num_chs = [3, 32, 64, 96, 128, 256, 512]
-            self.num_chs = [3, 32, 64, 96, 128, 192, 256]
+            self.num_chs = [3, 32, 64, 96, 128, 256, 512]
+            # self.num_chs = [3, 32, 64, 96, 128, 192, 256]
             self.feature_pyramid_extractor = PWCEncoder(self.num_chs, use_bn=args.use_bn)
         else:
             raise NotImplementedError
