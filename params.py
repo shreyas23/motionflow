@@ -67,6 +67,7 @@ class Params:
         self.parser.add_argument('--ssim_w', type=float, default=0.85, help='mask consensus weight')
         self.parser.add_argument('--flow_pts_w', type=float, default=0.0, help='mask consensus weight')
         self.parser.add_argument('--flow_cycle_w', type=float, default=0.0, help='mask consensus weight')
+        self.parser.add_argument('--mask_cycle_w', type=float, default=0.0, help='mask consensus weight')
         self.parser.add_argument('--flow_sm_w', type=float, default=200, help='mask consensus weight')
         self.parser.add_argument('--disp_sm_w', type=float, default=0.2, help='mask consensus weight')
         self.parser.add_argument('--disp_lr_w', type=float, default=0.0, help='mask consensus weight')

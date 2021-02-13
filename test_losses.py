@@ -1,16 +1,14 @@
-from pprint import pprint
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as tf
 
 from utils.loss_utils import _generate_image_left, _elementwise_epe, _elementwise_l1, _smoothness_motion_2nd
 from utils.loss_utils import _adaptive_disocc_detection_disp, _adaptive_disocc_detection, _SSIM, logical_or
-from utils.loss_utils import _reconstruction_error
+from utils.loss_utils import _reconstruction_error, kl_div
 from models.forwardwarp_package.forward_warp import forward_warp
 from utils.interpolation import interpolate2d_as
 from utils.sceneflow_util import pixel2pts_ms, pts2pixel_ms, reconstructImg, reconstructPts, projectSceneFlow2Flow, disp2depth_kitti
-from utils.sceneflow_util import intrinsic_scale, reconstructFlow
+from utils.sceneflow_util import intrinsic_scale, reconstructFlow, reconstructMask
 from models.modules_sceneflow import WarpingLayer_Flow
 
 from utils.inverse_warp import pose2sceneflow
@@ -38,6 +36,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         self.static_cons_w = args.static_cons_w
         self.flow_diff_thresh = args.flow_diff_thresh
         self.flow_cycle_w = args.flow_cycle_w
+        self.mask_cycle_w = args.mask_cycle_w
 
     def depth_loss_left_img(self, disp_l, disp_r, img_l_aug, img_r_aug, ii):
 
@@ -131,15 +130,21 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         flow_b_cycle_diff = torch.norm(flow_b + flow_f_warp, p=1, dim=1, keepdim=True)
 
         cycle_occ = occ_map_f * occ_map_b
-        cycle_loss = flow_f_cycle_diff[cycle_occ].mean() + flow_b_cycle_diff[cycle_occ].mean()
+        flow_cycle_loss = flow_f_cycle_diff[cycle_occ].mean() + flow_b_cycle_diff[cycle_occ].mean()
+
+        mask_l2_warp = reconstructMask(coord1, torch.log(mask_l2))
+        mask_l1_warp = reconstructMask(coord2, torch.log(mask_l1))
+        mask_l1_cycle_diff = kl_div(mask_l2_warp, mask_l1)
+        mask_l2_cycle_diff = kl_div(mask_l1_warp, mask_l2)
+        mask_cycle_loss = mask_l1_cycle_diff[cycle_occ].mean() + mask_l2_cycle_diff[cycle_occ].mean()
 
         ## 3D motion smoothness loss
         loss_3d_s = ( (_smoothness_motion_2nd(sf_f, img_l1_aug, beta=10.0) / (pts_norm1 + 1e-8)).mean() + (_smoothness_motion_2nd(sf_b, img_l2_aug, beta=10.0) / (pts_norm2 + 1e-8)).mean() ) / (2 ** ii)
 
         ## Loss Summnation
-        sceneflow_loss = loss_im + self.sf_3d_pts * loss_pts + self.sf_3d_sm * loss_3d_s + self.flow_cycle_w * cycle_loss
+        sceneflow_loss = loss_im + self.sf_3d_pts * loss_pts + self.sf_3d_sm * loss_3d_s + self.flow_cycle_w * flow_cycle_loss
         
-        return sceneflow_loss, loss_im, loss_pts, loss_3d_s, cycle_loss, (img_diff1, img_diff2)
+        return sceneflow_loss, loss_im, loss_pts, loss_3d_s, flow_cycle_loss, mask_cycle_loss, (img_diff1, img_diff2)
 
     def detaching_grad_of_outputs(self, output_dict):
         
@@ -161,6 +166,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         loss_mask_reg_sum = 0
         loss_mask_sm_sum = 0
         loss_mask_census_sum = 0
+        loss_mask_cycle_sum = 0
         loss_cons_sum = 0
         loss_dp_sum = 0
         loss_sf_2d = 0
@@ -216,7 +222,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
                 flow_mask_l1 = torch.ones_like(mask_l1, requires_grad=False)
                 flow_mask_l2 = torch.ones_like(mask_l2, requires_grad=False)
 
-            loss_sceneflow, loss_im, loss_pts, loss_3d_s, sf_cycle, (sf_diff_f, sf_diff_b) = self.sceneflow_loss(sf_f, sf_b, 
+            loss_sceneflow, loss_im, loss_pts, loss_3d_s, sf_cycle, _, (sf_diff_f, sf_diff_b) = self.sceneflow_loss(sf_f, sf_b, 
                                                                                                 disp_l1, disp_l2,
                                                                                                 disp_occ_l1, disp_occ_l2,
                                                                                                 flow_mask_l1, flow_mask_l2,
@@ -249,14 +255,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             pose_sf_f = pose2sceneflow(depth_l1, None, K_l1_s, pose_mat=pose_f)
             pose_sf_b = pose2sceneflow(depth_l2, None, K_l2_s, pose_mat=pose_b)
 
-            if self.apply_mask:
-                flow_mask_l1 = 1.0 - mask_l1
-                flow_mask_l2 = 1.0 - mask_l2
-            else:
-                flow_mask_l1 = torch.ones_like(mask_l1, requires_grad=False)
-                flow_mask_l2 = torch.ones_like(mask_l2, requires_grad=False)
-
-            loss_pose, loss_pose_im, loss_pose_pts, _, _, (pose_diff_f, pose_diff_b) = self.sceneflow_loss(pose_sf_f, pose_sf_b, 
+            loss_pose, loss_pose_im, loss_pose_pts, _, _, mask_cycle_loss, (pose_diff_f, pose_diff_b) = self.sceneflow_loss(pose_sf_f, pose_sf_b, 
                                                                                         disp_l1, disp_l2,
                                                                                         disp_occ_l1, disp_occ_l2,
                                                                                         mask_l1, mask_l2,
@@ -285,26 +284,28 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             mask_sm_loss = mask_sm_loss_l1 + mask_sm_loss_l2
             mask_census_loss = mask_census_loss_l1 + mask_census_loss_l2
 
-            loss_mask_sum = loss_mask_sum + mask_reg_loss * self.mask_reg_w + mask_sm_loss * self.mask_sm_w + mask_census_loss * self.mask_cons_w
+            loss_mask_sum = loss_mask_sum + mask_reg_loss * self.mask_reg_w + \
+                                            mask_sm_loss * self.mask_sm_w + \
+                                            mask_census_loss * self.mask_cons_w + \
+                                            mask_cycle_loss * self.mask_cycle_w
+
             loss_mask_reg_sum = loss_mask_reg_sum + mask_reg_loss
             loss_mask_sm_sum = loss_mask_sm_sum + mask_sm_loss
             loss_mask_census_sum = loss_mask_census_sum + mask_census_loss
+            loss_mask_cycle_sum = loss_mask_cycle_sum + mask_cycle_loss
 
-            if self.static_cons_w > 0.0:
-                if self.args.apply_mask:
-                    static_mask_l1 = mask_l1 * census_tgt_l1.detach()
-                    static_mask_l2 = mask_l2 * census_tgt_l2.detach()
-                else:
-                    static_mask_l1 = torch.ones_like(mask_l1, requires_grad=False)
-                    static_mask_l2 = torch.ones_like(mask_l2, requires_grad=False)
+            # if self.args.apply_mask:
+            #     static_mask_l1 = mask_l1 #* census_tgt_l1.detach()
+            #     static_mask_l2 = mask_l2 #* census_tgt_l2.detach()
+            # else:
+            #     static_mask_l1 = torch.ones_like(mask_l1, requires_grad=False)
+            #     static_mask_l2 = torch.ones_like(mask_l2, requires_grad=False)
 
-                flow_diff_f = _elementwise_epe(sf_f, pose_sf_f)
-                flow_diff_b = _elementwise_epe(sf_b, pose_sf_b)
-                cons_loss_f = (flow_diff_f * static_mask_l1).mean()
-                cons_loss_b = (flow_diff_b * static_mask_l2).mean()
-                cons_loss = (cons_loss_f + cons_loss_b) * self.static_cons_w
-            else:
-                cons_loss = torch.tensor(0.0, requires_grad=False)
+            flow_diff_f = _elementwise_epe(sf_f, pose_sf_f)
+            flow_diff_b = _elementwise_epe(sf_b, pose_sf_b)
+            cons_loss_f = (flow_diff_f * mask_l1).mean()
+            cons_loss_b = (flow_diff_b * mask_l2).mean()
+            cons_loss = (cons_loss_f + cons_loss_b)
 
             loss_cons_sum = loss_cons_sum + cons_loss
 
@@ -315,7 +316,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         f_weight = max_val / f_loss
         d_weight = max_val / d_loss
 
-        total_loss = loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * f_weight + loss_mask_sum + loss_cons_sum
+        total_loss = loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * f_weight + loss_mask_sum + loss_cons_sum * self.static_cons_w
 
         loss_dict = {}
         loss_dict["dp"] = loss_dp_sum.detach()
@@ -329,6 +330,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         loss_dict["mask"] = loss_mask_sum.detach()
         loss_dict["mask_sm"] = loss_mask_sm_sum.detach()
         loss_dict["mask_census"] = loss_mask_census_sum.detach()
+        loss_dict["mask_cycle"] = loss_mask_cycle_sum.detach()
         loss_dict["mask_reg"] = loss_mask_reg_sum.detach()
         loss_dict["static_cons"] = loss_cons_sum.detach()
         loss_dict["cycle"] = loss_cycle_sum.detach()

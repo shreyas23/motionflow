@@ -234,12 +234,14 @@ def visualize_output(args, input_dict, output_dict, epoch, writer, prefix):
         disp_l2 = interpolate2d_as(output_dict['disps_l2_pp'][0].detach(), img_l1)
         sf_b = interpolate2d_as(output_dict['flows_b_pp'][0].detach(), img_l1)
         if use_mask:
+            mask_l1 = interpolate2d_as(output_dict['masks_l1_pp'][0].detach(), img_l1)
             mask_l2 = interpolate2d_as(output_dict['masks_l2_pp'][0].detach(), img_l1)
     else:
         disp_l1 = interpolate2d_as(output_dict['disps_l1'][0].detach(), img_l1)
         disp_l2 = interpolate2d_as(output_dict['disps_l2'][0].detach(), img_l1)
         sf_b = interpolate2d_as(output_dict['flows_b'][0].detach(), img_l1)
         if use_mask:
+            mask_l1 = interpolate2d_as(output_dict['masks_l1'][0].detach(), img_l1)
             mask_l2 = interpolate2d_as(output_dict['masks_l2'][0].detach(), img_l1)
 
     if 'pose_b' in output_dict:
@@ -269,7 +271,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer, prefix):
     disp_warp = _generate_image_left(img_r2, disp_l2) 
     writer.add_images(prefix + 'disp', disp_l2, epoch)
     writer.add_images(prefix + 'disp_warp', disp_warp, epoch)
-    disp_diff = _reconstruction_error(img_l2, disp_warp, 0.85)
+    disp_diff = _reconstruction_error(img_l2, disp_warp, args.ssim_w)
     writer.add_images(prefix + 'disp_diff', disp_diff, epoch)
     disp_occ = _adaptive_disocc_detection_disp(disp_r2)
     writer.add_images(prefix + 'disp_occ', disp_occ, epoch)
@@ -283,7 +285,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer, prefix):
     writer.add_images(prefix + 'depth', depth, epoch)
 
     # static err map
-    static_diff = _reconstruction_error(img_l2, img_l1, 0.85)
+    static_diff = _reconstruction_error(img_l2, img_l1, args.ssim_w)
     writer.add_images(prefix + 'static_diff', static_diff, epoch)
 
     # pose warp
@@ -300,7 +302,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer, prefix):
         writer.add_images(prefix + 'pose_occ', pose_occ_b, epoch)
 
         # pose err
-        pose_diff = _reconstruction_error(img_l2, ref_warp, 0.85)
+        pose_diff = _reconstruction_error(img_l2, ref_warp, args.ssim_w)
         writer.add_images(prefix + 'pose_diff', pose_diff, epoch)
 
     # sf warp
@@ -310,7 +312,7 @@ def visualize_output(args, input_dict, output_dict, epoch, writer, prefix):
     writer.add_images(prefix + 'sf_warp', ref_warp, epoch)
 
     # sf err
-    sf_diff = _reconstruction_error(img_l2, ref_warp, 0.85)
+    sf_diff = _reconstruction_error(img_l2, ref_warp, args.ssim_w)
     writer.add_images(prefix + 'sf_diff', sf_diff, epoch)
 
     # sf occ map
@@ -327,9 +329,12 @@ def visualize_output(args, input_dict, output_dict, epoch, writer, prefix):
 
     # motion mask
     if use_mask:
-        mask = (mask_l2 > 0.5).float()
-        writer.add_images(prefix + 'pre_thresh_mask', mask_l2, epoch)
-        writer.add_images(prefix + 'thresh_mask', mask, epoch)
+        mask_l1_thresh = (mask_l1 > args.mask_thresh).float()
+        mask_l2_thresh = (mask_l2 > args.mask_thresh).float()
+        writer.add_images(prefix + 'pre_thresh_mask_l2', mask_l1, epoch)
+        writer.add_images(prefix + 'thresh_mask_l2', mask_l1_thresh, epoch)
+        writer.add_images(prefix + 'pre_thresh_mask_l2', mask_l2, epoch)
+        writer.add_images(prefix + 'thresh_mask_l2', mask_l2_thresh, epoch)
     if 'census_masks_l2' in output_dict:
         census_mask_l2 = interpolate2d_as(output_dict['census_masks_l2'][0].detach(), img_l1)
         writer.add_images(prefix + 'target_census_mask', census_mask_l2, epoch)

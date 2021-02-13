@@ -231,6 +231,8 @@ def train(gpu, args):
         
         best_fp = os.path.join(args.log_dir, f"best_sf.ckpt")
         best_test_sf_otl = torch.load(best_fp, map_location=map_location)['loss']['sf']
+    
+    save_new_best = False
 
     # run training loop
     for epoch in range(curr_epoch, curr_epoch + args.epochs):

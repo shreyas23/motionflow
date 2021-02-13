@@ -40,7 +40,7 @@ class PWCEncoder(nn.Module):
         self.num_chs = num_chs
         self.convs = nn.ModuleList()
 
-        for l, (ch_in, ch_out) in enumerate(zip(num_chs[:-1], num_chs[1:])):
+        for _, (ch_in, ch_out) in enumerate(zip(num_chs[:-1], num_chs[1:])):
             layer = nn.Sequential(
                 Conv(ch_in, ch_out, stride=2, use_bn=use_bn),
                 Conv(ch_out, ch_out, use_bn=use_bn)

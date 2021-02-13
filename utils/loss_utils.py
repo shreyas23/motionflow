@@ -9,6 +9,13 @@ from models.forwardwarp_package.forward_warp import forward_warp
 
 eps = 1e-8
 
+def kl_div(p, q):
+    """
+    Calculate the KL Divergence denoted: KL(p||q) = (1/h*w) * p(x) * log(p(x) / q(x))
+    """
+    div = torch.exp(p) * (p - torch.log(q))
+    return div.mean(dim=1, keepdim=True)
+
 def logical_or(a, b):
     return 1 - ((1 - a) * (1 -b))
 
