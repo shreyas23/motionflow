@@ -15,9 +15,9 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --num_examples=-1 \
                       --num_workers=16 \
                       --start_epoch=1 \
-                      --epochs=15 \
+                      --epochs=25 \
                       --batch_size=4 \
-                      --lr=3e-4 \
+                      --lr=2e-4 \
                       --lr_gamma=0.5 \
                       --lr_sched_type='none' \
                       --milestones 15 \
@@ -51,13 +51,13 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --validate=True \
                       --num_examples=-1 \
                       --num_workers=16 \
-                      --start_epoch=16 \
+                      --start_epoch=26 \
                       --epochs=50 \
                       --batch_size=4 \
-                      --lr=2e-4 \
+                      --lr=1e-4 \
                       --lr_gamma=0.5 \
                       --lr_sched_type='step' \
-                      --milestones 30 45 \
+                      --milestones 45 55 \
                       --flow_reduce_mode='sum' \
                       --disp_sm_w=0.05 \
                       --disp_lr_w=0.0 \
