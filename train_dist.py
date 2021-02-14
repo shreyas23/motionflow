@@ -318,6 +318,7 @@ def train(gpu, args):
 
                 sf_otl = test_loss_avg_dict['sf']
                 if sf_otl < best_test_sf_otl:
+                    print(f"Epoch {epoch} is the new best model. New SF otls: {sf_otl} - Old best SF otls: {best_test_sf_otl}")
                     best_test_sf_otl = sf_otl
                     save_new_best = True
 
@@ -369,7 +370,6 @@ def train(gpu, args):
                         print(f"Saving {epoch}.ckpt to: {args.log_dir}")
                         torch.save({'model': model.state_dict(), 'optimizer': optimizer.state_dict()}, fp)
                     if save_new_best:
-                        print(f"Epoch {epoch} is the new best model.")
                         torch.save({'model': model.state_dict(), 'optimizer': optimizer.state_dict(), 'epoch': epoch, 'args': args, 'loss': test_reduced_losses}, best_fp)
                         save_new_best=False
 
