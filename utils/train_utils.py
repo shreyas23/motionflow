@@ -331,8 +331,8 @@ def visualize_output(args, input_dict, output_dict, epoch, writer, prefix):
     if use_mask:
         mask_l1_thresh = (mask_l1 > args.mask_thresh).float()
         mask_l2_thresh = (mask_l2 > args.mask_thresh).float()
-        writer.add_images(prefix + 'pre_thresh_mask_l2', mask_l1, epoch)
-        writer.add_images(prefix + 'thresh_mask_l2', mask_l1_thresh, epoch)
+        writer.add_images(prefix + 'pre_thresh_mask_l1', mask_l1, epoch)
+        writer.add_images(prefix + 'thresh_mask_l1', mask_l1_thresh, epoch)
         writer.add_images(prefix + 'pre_thresh_mask_l2', mask_l2, epoch)
         writer.add_images(prefix + 'thresh_mask_l2', mask_l2_thresh, epoch)
     if 'census_masks_l2' in output_dict:

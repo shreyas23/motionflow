@@ -10,30 +10,14 @@ class JointDecoder(nn.Module):
 
         self.use_mask = args.train_exp_mask or args.train_census_mask
 
-        if args.encoder_name == 'resnet':
-            self.convs = nn.Sequential(
-                Conv(ch_in, 256, use_bn=use_bn),
-                Conv(256, 128, use_bn=use_bn),
-                Conv(128, 96, use_bn=use_bn),
-                Conv(96, 64, use_bn=use_bn),
-                Conv(64, 32, use_bn=use_bn)
-            )
-        else:
-            # self.convs = nn.Sequential(
-            #     Conv(ch_in, 256, use_bn=use_bn),
-            #     Conv(256, 256, use_bn=use_bn), 
-            #     Conv(256, 128, use_bn=use_bn),
-            #     Conv(128, 96, use_bn=use_bn),
-            #     Conv(96, 64, use_bn=use_bn),
-            #     Conv(64, 32, use_bn=use_bn)
-            # )
-            self.convs = nn.Sequential(
-                Conv(ch_in, 128, use_bn=use_bn),
-                Conv(128, 128, use_bn=use_bn),
-                Conv(128, 96, use_bn=use_bn),
-                Conv(96, 64, use_bn=use_bn),
-                Conv(64, 32, use_bn=use_bn)
-            )
+        self.convs = nn.Sequential(
+            Conv(ch_in, 192, use_bn=use_bn),
+            Conv(192, 128, use_bn=use_bn),
+            Conv(128, 128, use_bn=use_bn),
+            Conv(128, 96, use_bn=use_bn),
+            Conv(96, 64, use_bn=use_bn),
+            Conv(64, 32, use_bn=use_bn)
+        )
         
         self.conv_sf = Conv(32, 3, nonlin='none')
         self.conv_d1 = Conv(32, 1, nonlin='none')
@@ -60,8 +44,8 @@ class JointContextNetwork(nn.Module):
         self.use_mask = args.train_exp_mask or args.train_census_mask
 
         self.convs = nn.Sequential(
-            Conv(in_chs, 256, 3, 1, 1, use_bn=use_bn),
-            Conv(256, 128, 3, 1, 2, use_bn=use_bn),
+            Conv(in_chs, 128, 3, 1, 1, use_bn=use_bn),
+            Conv(128, 128, 3, 1, 2, use_bn=use_bn),
             Conv(128, 128, 3, 1, 4, use_bn=use_bn),
             Conv(128, 96, 3, 1, 8, use_bn=use_bn),
             Conv(96, 64, 3, 1, 16, use_bn=use_bn),
