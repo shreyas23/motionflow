@@ -165,9 +165,9 @@ def _smoothness_1st(feat, img, beta=1):
     feat_grad_x = _gradient_x(feat)
     feat_grad_y = _gradient_y(feat)
 
-    weights_x = torch.exp(-torch.mean(torch.abs(img_grad_x),
+    weights_x = torch.exp(-torch.mean(torch.abs(feat_grad_x),
                                       1, keepdim=True) * beta)
-    weights_y = torch.exp(-torch.mean(torch.abs(img_grad_y),
+    weights_y = torch.exp(-torch.mean(torch.abs(feat_grad_y),
                                       1, keepdim=True) * beta)
 
     smoothness_x = feat_grad_x * weights_x

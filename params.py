@@ -78,6 +78,7 @@ class Params:
         self.parser.add_argument('--flow_diff_thresh', type=float, default=0.1, help='mask consensus weight')
         self.parser.add_argument('--mask_thresh', type=float, default=0.3, help='mask consensus weight')
         self.parser.add_argument('--feat_smooth_w', type=float, default=1e-3, help='mask consensus weight')
+        self.parser.add_argument('--feat_disc_w', type=float, default=0.0, help='mask consensus weight')
 
         # learning params
         self.parser.add_argument('--lr', type=float, default=1e-4, help='initial learning rate')

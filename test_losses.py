@@ -38,6 +38,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         self.flow_cycle_w = args.flow_cycle_w
         self.mask_cycle_w = args.mask_cycle_w
         self.feat_smooth_w = args.feat_smooth_w
+        self.feat_disc_w = args.feat_disc_w
 
     def depth_loss_left_img(self, disp_l, disp_r, img_l_aug, img_r_aug, feat_l, feat_r, ii):
 
@@ -204,6 +205,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         loss_sf_feat_sum = 0
         loss_pose_feat_sum = 0
         loss_disp_feat_sum = 0
+        loss_feat_disc_sum = 0
 
         k_l1_aug = target_dict['input_k_l1_aug']
         k_l2_aug = target_dict['input_k_l2_aug']
@@ -249,10 +251,12 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             ## feature smoothness loss
             loss_feat_smooth_l1 = _smoothness_motion_2nd(feat_l1, img_l1_aug, beta=0).mean(dim=1, keepdim=True).mean()
             loss_feat_smooth_l2 = _smoothness_motion_2nd(feat_l2, img_l2_aug, beta=0).mean(dim=1, keepdim=True).mean()
-            loss_feat_smooth = (loss_feat_smooth_l1 + loss_feat_smooth_l2)
+            loss_feat_smooth_sum = loss_feat_smooth_sum + (loss_feat_smooth_l1 + loss_feat_smooth_l2) * self.weights[ii]
 
-            ## feature distinction
-            loss_feat_disc_l1 = _smoothness_1st() 
+            ## feature distinctio
+            loss_feat_disc_l1 = _smoothness_1st(feat_l1, img_l1_aug).mean(dim=1, keepdim=True).mean()
+            loss_feat_disc_l2 = _smoothness_1st(feat_l2, img_l2_aug).mean(dim=1, keepdim=True).mean()
+            loss_feat_disc_sum = loss_feat_disc_sum + (loss_feat_disc_l1 + loss_feat_disc_l2) * self.weights[ii]
 
             ## Disp Loss
             loss_disp_l1, loss_disp_feat_l1, disp_occ_l1 = self.depth_loss_left_img(disp_l1, disp_r1, img_l1_aug, img_r1_aug, feat_l1, feat_r1, ii)
@@ -315,7 +319,6 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             loss_pose_2d = loss_pose_2d + loss_pose_im
             loss_pose_3d = loss_pose_3d + loss_pose_pts
 
-            loss_feat_smooth_sum = loss_feat_smooth_sum + loss_feat_smooth
             loss_sf_feat_sum = loss_sf_feat_sum + loss_sf_feat
             loss_pose_feat_sum = loss_pose_feat_sum + loss_pose_feat
 
@@ -367,7 +370,13 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         f_weight = max_val / f_loss
         d_weight = max_val / d_loss
 
-        total_loss = loss_sf_sum * f_weight + loss_dp_sum * d_weight + loss_pose_sum * f_weight + loss_mask_sum + loss_cons_sum * self.static_cons_w + loss_feat_smooth_sum
+        total_loss = loss_sf_sum * f_weight + \
+                     loss_dp_sum * d_weight + \
+                     loss_pose_sum * f_weight + \
+                     loss_mask_sum + \
+                     loss_cons_sum * self.static_cons_w + \
+                     loss_feat_smooth_sum * self.feat_smooth_w + \
+                     loss_feat_disc_sum * self.feat_disc_w
 
         loss_dict = {}
         loss_dict["dp"] = loss_dp_sum.detach()
@@ -389,6 +398,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         loss_dict["static_cons"] = loss_cons_sum.detach()
         loss_dict["cycle"] = loss_cycle_sum.detach()
         loss_dict['feat_smooth'] = loss_feat_smooth_sum.detach()
+        loss_dict['feat_disc'] = loss_feat_disc_sum.detach()
         loss_dict["total_loss"] = total_loss
 
 
