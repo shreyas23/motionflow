@@ -48,7 +48,7 @@ class UpConv(nn.Module):
 class Conv(nn.Module):
     """ Conv layer with options for padding and ELU/LeakyReLU nonlinearity
     """
-    def __init__(self, in_chs, out_chs, kernel_size=3, stride=1, dilation=1, nonlin='leakyrelu', pad_mode='reflection', use_bn=False, bias=True):
+    def __init__(self, in_chs, out_chs, kernel_size=3, stride=1, dilation=1, nonlin='leakyrelu', pad_mode='reflection', use_bn=False, bias=True, type='2d'):
         super(Conv, self).__init__()
 
         nonlin_dict = {
@@ -60,7 +60,10 @@ class Conv(nn.Module):
         padding = ((kernel_size - 1) * dilation) // 2
 
         layers = []
-        layers.append(nn.Conv2d(in_chs, out_chs, kernel_size=kernel_size, stride=stride, dilation=dilation, padding=padding, padding_mode=pad_mode, bias=bias))
+        if type == '2d':
+            layers.append(nn.Conv2d(in_chs, out_chs, kernel_size=kernel_size, stride=stride, dilation=dilation, padding=padding, padding_mode=pad_mode, bias=bias))
+        elif type == '3d':
+            layers.append(nn.Conv3d(in_chs, out_chs, kernel_size=kernel_size, stride=stride, dilation=dilation, padding=padding, padding_mode=pad_mode, bias=bias))
 
         if use_bn:
             layers.append(nn.BatchNorm2d(out_chs))

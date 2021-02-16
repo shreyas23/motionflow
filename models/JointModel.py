@@ -8,7 +8,7 @@ import logging
 from sys import exit
 
 from .correlation_package.correlation import Correlation
-from .encoders import PoseBottleNeck
+from .encoders import PoseBottleNeck, PoseBottleNeck3D
 from .modules_sceneflow import get_grid, WarpingLayer_SF, WarpingLayer_Pose
 from .modules_sceneflow import initialize_msra, upsample_outputs_as
 from .joint_decoders import JointDecoder, JointContextNetwork
@@ -73,14 +73,15 @@ class JointModel(nn.Module):
                 break
             if l == 0:
                 if args.use_bottleneck:
-                    num_ch_in = self.dim_corr + ch + bottleneck_out_ch
+                    num_ch_in = self.dim_corr + ch + bottleneck_out_ch*2
                 elif args.use_pose_corr:
                     num_ch_in = 2*self.dim_corr + ch
                 else:
                     num_ch_in = self.dim_corr + ch + ch
             else:
                 if args.use_bottleneck:
-                    num_ch_in = self.dim_corr + ch + bottleneck_out_ch + self.out_ch_size + 3 + 1 + 6 + 1
+                    num_ch_in = self.dim_corr + ch + bottleneck_out_ch*2 + self.out_ch_size + 3 + 1 + 6 + 1
+                    # num_ch_in = self.dim_corr + ch + bottleneck_out_ch + self.out_ch_size + 3 + 1 + 6 + 1
                 elif args.use_pose_corr:
                     num_ch_in = 2*self.dim_corr + ch + self.out_ch_size + 3 + 1 + 6 + 1
                 else:
@@ -90,7 +91,8 @@ class JointModel(nn.Module):
             layer_sf = JointDecoder(args, num_ch_in, use_bn=args.use_bn)
             self.flow_estimators.append(layer_sf)
             if args.use_bottleneck:
-                bottleneck = PoseBottleNeck(in_ch=(ch + ch))
+                # bottleneck = PoseBottleNeck(in_ch=(ch + ch))
+                bottleneck = PoseBottleNeck3D(in_ch=ch)
                 self.bottlenecks.append(bottleneck)
 
         self.corr_params = {"pad_size": self.search_range, "kernel_size": 1, "max_disp": self.search_range, "stride1": 1, "stride2": 1, "corr_multiply": 1}        
@@ -162,8 +164,14 @@ class JointModel(nn.Module):
                 x1_warp_pose = self.warping_layer_pose(x1, pose_mat_b, disp_l2, k2, input_dict['aug_size'])
 
             if self.args.use_bottleneck:
-                aux_f = self.bottlenecks[l](torch.cat([x1, x2_warp_pose], dim=1))
-                aux_b = self.bottlenecks[l](torch.cat([x1_warp_pose, x2], dim=1))
+                aux_in_f = torch.cat([x1.unsqueeze(dim=2), x2_warp_pose.unsqueeze(dim=2)], dim=2)
+                aux_in_b = torch.cat([x1_warp_pose.unsqueeze(dim=2), x2.unsqueeze(dim=2)], dim=2)
+                aux_f = self.bottlenecks[l](aux_in_f)
+                aux_b = self.bottlenecks[l](aux_in_b)
+                aux_f = torch.cat([aux_f[:, :, 0, :, :], aux_f[:, :, 1, :, :]], dim=1)
+                aux_b = torch.cat([aux_b[:, :, 0, :, :], aux_b[:, :, 1, :, :]], dim=1)
+                # aux_f = self.bottlenecks[l](torch.cat([x1, x2_warp_pose], dim=1))
+                # aux_b = self.bottlenecks[l](torch.cat([x1_warp_pose, x2], dim=1))
             
             # correlation
             out_corr_f = Correlation.apply(x1, x2_warp, self.corr_params)

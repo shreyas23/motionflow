@@ -181,3 +181,37 @@ class PoseBottleNeck(nn.Module):
         out_conv3 = self.conv3(out_conv2)
 
         return out_conv3 
+
+
+class PoseBottleNeck3D(nn.Module):
+
+    def __init__(self, in_ch=3, use_bn=False):
+        super(PoseBottleNeck3D, self).__init__()
+
+        conv_planes = [16, 32, 64, 96]
+        self.conv0 = Conv(in_ch, conv_planes[0], kernel_size=7, stride=1, use_bn=use_bn, type='3d')
+        self.conv1 = Conv(conv_planes[0], conv_planes[1], kernel_size=5, stride=1, use_bn=use_bn, type='3d')
+        self.conv2 = Conv(conv_planes[1], conv_planes[2], stride=1, use_bn=use_bn, type='3d')
+        self.conv3 = Conv(conv_planes[2], conv_planes[3], stride=1, use_bn=use_bn, type='3d')
+
+    def init_weights(self):
+        for layer in self.modules():
+            if isinstance(layer, nn.Conv2d) or isinstance(layer, nn.ConvTranspose2d):
+                nn.init.kaiming_normal_(layer.weight)
+                if layer.bias is not None:
+                    nn.init.constant_(layer.bias, 0)
+
+            elif isinstance(layer, nn.LeakyReLU):
+                pass
+
+            elif isinstance(layer, nn.Sequential):
+                pass
+
+
+    def forward(self, x):
+        out_conv0 = self.conv0(x)
+        out_conv1 = self.conv1(out_conv0)
+        out_conv2 = self.conv2(out_conv1)
+        out_conv3 = self.conv3(out_conv2)
+
+        return out_conv3 
