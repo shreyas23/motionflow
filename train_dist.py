@@ -232,7 +232,8 @@ def train(gpu, args):
         best_fp = os.path.join(args.log_dir, f"best_sf.ckpt")
         best_test_sf_otl = torch.load(best_fp, map_location=map_location)['loss']['sf']
     
-    save_new_best = False
+    if gpu == 0:
+        save_new_best = False
 
     # run training loop
     for epoch in range(curr_epoch, curr_epoch + args.epochs):
@@ -316,12 +317,6 @@ def train(gpu, args):
 
                 test_loss_avg_dict, test_output_dict, test_input_dict = evaluate(args, model, test_loss, test_dataloader, val_augmentations, gpu)
 
-                sf_otl = test_loss_avg_dict['sf']
-                if sf_otl < best_test_sf_otl:
-                    print(f"Epoch {epoch} is the new best model. New SF otls: {sf_otl} - Old best SF otls: {best_test_sf_otl}")
-                    best_test_sf_otl = sf_otl
-                    save_new_best = True
-
                 with torch.no_grad():
                     loss_names = []
                     all_losses = []
@@ -344,6 +339,13 @@ def train(gpu, args):
                         print(f"\t Epoch {epoch} test loss avg:")
                         pprint(test_reduced_losses)
                         print("\n")
+
+                        sf_otl = test_reduced_losses['sf']
+                        if sf_otl < best_test_sf_otl:
+                            print(f"Epoch {epoch} is the new best model. New SF otls: {sf_otl} - Old best SF otls: {best_test_sf_otl}\n")
+                            best_test_sf_otl = sf_otl
+                            save_new_best = True
+
             else:
                 val_output_dict, val_input_dict = None, None
                 test_output_dict, test_input_dict = None, None

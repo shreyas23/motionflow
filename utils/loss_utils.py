@@ -161,6 +161,19 @@ def _gradient_y_2nd(img):
     gy = img_t + img_b - 2 * img
     return gy
 
+def _smoothness_1st(feat, img, beta=1):
+    feat_grad_x = _gradient_x(feat)
+    feat_grad_y = _gradient_y(feat)
+
+    weights_x = torch.exp(-torch.mean(torch.abs(img_grad_x),
+                                      1, keepdim=True) * beta)
+    weights_y = torch.exp(-torch.mean(torch.abs(img_grad_y),
+                                      1, keepdim=True) * beta)
+
+    smoothness_x = feat_grad_x * weights_x
+    smoothness_y = feat_grad_y * weights_y
+
+    return -(smoothness_x.abs() + smoothness_y.abs())
 
 def _smoothness_motion_2nd(sf, img, beta=1):
     sf_grad_x = _gradient_x_2nd(sf)

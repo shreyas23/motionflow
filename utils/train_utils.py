@@ -17,7 +17,7 @@ from losses import Loss
 
 from .loss_utils import _disp2depth_kitti_K, _adaptive_disocc_detection, _generate_image_left, _reconstruction_error
 from .loss_utils import _adaptive_disocc_detection_disp
-from .inverse_warp import pose_vec2mat, pose2flow
+from .inverse_warp import pose_vec2mat, pose2flow, pose2sceneflow
 from .interpolation import interpolate2d_as
 from .sceneflow_util import projectSceneFlow2Flow, intrinsic_scale
 from .helpers import BackprojectDepth, Project3D
@@ -329,12 +329,15 @@ def visualize_output(args, input_dict, output_dict, epoch, writer, prefix):
 
     # motion mask
     if use_mask:
-        mask_l1_thresh = (mask_l1 > args.mask_thresh).float()
-        mask_l2_thresh = (mask_l2 > args.mask_thresh).float()
         writer.add_images(prefix + 'pre_thresh_mask_l1', mask_l1, epoch)
-        writer.add_images(prefix + 'thresh_mask_l1', mask_l1_thresh, epoch)
         writer.add_images(prefix + 'pre_thresh_mask_l2', mask_l2, epoch)
-        writer.add_images(prefix + 'thresh_mask_l2', mask_l2_thresh, epoch)
+        if prefix == 'train':
+            mask_l1_thresh = (mask_l1 >= args.mask_thresh).float()
+            mask_l2_thresh = (mask_l2 >= args.mask_thresh).float()
+            mask_flow_diff = (_elementwise_epe(pose_sf, sf) <= flow_diff_thresh).float()
+            rigidity_mask_comb = logical_or(rigidity_mask, mask_flow_diff)
+            writer.add_images(prefix + 'thresh_mask_l1', mask_l1_thresh, epoch)
+            writer.add_images(prefix + 'thresh_mask_l2', mask_l2_thresh, epoch)
     if 'census_masks_l2' in output_dict:
         census_mask_l2 = interpolate2d_as(output_dict['census_masks_l2'][0].detach(), img_l1)
         writer.add_images(prefix + 'target_census_mask', census_mask_l2, epoch)
