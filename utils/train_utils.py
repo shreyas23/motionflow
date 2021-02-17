@@ -342,7 +342,9 @@ def visualize_output(args, input_dict, output_dict, epoch, writer, prefix):
         census_mask_l2 = interpolate2d_as(output_dict['census_masks_l2'][0].detach(), img_l1)
         writer.add_images(prefix + 'target_census_mask', census_mask_l2, epoch)
     if 'rigidity_masks_l2_pp' in output_dict:
-        rigid_mask = interpolate2d_as(output_dict['rigidity_masks_l2_pp'][0].detach(), img_l1)
+        rigid_mask_l1 = interpolate2d_as(output_dict['rigidity_masks_l1_pp'][0].detach(), img_l1)
+        writer.add_images(prefix + 'rigidity_masks_l1_pp', rigid_mask, epoch)
+        rigid_mask_l2 = interpolate2d_as(output_dict['rigidity_masks_l2_pp'][0].detach(), img_l1)
         writer.add_images(prefix + 'rigidity_masks_l2_pp', rigid_mask, epoch)
 
     return
