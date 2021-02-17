@@ -39,6 +39,8 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         self.mask_cycle_w = args.mask_cycle_w
         self.feat_smooth_w = args.feat_smooth_w
         self.feat_disc_w = args.feat_disc_w
+        
+        self.kl_div_loss = nn.KLDivLoss(reduction='none')
 
     def depth_loss_left_img(self, disp_l, disp_r, img_l_aug, img_r_aug, feat_l, feat_r, ii):
 
@@ -154,8 +156,8 @@ class Loss_SceneFlow_SelfSup(nn.Module):
 
         mask_l2_warp = reconstructMask(coord1, torch.log(mask_l2))
         mask_l1_warp = reconstructMask(coord2, torch.log(mask_l1))
-        mask_l1_cycle_diff = kl_div(mask_l2_warp, mask_l1)
-        mask_l2_cycle_diff = kl_div(mask_l1_warp, mask_l2)
+        mask_l1_cycle_diff = self.kl_div_loss(torch.log(mask_l2_warp), mask_l1).mean(dim=1, keepdim=True)
+        mask_l2_cycle_diff = self.kl_div_loss(torch.log(mask_l1_warp), mask_l2).mean(dim=1, keepdim=True)
         mask_cycle_loss = mask_l1_cycle_diff[cycle_occ].mean() + mask_l2_cycle_diff[cycle_occ].mean()
 
         ## 3D motion smoothness loss
