@@ -381,9 +381,6 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         f_weight = max_val / f_loss
         d_weight = max_val / d_loss
 
-        if self.args.train_exp_mask:
-            loss_mask_sum = loss_mask_sum * f_weight
-
         total_loss = loss_sf_sum * f_weight + \
                      loss_dp_sum * d_weight + \
                      loss_pose_sum * f_weight + \
