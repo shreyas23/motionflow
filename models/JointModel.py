@@ -264,7 +264,7 @@ class JointModel(nn.Module):
                 break
         
         x1_rev = x1_pyramid
-        
+
         output_dict['flows_f'] = upsample_outputs_as(sceneflows_f[::-1], x1_rev)
         output_dict['flows_b'] = upsample_outputs_as(sceneflows_b[::-1], x1_rev)
         output_dict['disps_l1'] = upsample_outputs_as(disps_1[::-1], x1_rev)
@@ -273,8 +273,8 @@ class JointModel(nn.Module):
         output_dict['masks_l2'] = upsample_outputs_as(masks_2[::-1], x1_rev)
         output_dict["pose_f"] = poses_f[::-1]
         output_dict["pose_b"] = poses_b[::-1]
-        # output_dict['feats_l1'] = upsample_outputs_as(x1_pyramid[1:], x1_pyramid)
-        # output_dict['feats_l2'] = upsample_outputs_as(x2_pyramid[1:], x2_pyramid)
+        output_dict['feats_l1'] = upsample_outputs_as(x1_pyramid[1:], x1_pyramid)
+        output_dict['feats_l2'] = upsample_outputs_as(x2_pyramid[1:], x2_pyramid)
 
         return output_dict
 
