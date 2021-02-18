@@ -45,7 +45,7 @@ def reconstruction_err(disp, src, tgt, K, sf=None, T=None, mode='pose', ssim_w=0
     return img_diff, occ_mask, (cam_points, grid), occ_mask
 
 
-def pose_process_flow(src_img, tgt_img, pose, sf, disp, mask, K, aug_size, mask_thresh=0.5, flow_diff_thresh=0.1):
+def pose_process_flow(pose, sf, disp, mask, K, aug_size, mask_thresh=0.5, flow_diff_thresh=0.1):
     # denormalize disparity
     _, _, h, w = disp.shape 
     disp = disp * w
@@ -60,7 +60,7 @@ def pose_process_flow(src_img, tgt_img, pose, sf, disp, mask, K, aug_size, mask_
 
     depth = _disp2depth_kitti_K(disp, K_s[:, 0, 0])
     pose_sf = pose2sceneflow(depth, None, K_s, torch.inverse(K_s), pose_mat=pose)
-
+    
     rigidity_mask = (mask >= mask_thresh).float()
     mask_flow_diff = (_elementwise_epe(pose_sf, sf) <= flow_diff_thresh).float()
     # mask_flow_diff = ((pose_sf - sf).abs() <= flow_diff_thresh).prod(dim=1, keepdim=True).float()
