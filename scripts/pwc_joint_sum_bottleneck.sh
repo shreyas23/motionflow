@@ -17,8 +17,8 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --num_workers=16 \
                       --start_epoch=1 \
                       --epochs=30 \
-                      --batch_size=2 \
-                      --lr=4e-4 \
+                      --batch_size=4 \
+                      --lr=2e-4 \
                       --lr_gamma=0.5 \
                       --lr_sched_type='step' \
                       --milestones 15 \

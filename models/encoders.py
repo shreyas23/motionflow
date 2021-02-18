@@ -155,24 +155,10 @@ class PoseBottleNeck(nn.Module):
         super(PoseBottleNeck, self).__init__()
 
         conv_planes = [16, 32, 64, 96]
-        self.conv0 = Conv(in_ch, conv_planes[0], kernel_size=7, stride=1, use_bn=use_bn)
-        self.conv1 = Conv(conv_planes[0], conv_planes[1], kernel_size=5, stride=1, use_bn=use_bn)
-        self.conv2 = Conv(conv_planes[1], conv_planes[2], stride=1, use_bn=use_bn)
-        self.conv3 = Conv(conv_planes[2], conv_planes[3], stride=1, use_bn=use_bn)
-
-    def init_weights(self):
-        for layer in self.modules():
-            if isinstance(layer, nn.Conv2d) or isinstance(layer, nn.ConvTranspose2d):
-                nn.init.kaiming_normal_(layer.weight)
-                if layer.bias is not None:
-                    nn.init.constant_(layer.bias, 0)
-
-            elif isinstance(layer, nn.LeakyReLU):
-                pass
-
-            elif isinstance(layer, nn.Sequential):
-                pass
-
+        self.conv0 = Conv(in_ch         , conv_planes[0], kernel_size=7, use_bn=use_bn)
+        self.conv1 = Conv(conv_planes[0], conv_planes[1], kernel_size=5, use_bn=use_bn)
+        self.conv2 = Conv(conv_planes[1], conv_planes[2], use_bn=use_bn)
+        self.conv3 = Conv(conv_planes[2], conv_planes[3], use_bn=use_bn)
 
     def forward(self, x):
         out_conv0 = self.conv0(x)
