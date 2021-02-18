@@ -11,8 +11,9 @@ class JointDecoder(nn.Module):
         self.use_mask = args.train_exp_mask or args.train_census_mask
 
         self.convs = nn.Sequential(
-            Conv(ch_in, 256, use_bn=use_bn),
-            Conv(256, 128, use_bn=use_bn),
+            Conv(ch_in, 192, use_bn=use_bn),
+            Conv(192, 128, use_bn=use_bn),
+            Conv(128, 128, use_bn=use_bn),
             Conv(128, 96, use_bn=use_bn),
             Conv(96, 64, use_bn=use_bn),
             Conv(64, 32, use_bn=use_bn)
@@ -29,7 +30,7 @@ class JointDecoder(nn.Module):
         sf = self.conv_sf(x_out)
         disp1 = self.conv_d1(x_out)
         pose_out = self.conv_pose(x_out)
-        pred_pose = pose_out.mean(3).mean(2) * 0.01
+        pred_pose = pose_out.mean(3).mean(2) * 0.1
 
         mask = self.conv_mask(x_out)
 
@@ -70,7 +71,7 @@ class JointContextNetwork(nn.Module):
         sf = self.conv_sf(x_out)
         disp1 = self.conv_d1(x_out) * 0.3
         pose_out = self.conv_pose(x_out)
-        pred_pose = pose_out.mean(3).mean(2) * 0.01
+        pred_pose = pose_out.mean(3).mean(2) * 0.1
 
         mask = self.conv_mask(x_out)
 
