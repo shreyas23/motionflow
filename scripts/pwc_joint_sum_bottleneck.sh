@@ -3,7 +3,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --test_data_root="/mnt/data/kitti_jpg/kitti2015/" \
                       --log_root="/ceph/checkpoints/" \
                       --exp_dir="pwc_joint_sum_lr" \
-                      --exp_name="pwc_4e4_bottleneck_3d_no_feat" \
+                      --exp_name="bottleneck_3d_fix" \
                       --log_freq=1 \
                       --save_freq=1 \
                       --dataset_name="KITTI_EIGEN" \
@@ -21,7 +21,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --lr=2e-4 \
                       --lr_gamma=0.5 \
                       --lr_sched_type='step' \
-                      --milestones 15 \
+                      --milestones 20 \
                       --flow_reduce_mode='sum' \
                       --disp_sm_w=0.1 \
                       --disp_lr_w=0.0 \
