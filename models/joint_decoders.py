@@ -11,8 +11,8 @@ class JointDecoder(nn.Module):
         self.use_mask = args.train_exp_mask or args.train_census_mask
 
         self.convs = nn.Sequential(
-            Conv(ch_in, 128, use_bn=use_bn),
-            Conv(128, 128, use_bn=use_bn),
+            Conv(ch_in, 192, use_bn=use_bn),
+            Conv(192, 128, use_bn=use_bn),
             Conv(128, 128, use_bn=use_bn),
             Conv(128, 96, use_bn=use_bn),
             Conv(96, 64, use_bn=use_bn),
