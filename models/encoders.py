@@ -184,7 +184,7 @@ class PoseBottleNeck(nn.Module):
 
 class PoseBottleNeck3D(nn.Module):
 
-    def __init__(self, in_ch=3, use_bn=False):
+    def __init__(self, in_ch, use_bn=False):
         super(PoseBottleNeck3D, self).__init__()
 
         conv_planes = [16, 32, 64, 96]

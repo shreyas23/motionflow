@@ -160,12 +160,13 @@ class JointModel(nn.Module):
                 x2_warp = self.warping_layer_sf(x2, flow_f, disp_l1, k1, input_dict['aug_size'])
                 x1_warp = self.warping_layer_sf(x1, flow_b, disp_l2, k2, input_dict['aug_size'])
 
-                x2_warp_pose = self.warping_layer_pose(x2, pose_mat_f, disp_l1, k1, input_dict['aug_size'])
-                x1_warp_pose = self.warping_layer_pose(x1, pose_mat_b, disp_l2, k2, input_dict['aug_size'])
+                if self.args.use_pose_corr:
+                    x2_warp_pose = self.warping_layer_pose(x2, pose_mat_f, disp_l1, k1, input_dict['aug_size'])
+                    x1_warp_pose = self.warping_layer_pose(x1, pose_mat_b, disp_l2, k2, input_dict['aug_size'])
 
             if self.args.use_bottleneck:
-                aux_in_f = torch.cat([x1.unsqueeze(dim=2), x2_warp_pose.unsqueeze(dim=2)], dim=2)
-                aux_in_b = torch.cat([x2.unsqueeze(dim=2), x1_warp_pose.unsqueeze(dim=2)], dim=2)
+                aux_in_f = torch.cat([x1.unsqueeze(dim=2), x2_warp.unsqueeze(dim=2)], dim=2)
+                aux_in_b = torch.cat([x2.unsqueeze(dim=2), x1_warp.unsqueeze(dim=2)], dim=2)
                 aux_f = self.bottlenecks[l](aux_in_f)
                 aux_b = self.bottlenecks[l](aux_in_b)
                 aux_f = torch.cat([aux_f[:, :, 0, :, :], aux_f[:, :, 1, :, :]], dim=1)
