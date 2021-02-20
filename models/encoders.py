@@ -9,9 +9,8 @@ import torch.utils.model_zoo as model_zoo
 from .custom_resnet_encoder import resnet18
 
 import numpy as np
-import logging
 
-from .common import Conv, conv
+from .common import Conv, conv, BottleneckAttentionModule
 
 class FeatureExtractor(nn.Module):
     def __init__(self, num_chs):
@@ -193,6 +192,10 @@ class PoseBottleNeck3D(nn.Module):
         self.conv1 = Conv(conv_planes[0], conv_planes[1], stride=1, use_bn=use_bn, type='3d')
         self.conv2 = Conv(conv_planes[1], conv_planes[2], stride=1, use_bn=use_bn, type='3d')
         self.conv3 = Conv(conv_planes[2], conv_planes[3], stride=1, use_bn=use_bn, type='3d')
+        self.attention0 = BottleneckAttentionModule(num_features=conv_planes[0], reduction=4, type='3d', use_spatial=True)
+        self.attention1 = BottleneckAttentionModule(num_features=conv_planes[1], reduction=4, type='3d', use_spatial=True)
+        self.attention2 = BottleneckAttentionModule(num_features=conv_planes[2], reduction=4, type='3d', use_spatial=True)
+        self.attention3 = BottleneckAttentionModule(num_features=conv_planes[3], reduction=4, type='3d', use_spatial=True)
 
 
     def init_weights(self):
@@ -210,9 +213,9 @@ class PoseBottleNeck3D(nn.Module):
 
 
     def forward(self, x):
-        out_conv0 = self.conv0(x)
-        out_conv1 = self.conv1(out_conv0)
-        out_conv2 = self.conv2(out_conv1)
-        out_conv3 = self.conv3(out_conv2)
+        out_conv0 = self.attention0(self.conv0(x))
+        out_conv1 = self.attention1(self.conv1(out_conv0))
+        out_conv2 = self.attention2(self.conv2(out_conv1))
+        out_conv3 = self.attention3(self.conv3(out_conv2))
 
         return out_conv3 

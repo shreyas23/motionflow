@@ -174,3 +174,53 @@ class GaussianSmoothing(nn.Module):
         # padding = [padding] * self.dim
         # input = tf.pad(input, pad=padding, mode='reflection')
         return self.conv(input, weight=self.weight, groups=self.groups, padding=padding)
+
+class ChannelPool(nn.Module):
+    def forward(self, x):
+        return torch.cat( (torch.max(x,1)[0].unsqueeze(1), torch.mean(x,1).unsqueeze(1)), dim=1 )
+
+class SpatialGate(nn.Module):
+    def __init__(self):
+        super(SpatialGate, self).__init__()
+        kernel_size = 7
+        self.compress = ChannelPool()
+        self.spatial = Conv(2, 1, kernel_size, stride=1, nonlin='none', type='3d')
+    def forward(self, x):
+        x_compress = self.compress(x)
+        x_out = self.spatial(x_compress)
+        scale = torch.sigmoid(x_out) # broadcasting
+        return x * scale
+
+class BottleneckAttentionModule(nn.Module):
+    def __init__(self, num_features, reduction, type='3d', use_spatial=False):
+        super(BottleneckAttentionModule, self).__init__()
+
+        self.use_spatial = use_spatial
+
+        if type =='3d':
+            self.module = nn.Sequential(
+                nn.AdaptiveAvgPool3d(1),
+                nn.Conv3d(num_features, num_features // reduction, kernel_size=1),
+                nn.LeakyReLU(inplace=True),
+                nn.Conv3d(num_features // reduction, num_features, kernel_size=1),
+                nn.Sigmoid()
+            )
+        elif type =='2d':
+            self.module = nn.Sequential(
+                nn.AdaptiveAvgPool2d(1),
+                nn.Conv2d(num_features, num_features // reduction, kernel_size=1),
+                nn.LeakyReLU(inplace=True),
+                nn.Conv2d(num_features // reduction, num_features, kernel_size=1),
+                nn.Sigmoid()
+            )
+        else:
+            raise NotImplementedError
+
+        if self.use_spatial:
+            self.spatial_module = SpatialGate()
+
+    def forward(self, x):
+        x = x * self.module(x)
+        if self.use_spatial:
+            x = x * self.spatial_module(x)
+        return x
