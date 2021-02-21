@@ -70,14 +70,14 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         lr_disp_diff_r[~right_occ].detach_()
 
         ## Disparities smoothness
-        loss_smooth = _smoothness_motion_2nd(disp_l, img_l_aug, beta=1.0).mean() / (2 ** ii)
+        loss_smooth = _smoothness_motion_2nd(disp_l, img_l_aug, beta=10.0).mean() / (2 ** ii)
 
         return loss_img + self.disp_smooth_w * loss_smooth + loss_lr * self.disp_lr_w, loss_lr, left_occ
 
 
     def mask_loss(self, image, mask, census_target, scale):
         reg_loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
-        sm_loss = _smoothness_motion_2nd(mask, image, beta=1.0).mean() / (2**scale)
+        sm_loss = _smoothness_motion_2nd(mask, image, beta=10.0).mean() / (2**scale)
         census_loss = tf.binary_cross_entropy(mask, census_target)
 
         return reg_loss, sm_loss, census_loss
