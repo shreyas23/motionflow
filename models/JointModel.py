@@ -163,7 +163,7 @@ class JointModel(nn.Module):
 
             if self.args.use_bottleneck:
                 aux_f = self.bottlenecks[l](torch.cat([x1, x2_warp_pose], dim=1))
-                aux_b = self.bottlenecks[l](torch.cat([x1_warp_pose, x2], dim=1))
+                aux_b = self.bottlenecks[l](torch.cat([x2, x1_warp_pose], dim=1))
             
             # correlation
             out_corr_f = Correlation.apply(x1, x2_warp, self.corr_params)
