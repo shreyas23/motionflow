@@ -188,16 +188,15 @@ class PoseBottleNeck3D(nn.Module):
         super(PoseBottleNeck3D, self).__init__()
 
         conv_planes = [16, 32, 64, 96]
-        self.conv0 = Conv(in_ch         , conv_planes[0], stride=1, use_bn=use_bn, type='3d')
-        self.conv1 = Conv(conv_planes[0], conv_planes[1], stride=1, use_bn=use_bn, type='3d')
-        self.conv2 = Conv(conv_planes[1], conv_planes[2], stride=1, use_bn=use_bn, type='3d')
-        self.conv3 = Conv(conv_planes[2], conv_planes[3], stride=1, use_bn=use_bn, type='3d')
+        self.conv0 = Conv(in_ch         , conv_planes[0], stride=1, use_bn=use_bn, type='3d', pad_mode='zeros')
+        self.conv1 = Conv(conv_planes[0], conv_planes[1], stride=1, use_bn=use_bn, type='3d', pad_mode='zeros')
+        self.conv2 = Conv(conv_planes[1], conv_planes[2], stride=1, use_bn=use_bn, type='3d', pad_mode='zeros')
+        self.conv3 = Conv(conv_planes[2], conv_planes[3], stride=1, use_bn=use_bn, type='3d', pad_mode='zeros')
 
         self.use_attention = use_attention
 
         self.attention1 = BottleneckAttentionModule(num_features=conv_planes[1], reduction=4, type='3d', use_spatial=False)
         self.attention3 = BottleneckAttentionModule(num_features=conv_planes[3], reduction=4, type='3d', use_spatial=False)
-
 
 
     def init_weights(self):
