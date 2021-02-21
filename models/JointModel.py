@@ -202,26 +202,26 @@ class JointModel(nn.Module):
                 pose_mat_b = invert_pose(pose_mat_f)
             else:
                 if self.args.use_bottleneck:
-                    x1_out, flow_f_res, disp_l1_res, mask_l1, pose_f_res, pose_f_out = self.flow_estimators[l](torch.cat([
+                    x1_out, flow_f_res, disp_l1, mask_l1, pose_f_res, pose_f_out = self.flow_estimators[l](torch.cat([
                         out_corr_relu_f, x1, aux_f, x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
                     x2_out, flow_b_res, disp_l2_res, mask_l2,          _, pose_b_out = self.flow_estimators[l](torch.cat([
                         out_corr_relu_b, x2, aux_b, x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
                 elif self.args.use_pose_corr:
-                    x1_out, flow_f_res, disp_l1_res, mask_l1, pose_f_res, pose_f_out = self.flow_estimators[l](torch.cat([
+                    x1_out, flow_f_res, disp_l1, mask_l1, pose_f_res, pose_f_out = self.flow_estimators[l](torch.cat([
                         out_corr_relu_f, x1, pose_out_corr_relu_f, x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
-                    x2_out, flow_b_res, disp_l2_res, mask_l2,          _, pose_b_out = self.flow_estimators[l](torch.cat([
+                    x2_out, flow_b_res, disp_l2, mask_l2,          _, pose_b_out = self.flow_estimators[l](torch.cat([
                         out_corr_relu_b, x2, pose_out_corr_relu_b, x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
                 else:
-                    x1_out, flow_f_res, disp_l1_res, mask_l1, pose_f_res, pose_f_out = self.flow_estimators[l](torch.cat([
+                    x1_out, flow_f_res, disp_l1, mask_l1, pose_f_res, pose_f_out = self.flow_estimators[l](torch.cat([
                         out_corr_relu_f, x1, x2, x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
-                    x2_out, flow_b_res, disp_l2_res, mask_l2,          _, pose_b_out = self.flow_estimators[l](torch.cat([
+                    x2_out, flow_b_res, disp_l2, mask_l2,          _, pose_b_out = self.flow_estimators[l](torch.cat([
                         out_corr_relu_b, x2, x1, x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
 
                 flow_f = flow_f + flow_f_res
                 flow_b = flow_b + flow_b_res
 
-                disp_l1 = disp_l1 + disp_l1_res
-                disp_l2 = disp_l2 + disp_l2_res
+                # disp_l1 = disp_l1 + disp_l1_res
+                # disp_l2 = disp_l2 + disp_l2_res
 
                 pose_mat_f_res = pose_vec2mat(pose_f_res)
                 pose_mat_b_res = invert_pose(pose_mat_f_res)
