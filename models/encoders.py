@@ -195,8 +195,8 @@ class PoseBottleNeck3D(nn.Module):
 
         self.use_attention = use_attention
 
-        self.attention1 = BottleneckAttentionModule(num_features=conv_planes[1], reduction=4, type='3d', use_spatial=False)
-        self.attention3 = BottleneckAttentionModule(num_features=conv_planes[3], reduction=4, type='3d', use_spatial=False)
+        self.attention1 = BottleneckAttentionModule(num_features=conv_planes[1], reduction=4, type='3d', use_spatial=True)
+        self.attention3 = BottleneckAttentionModule(num_features=conv_planes[3], reduction=4, type='3d', use_spatial=True)
 
 
     def init_weights(self):
