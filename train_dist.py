@@ -345,6 +345,8 @@ def train(gpu, args):
                             print(f"Epoch {epoch} is the new best model. New SF otls: {sf_otl} - Old best SF otls: {best_test_sf_otl}\n")
                             best_test_sf_otl = sf_otl
                             save_new_best = True
+                        else:
+                            print(f"Epoch {epoch} is still the best model with SF otls % = {best_test_sf_otl}\n")
 
             else:
                 val_output_dict, val_input_dict = None, None
