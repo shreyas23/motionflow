@@ -222,11 +222,11 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         loss_sf_sm = 0
         loss_cycle_sum = 0
         loss_lr_sum = 0
-        loss_feat_smooth_sum = 0
-        loss_sf_feat_sum = 0
-        loss_pose_feat_sum = 0
-        loss_disp_feat_sum = 0
-        loss_feat_disc_sum = 0
+        # loss_feat_smooth_sum = 0
+        # loss_sf_feat_sum = 0
+        # loss_pose_feat_sum = 0
+        # loss_disp_feat_sum = 0
+        # loss_feat_disc_sum = 0
 
         k_l1_aug = target_dict['input_k_l1_aug']
         k_l2_aug = target_dict['input_k_l2_aug']
