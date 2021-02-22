@@ -14,6 +14,8 @@ from models.modules_sceneflow import WarpingLayer_Flow
 from utils.inverse_warp import pose2sceneflow
 from models.common import GaussianSmoothing
 
+eps = 1e-7
+
 ###############################################
 ## Loss function
 ###############################################
@@ -136,8 +138,8 @@ class Loss_SceneFlow_SelfSup(nn.Module):
 
         mask_l2_warp = reconstructMask(coord1, torch.log(mask_l2))
         mask_l1_warp = reconstructMask(coord2, torch.log(mask_l1))
-        mask_l1_cycle_diff = self.kl_div_loss(torch.log(mask_l2_warp), mask_l1).mean(dim=1, keepdim=True)
-        mask_l2_cycle_diff = self.kl_div_loss(torch.log(mask_l1_warp), mask_l2).mean(dim=1, keepdim=True)
+        mask_l1_cycle_diff = self.kl_div_loss(torch.log(mask_l2_warp + eps), mask_l1 + eps).mean(dim=1, keepdim=True)
+        mask_l2_cycle_diff = self.kl_div_loss(torch.log(mask_l1_warp + eps), mask_l2 + eps).mean(dim=1, keepdim=True)
         mask_cycle_loss = mask_l1_cycle_diff[cycle_occ].mean() + mask_l2_cycle_diff[cycle_occ].mean()
 
         ## 3D motion smoothness loss
