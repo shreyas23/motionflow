@@ -94,7 +94,6 @@ class JointModel(nn.Module):
                 # bottleneck = PoseBottleNeck(in_ch=(ch + ch))
                 bottleneck = PoseBottleNeck3D(in_ch=ch)
                 self.bottlenecks.append(bottleneck)
-
         self.corr_params = {"pad_size": self.search_range, "kernel_size": 1, "max_disp": self.search_range, "stride1": 1, "stride2": 1, "corr_multiply": 1}        
         self.context_networks = JointContextNetwork(args, self.out_ch_size + 3 + 1 + 6 + 1, use_bn=args.use_bn)
         self.sigmoid = torch.nn.Sigmoid()
