@@ -366,6 +366,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         loss_dict["static_cons"] = loss_cons_sum.detach()
         loss_dict["cycle"] = loss_cycle_sum.detach()
         loss_dict['feat_disc'] = loss_feat_disc_sum.detach()
+        loss_dict['feat_sm'] = loss_feat_sm_sum.detach()
         loss_dict["total_loss"] = total_loss
 
         self.detaching_grad_of_outputs(output_dict['output_dict_r'])
