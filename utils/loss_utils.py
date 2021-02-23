@@ -161,7 +161,12 @@ def _gradient_y_2nd(img):
     gy = img_t + img_b - 2 * img
     return gy
 
-def _smoothness_1st(feat, img, beta=1):
+def _smoothness_2nd(feat, beta=1):
+    grad_x = _gradient_x_2nd(feat)
+    grad_y = _gradient_y_2nd(feat)
+    return grad_x + grad_y
+
+def _disc_1st(feat, img, beta=1):
     feat_grad_x = _gradient_x(feat)
     feat_grad_y = _gradient_y(feat)
 
