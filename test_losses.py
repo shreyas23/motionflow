@@ -4,7 +4,7 @@ import torch.nn.functional as tf
 
 from utils.loss_utils import _generate_image_left, _elementwise_epe, _elementwise_l1, _smoothness_motion_2nd
 from utils.loss_utils import _adaptive_disocc_detection_disp, _adaptive_disocc_detection, _SSIM, logical_or
-from utils.loss_utils import _reconstruction_error, kl_div, _smoothness_1st
+from utils.loss_utils import _reconstruction_error, kl_div, _disc_1st, _smoothness_2nd
 from models.forwardwarp_package.forward_warp import forward_warp
 from utils.interpolation import interpolate2d_as
 from utils.sceneflow_util import pixel2pts_ms, pts2pixel_ms, reconstructImg, reconstructPts, projectSceneFlow2Flow, disp2depth_kitti
@@ -39,6 +39,8 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         self.flow_diff_thresh = args.flow_diff_thresh
         self.flow_cycle_w = args.flow_cycle_w
         self.mask_cycle_w = args.mask_cycle_w
+        self.feat_sm_w = args.feat_sm_w
+        self.feat_disc_w = args.feat_disc_w
         
         self.kl_div_loss = nn.KLDivLoss(reduction='none')
 
@@ -199,6 +201,22 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         census_masks_l1 = []
         census_masks_l2 = []
 
+        feats = output_dict['feats']
+
+        loss_feat_disc_sum = 0
+        loss_feat_sm_sum = 0
+        for ii, feat in enumerate(feats):
+            img_l1_aug = interpolate2d_as(target_dict['input_l1_aug'], feat)
+            img_l2_aug = interpolate2d_as(target_dict['input_l2_aug'], feat)
+
+            disc_loss1 = _disc_1st(feat, img_l1_aug).mean(dim=1, keepdim=True).mean()
+            disc_loss2 = _disc_1st(feat, img_l2_aug).mean(dim=1, keepdim=True).mean()
+            disc_loss = (disc_loss1 + disc_loss2) / (2**ii)
+            loss_feat_disc_sum = loss_feat_disc_sum + disc_loss
+
+            sm_loss = _smoothness_2nd(feat).mean(dim=1, keepdim=True).mean() / (2**ii)
+            loss_feat_sm_sum = loss_feat_sm_sum + sm_loss
+
         for ii, (sf_f, sf_b, disp_l1, disp_l2, disp_r1, disp_r2, pose_f, pose_b, mask_l1, mask_l2) in enumerate(zip(output_dict['flows_f'], 
                                                                                                   output_dict['flows_b'], 
                                                                                                   output_dict['disps_l1'], 
@@ -327,7 +345,9 @@ class Loss_SceneFlow_SelfSup(nn.Module):
                      loss_dp_sum * d_weight + \
                      loss_pose_sum * f_weight + \
                      loss_mask_sum + \
-                     loss_cons_sum * self.static_cons_w
+                     loss_cons_sum * self.static_cons_w + \
+                     loss_feat_disc_sum * self.feat_sm_w + \
+                     loss_feat_sm_sum * self.feat_sm_w
 
         loss_dict = {}
         loss_dict["dp"] = loss_dp_sum.detach()
@@ -345,8 +365,8 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         loss_dict["mask_reg"] = loss_mask_reg_sum.detach()
         loss_dict["static_cons"] = loss_cons_sum.detach()
         loss_dict["cycle"] = loss_cycle_sum.detach()
+        loss_dict['feat_disc'] = loss_feat_disc_sum.detach()
         loss_dict["total_loss"] = total_loss
-
 
         self.detaching_grad_of_outputs(output_dict['output_dict_r'])
 
