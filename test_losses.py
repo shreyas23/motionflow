@@ -163,6 +163,8 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             output_dict['masks_l2'][ii].detach_()
             output_dict['pose_f'][ii].detach_()
             output_dict['pose_b'][ii].detach_()
+            output_dict['feats_l1'][ii].detach_()
+            output_dict['feats_l2'][ii].detach_()
 
         return None
 
@@ -201,20 +203,21 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         census_masks_l1 = []
         census_masks_l2 = []
 
-        feats = output_dict['feats']
+        feats_l1 = output_dict['feats_l1']
+        feats_l2 = output_dict['feats_l2']
 
         loss_feat_disc_sum = 0
         loss_feat_sm_sum = 0
-        for ii, feat in enumerate(feats):
-            img_l1_aug = interpolate2d_as(target_dict['input_l1_aug'], feat)
-            img_l2_aug = interpolate2d_as(target_dict['input_l2_aug'], feat)
+        for ii, (feat_l1, feat_l2) in enumerate(zip(feats_l1, feats_l2)):
+            img_l1_aug = interpolate2d_as(target_dict['input_l1_aug'], feat_l1)
+            img_l2_aug = interpolate2d_as(target_dict['input_l2_aug'], feat_l2)
 
-            disc_loss1 = _disc_1st(feat, img_l1_aug).mean(dim=1, keepdim=True).mean()
-            disc_loss2 = _disc_1st(feat, img_l2_aug).mean(dim=1, keepdim=True).mean()
+            disc_loss1 = _disc_1st(feat_l1, img_l1_aug).mean(dim=1, keepdim=True).mean()
+            disc_loss2 = _disc_1st(feat_l2, img_l2_aug).mean(dim=1, keepdim=True).mean()
             disc_loss = (disc_loss1 + disc_loss2) / (2**ii)
             loss_feat_disc_sum = loss_feat_disc_sum + disc_loss
 
-            sm_loss = _smoothness_2nd(feat).mean(dim=1, keepdim=True).mean() / (2**ii)
+            sm_loss = (_smoothness_2nd(feat_l1).mean(dim=1, keepdim=True).mean() + _smoothness_2nd(feat_l2).mean(dim=1, keepdim=True).mean()) / (2**ii)
             loss_feat_sm_sum = loss_feat_sm_sum + sm_loss
 
         for ii, (sf_f, sf_b, disp_l1, disp_l2, disp_r1, disp_r2, pose_f, pose_b, mask_l1, mask_l2) in enumerate(zip(output_dict['flows_f'], 
