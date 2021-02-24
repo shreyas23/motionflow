@@ -211,6 +211,7 @@ def train(gpu, args):
     curr_epoch = args.start_epoch
     
     best_test_sf_otl = 100
+    best_sf_epoch = -1 
 
     if args.ckpt != "":
         print(f"Loading model from {args.ckpt} onto gpu: {gpu}")
@@ -344,9 +345,10 @@ def train(gpu, args):
                         if sf_otl < best_test_sf_otl:
                             print(f"Epoch {epoch} is the new best model. New SF otls: {sf_otl} - Old best SF otls: {best_test_sf_otl}\n")
                             best_test_sf_otl = sf_otl
+                            best_sf_epoch = epoch
                             save_new_best = True
                         else:
-                            print(f"Epoch {epoch} is still the best model with SF otls % = {best_test_sf_otl}\n")
+                            print(f"Epoch {best_sf_epoch} is still the best model with SF otls % = {best_test_sf_otl}\n")
 
             else:
                 val_output_dict, val_input_dict = None, None
