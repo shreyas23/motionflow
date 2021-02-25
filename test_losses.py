@@ -312,8 +312,6 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             loss_pose_2d = loss_pose_2d + loss_pose_im
             loss_pose_3d = loss_pose_3d + loss_pose_pts
 
-            # mask_flow_diff_f = ((pose_sf_f - sf_f).abs() <= self.flow_diff_thresh).prod(dim=1, keepdim=True).float()
-            # mask_flow_diff_b = ((pose_sf_b - sf_b).abs() <= self.flow_diff_thresh).prod(dim=1, keepdim=True).float()
             mask_flow_diff_f = (_elementwise_epe(pose_sf_f, sf_f) <= self.flow_diff_thresh).float()
             mask_flow_diff_b = (_elementwise_epe(pose_sf_b, sf_b) <= self.flow_diff_thresh).float()
             census_tgt_l1 = self.create_census_mask(mask_flow_diff_f, pose_diff_f, sf_diff_f)
@@ -365,7 +363,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         total_loss = loss_sf_sum * f_weight + \
                      loss_dp_sum * d_weight + \
                      loss_pose_sum * f_weight + \
-                     loss_mask_sum * f_weight + \
+                     loss_mask_sum + \
                      loss_cons_sum * self.static_cons_w + \
                      loss_feat_disc_sum * self.feat_sm_w + \
                      loss_feat_sm_sum * self.feat_sm_w
