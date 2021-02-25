@@ -336,14 +336,10 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             loss_mask_census_sum = loss_mask_census_sum + mask_census_loss
             loss_mask_cycle_sum = loss_mask_cycle_sum + mask_cycle_loss
 
-            if self.args.apply_mask:
-                rigidity_mask_l1 = (mask_l1 >= self.args.mask_thresh).float()
-                rigidity_mask_l2 = (mask_l2 >= self.args.mask_thresh).float()
-                rigidity_mask_comb_l1 = (logical_or(rigidity_mask_l1, mask_flow_diff_f).float() > 0.5).float()
-                rigidity_mask_comb_l2 = (logical_or(rigidity_mask_l2, mask_flow_diff_b).float() > 0.5).float()
-            else:
-                rigidity_mask_comb_l1 = torch.ones_like(mask_l1, requires_grad=False)
-                rigidity_mask_comb_l2 = torch.ones_like(mask_l2, requires_grad=False)
+            rigidity_mask_l1 = (mask_l1 >= self.args.mask_thresh).float().detach()
+            rigidity_mask_l2 = (mask_l2 >= self.args.mask_thresh).float().detach()
+            rigidity_mask_comb_l1 = (logical_or(rigidity_mask_l1, mask_flow_diff_f).float() > 0.5).float()
+            rigidity_mask_comb_l2 = (logical_or(rigidity_mask_l2, mask_flow_diff_b).float() > 0.5).float()
 
             flow_diff_f = _elementwise_l1(sf_f, pose_sf_f)
             flow_diff_b = _elementwise_l1(sf_b, pose_sf_b)
