@@ -143,11 +143,11 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         pts_diff2[~occ_map_b].detach_()
         loss_pts = loss_pts1 + loss_pts2
 
-        flow_b_warp = reconstructFlow(coord1, flow_b)
-        flow_f_warp = reconstructFlow(coord2, flow_f)
+        sf_b_warp = reconstructFlow(coord1, sf_b)
+        sf_f_warp = reconstructFlow(coord2, sf_f)
 
-        flow_f_cycle_diff = torch.norm(flow_f + flow_b_warp, p=1, dim=1, keepdim=True)
-        flow_b_cycle_diff = torch.norm(flow_b + flow_f_warp, p=1, dim=1, keepdim=True)
+        flow_f_cycle_diff = torch.norm(sf_f + sf_b_warp, p=1, dim=1, keepdim=True)
+        flow_b_cycle_diff = torch.norm(sf_b + sf_f_warp, p=1, dim=1, keepdim=True)
 
         cycle_occ = occ_map_f * occ_map_b
         flow_cycle_loss = flow_f_cycle_diff[cycle_occ].mean() + flow_b_cycle_diff[cycle_occ].mean()
@@ -345,8 +345,8 @@ class Loss_SceneFlow_SelfSup(nn.Module):
                 rigidity_mask_comb_l1 = torch.ones_like(mask_l1, requires_grad=False)
                 rigidity_mask_comb_l2 = torch.ones_like(mask_l2, requires_grad=False)
 
-            flow_diff_f = _elementwise_epe(sf_f, pose_sf_f)
-            flow_diff_b = _elementwise_epe(sf_b, pose_sf_b)
+            flow_diff_f = _elementwise_l1(sf_f, pose_sf_f)
+            flow_diff_b = _elementwise_l1(sf_b, pose_sf_b)
             cons_loss_f = (flow_diff_f * rigidity_mask_comb_l1).mean(dim=1, keepdim=True).mean()
             cons_loss_b = (flow_diff_b * rigidity_mask_comb_l2).mean(dim=1, keepdim=True).mean()
             cons_loss = (cons_loss_f + cons_loss_b)
