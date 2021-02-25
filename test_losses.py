@@ -129,11 +129,11 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         pts_diff2[~occ_map_b].detach_()
         loss_pts = loss_pts1 + loss_pts2
 
-        flow_b_warp = reconstructFlow(coord1, flow_b)
-        flow_f_warp = reconstructFlow(coord2, flow_f)
+        sf_b_warp = reconstructFlow(coord1, sf_b)
+        sf_f_warp = reconstructFlow(coord2, sf_f)
 
-        flow_f_cycle_diff = torch.norm(flow_f + flow_b_warp, p=1, dim=1, keepdim=True)
-        flow_b_cycle_diff = torch.norm(flow_b + flow_f_warp, p=1, dim=1, keepdim=True)
+        flow_f_cycle_diff = torch.norm(sf_f + sf_b_warp, p=1, dim=1, keepdim=True)
+        flow_b_cycle_diff = torch.norm(sf_b + sf_f_warp, p=1, dim=1, keepdim=True)
 
         cycle_occ = occ_map_f * occ_map_b
         flow_cycle_loss = flow_f_cycle_diff[cycle_occ].mean() + flow_b_cycle_diff[cycle_occ].mean()
@@ -322,17 +322,15 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             loss_mask_census_sum = loss_mask_census_sum + mask_census_loss
             loss_mask_cycle_sum = loss_mask_cycle_sum + mask_cycle_loss
 
-            # if self.args.apply_mask:
-            #     static_mask_l1 = mask_l1 #* census_tgt_l1.detach()
-            #     static_mask_l2 = mask_l2 #* census_tgt_l2.detach()
-            # else:
-            #     static_mask_l1 = torch.ones_like(mask_l1, requires_grad=False)
-            #     static_mask_l2 = torch.ones_like(mask_l2, requires_grad=False)
+            rigidity_mask_l1 = (mask_l1 >= self.args.mask_thresh).float()
+            rigidity_mask_l2 = (mask_l2 >= self.args.mask_thresh).float()
+            rigidity_mask_comb_l1 = (logical_or(rigidity_mask_l1, mask_flow_diff_f).float() > 0.5).float()
+            rigidity_mask_comb_l2 = (logical_or(rigidity_mask_l2, mask_flow_diff_b).float() > 0.5).float()
 
-            flow_diff_f = _elementwise_epe(sf_f, pose_sf_f)
-            flow_diff_b = _elementwise_epe(sf_b, pose_sf_b)
-            cons_loss_f = (flow_diff_f * mask_l1).mean()
-            cons_loss_b = (flow_diff_b * mask_l2).mean()
+            flow_diff_f = _elementwise_l1(sf_f, pose_sf_f)
+            flow_diff_b = _elementwise_l1(sf_b, pose_sf_b)
+            cons_loss_f = (flow_diff_f * rigidity_mask_comb_l1).mean(dim=1, keepdim=True).mean()
+            cons_loss_b = (flow_diff_b * rigidity_mask_comb_l2).mean(dim=1, keepdim=True).mean()
             cons_loss = (cons_loss_f + cons_loss_b)
 
             loss_cons_sum = loss_cons_sum + cons_loss
@@ -347,7 +345,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         total_loss = loss_sf_sum * f_weight + \
                      loss_dp_sum * d_weight + \
                      loss_pose_sum * f_weight + \
-                     loss_mask_sum * f_weight + \
+                     loss_mask_sum + \
                      loss_cons_sum * self.static_cons_w + \
                      loss_feat_disc_sum * self.feat_sm_w + \
                      loss_feat_sm_sum * self.feat_sm_w
@@ -376,5 +374,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
 
         output_dict['census_masks_l1'] = census_masks_l1
         output_dict['census_masks_l2'] = census_masks_l2
+        output_dict['rigidity_masks_l1_pp'] = rigidity_mask_comb_l1
+        output_dict['rigidity_masks_l2_pp'] = rigidity_mask_comb_l2
 
         return loss_dict
