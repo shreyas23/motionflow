@@ -62,7 +62,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
 
     def mask_loss(self, image, mask, census_target, scale):
         reg_loss = tf.binary_cross_entropy(mask, torch.ones_like(mask))
-        sm_loss = _smoothness_motion_2nd(mask, image, beta=1.0).mean() / (2**scale)
+        sm_loss = _smoothness_motion_2nd(mask, image, beta=10.0).mean() / (2**scale)
         census_loss = tf.binary_cross_entropy(mask, census_target)
 
         return reg_loss, sm_loss, census_loss
@@ -137,6 +137,8 @@ class Loss_SceneFlow_SelfSup(nn.Module):
 
         cycle_occ = occ_map_f * occ_map_b
         flow_cycle_loss = flow_f_cycle_diff[cycle_occ].mean() + flow_b_cycle_diff[cycle_occ].mean()
+        flow_f_cycle_diff[~cycle_occ].detach_()
+        flow_b_cycle_diff[~cycle_occ].detach_()
 
         mask_l2_warp = reconstructMask(coord1, torch.log(mask_l2))
         mask_l1_warp = reconstructMask(coord2, torch.log(mask_l1))
