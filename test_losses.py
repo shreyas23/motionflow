@@ -204,6 +204,8 @@ class Loss_SceneFlow_SelfSup(nn.Module):
 
         census_masks_l1 = []
         census_masks_l2 = []
+        rigidity_masks_l1 = []
+        rigidity_masks_l2 = []
 
         feats_l1 = output_dict['feats_l1']
         feats_l2 = output_dict['feats_l2']
@@ -329,6 +331,9 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             rigidity_mask_comb_l1 = (logical_or(rigidity_mask_l1, mask_flow_diff_f).float() > 0.5).float()
             rigidity_mask_comb_l2 = (logical_or(rigidity_mask_l2, mask_flow_diff_b).float() > 0.5).float()
 
+            rigidity_masks_l1.append(rigidity_mask_comb_l1)
+            rigidity_masks_l2.append(rigidity_mask_comb_l2)
+
             flow_diff_f = _elementwise_l1(sf_f, pose_sf_f)
             flow_diff_b = _elementwise_l1(sf_b, pose_sf_b)
             cons_loss_f = (flow_diff_f * rigidity_mask_comb_l1).mean(dim=1, keepdim=True).mean()
@@ -376,7 +381,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
 
         output_dict['census_masks_l1'] = census_masks_l1
         output_dict['census_masks_l2'] = census_masks_l2
-        output_dict['rigidity_masks_l1_pp'] = rigidity_mask_comb_l1
-        output_dict['rigidity_masks_l2_pp'] = rigidity_mask_comb_l2
+        output_dict['rigidity_masks_l1_pp'] = rigidity_masks_l1
+        output_dict['rigidity_masks_l2_pp'] = rigidity_masks_l2
 
         return loss_dict
