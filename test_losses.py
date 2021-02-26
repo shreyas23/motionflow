@@ -233,7 +233,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             disc_loss = (disc_loss1 + disc_loss2) / (2**ii)
             loss_feat_disc_sum = loss_feat_disc_sum + disc_loss
 
-            sm_loss = (_smoothness_2nd(feat_l1).mean(dim=1, keepdim=True).mean() + _smoothness_2nd(feat_l1).mean(dim=1, keepdim=True).mean()) / (2**ii)
+            sm_loss = (_smoothness_2nd(feat_l1, beta=10).mean(dim=1, keepdim=True).mean() + _smoothness_2nd(feat_l1, beta=10).mean(dim=1, keepdim=True).mean()) / (2**ii)
             loss_feat_sm_sum = loss_feat_sm_sum + sm_loss
 
         for ii, (sf_f, sf_b, disp_l1, disp_l2, disp_r1, disp_r2, pose_f, pose_b, mask_l1, mask_l2) in enumerate(zip(output_dict['flows_f'], 
@@ -383,6 +383,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         loss_dict["cycle"] = loss_cycle_sum.detach()
         loss_dict['lr'] = loss_lr_sum.detach()
         loss_dict['feat_disc'] = loss_feat_disc_sum.detach()
+        loss_dict['feat_sm'] = loss_feat_sm_sum.detach()
         loss_dict["total_loss"] = total_loss
 
         self.detaching_grad_of_outputs(output_dict['output_dict_r'])
