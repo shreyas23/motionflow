@@ -2,8 +2,8 @@
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --test_data_root="/mnt/data/kitti_jpg/kitti2015/" \
                       --log_root="/ceph/checkpoints/" \
-                      --exp_dir="bottleneck_attention" \
-                      --exp_name="bottleneck_3d_2e4_mask_v4_only_exp" \
+                      --exp_dir="final_exps" \
+                      --exp_name="mask_ba_v1" \
                       --log_freq=1 \
                       --save_freq=1 \
                       --dataset_name="KITTI_EIGEN" \
@@ -16,20 +16,20 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --num_examples=-1 \
                       --num_workers=16 \
                       --start_epoch=1 \
-                      --epochs=45 \
+                      --epochs=30 \
                       --batch_size=4 \
-                      --lr=2e-4 \
+                      --lr=4e-4 \
                       --lr_gamma=0.5 \
                       --lr_sched_type='step' \
-                      --milestones 25 \
+                      --milestones 23 \
                       --flow_reduce_mode='sum' \
                       --disp_sm_w=0.05 \
                       --disp_lr_w=0.0 \
                       --flow_sm_w=200 \
                       --flow_pts_w=0.2 \
                       --flow_cycle_w=0.0 \
-                      --mask_sm_w=0.05 \
-                      --mask_reg_w=0.3 \
+                      --mask_sm_w=0.1 \
+                      --mask_reg_w=0.25 \
                       --mask_cons_w=0.0 \
                       --mask_cycle_w=0.0 \
                       --mask_thresh=0.5 \
