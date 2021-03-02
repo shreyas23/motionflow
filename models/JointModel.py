@@ -72,20 +72,23 @@ class JointModel(nn.Module):
             if l > self.output_level:
                 break
             if l == 0:
+                num_ch_in = self.dim_corr + ch
                 if args.use_bottleneck:
-                    num_ch_in = self.dim_corr + ch + bottleneck_out_ch*2
-                elif args.use_pose_corr:
-                    num_ch_in = 2*self.dim_corr + ch
-                else:
-                    num_ch_in = self.dim_corr + ch + ch
+                    num_ch_in += bottleneck_out_ch*2
+                if args.use_pose_corr:
+                    num_ch_in += self.dim_corr
+                if not (args.use_bottleneck or args.use_pose_corr):
+                    num_ch_in += ch
             else:
+                num_ch_in = self.dim_corr + ch + self.out_ch_size + 3 + 1 + 6 + 1
                 if args.use_bottleneck:
-                    num_ch_in = self.dim_corr + ch + bottleneck_out_ch*2 + self.out_ch_size + 3 + 1 + 6 + 1
-                    # num_ch_in = self.dim_corr + ch + bottleneck_out_ch + self.out_ch_size + 3 + 1 + 6 + 1
-                elif args.use_pose_corr:
-                    num_ch_in = 2*self.dim_corr + ch + self.out_ch_size + 3 + 1 + 6 + 1
-                else:
-                    num_ch_in = self.dim_corr + ch + ch + self.out_ch_size + 3 + 1 + 6 + 1
+                    num_ch_in += bottleneck_out_ch*2
+                    # num_ch_in = self.dim_corr + ch + bottleneck_out_ch*2 + self.out_ch_size + 3 + 1 + 6 + 1
+                if args.use_pose_corr:
+                    num_ch_in += self.dim_corr
+                if not (args.use_bottleneck or args.use_pose_corr):
+                    num_ch_in += ch
+                    # num_ch_in = 2*self.dim_corr + ch + self.out_ch_size + 3 + 1 + 6 + 1
                 self.upconv_layers.append(UpConv(self.out_ch_size, self.out_ch_size, 3, 2, use_bn=args.use_bn))
 
             layer_sf = JointDecoder(args, num_ch_in, use_bn=args.use_bn)
@@ -94,6 +97,7 @@ class JointModel(nn.Module):
                 # bottleneck = PoseBottleNeck(in_ch=(ch + ch))
                 bottleneck = PoseBottleNeck3D(in_ch=ch)
                 self.bottlenecks.append(bottleneck)
+
         self.corr_params = {"pad_size": self.search_range, "kernel_size": 1, "max_disp": self.search_range, "stride1": 1, "stride2": 1, "corr_multiply": 1}        
         self.context_networks = JointContextNetwork(args, self.out_ch_size + 3 + 1 + 6 + 1, use_bn=args.use_bn)
         self.sigmoid = torch.nn.Sigmoid()
@@ -170,8 +174,6 @@ class JointModel(nn.Module):
                 aux_b = self.bottlenecks[l](aux_in_b)
                 aux_f = torch.cat([aux_f[:, :, 0, :, :], aux_f[:, :, 1, :, :]], dim=1)
                 aux_b = torch.cat([aux_b[:, :, 0, :, :], aux_b[:, :, 1, :, :]], dim=1)
-                # aux_f = self.bottlenecks[l](torch.cat([x1, x2_warp_pose], dim=1))
-                # aux_b = self.bottlenecks[l](torch.cat([x2, x1_warp_pose], dim=1))
             
             # correlation
             out_corr_f = Correlation.apply(x1, x2_warp, self.corr_params)
@@ -187,40 +189,41 @@ class JointModel(nn.Module):
 
             # monosf estimator
             if l == 0:
+                input_f = torch.cat([out_corr_relu_f, x1], dim=1)
+                input_b = torch.cat([out_corr_relu_b, x2], dim=1)
                 if self.args.use_bottleneck:
-                    x1_out, flow_f, disp_l1, mask_l1, pose_f, pose_f_out = self.flow_estimators[l](torch.cat([out_corr_relu_f, x1, aux_f], dim=1))
-                    x2_out, flow_b, disp_l2, mask_l2,      _, pose_b_out = self.flow_estimators[l](torch.cat([out_corr_relu_b, x2, aux_b], dim=1))
-                elif self.args.use_pose_corr:
-                    x1_out, flow_f, disp_l1, mask_l1, pose_f, pose_f_out = self.flow_estimators[l](torch.cat([out_corr_relu_f, x1, pose_out_corr_relu_f], dim=1))
-                    x2_out, flow_b, disp_l2, mask_l2,      _, pose_b_out = self.flow_estimators[l](torch.cat([out_corr_relu_b, x2, pose_out_corr_relu_b], dim=1))
-                else:
-                    x1_out, flow_f, disp_l1, mask_l1, pose_f, pose_f_out = self.flow_estimators[l](torch.cat([out_corr_relu_f, x1, x2], dim=1))
-                    x2_out, flow_b, disp_l2, mask_l2,      _, pose_b_out = self.flow_estimators[l](torch.cat([out_corr_relu_b, x2, x1], dim=1))
+                    input_f = torch.cat([input_f, aux_f], dim=1)
+                    input_b = torch.cat([input_b, aux_b], dim=1)
+                if self.args.use_pose_corr:
+                    input_f = torch.cat([input_f, pose_out_corr_relu_f], dim=1)
+                    input_b = torch.cat([input_b, pose_out_corr_relu_b], dim=1)
+                if not (self.args.use_bottleneck or self.args.use_pose_corr):
+                    input_f = torch.cat([input_f, x2])
+                    input_b = torch.cat([input_b, x1])
+
+                x1_out, flow_f, disp_l1, mask_l1, pose_f, pose_f_out = self.flow_estimators[l](input_f)
+                x2_out, flow_b, disp_l2, mask_l2,      _, pose_b_out = self.flow_estimators[l](input_b)
 
                 pose_mat_f = pose_vec2mat(pose_f)
                 pose_mat_b = invert_pose(pose_mat_f)
             else:
+                input_f = torch.cat([out_corr_relu_f, x1, x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1)
+                input_b = torch.cat([out_corr_relu_b, x2, x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1)
                 if self.args.use_bottleneck:
-                    x1_out, flow_f_res, disp_l1, mask_l1, pose_f_res, pose_f_out = self.flow_estimators[l](torch.cat([
-                        out_corr_relu_f, x1, aux_f, x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
-                    x2_out, flow_b_res, disp_l2, mask_l2,          _, pose_b_out = self.flow_estimators[l](torch.cat([
-                        out_corr_relu_b, x2, aux_b, x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
-                elif self.args.use_pose_corr:
-                    x1_out, flow_f_res, disp_l1, mask_l1, pose_f_res, pose_f_out = self.flow_estimators[l](torch.cat([
-                        out_corr_relu_f, x1, pose_out_corr_relu_f, x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
-                    x2_out, flow_b_res, disp_l2, mask_l2,          _, pose_b_out = self.flow_estimators[l](torch.cat([
-                        out_corr_relu_b, x2, pose_out_corr_relu_b, x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
-                else:
-                    x1_out, flow_f_res, disp_l1, mask_l1, pose_f_res, pose_f_out = self.flow_estimators[l](torch.cat([
-                        out_corr_relu_f, x1, x2, x1_out, flow_f, disp_l1, mask_l1, pose_f_out], dim=1))
-                    x2_out, flow_b_res, disp_l2, mask_l2,          _, pose_b_out = self.flow_estimators[l](torch.cat([
-                        out_corr_relu_b, x2, x1, x2_out, flow_b, disp_l2, mask_l2, pose_b_out], dim=1))
+                    input_f = torch.cat([input_f, aux_f], dim=1)
+                    input_b = torch.cat([input_b, aux_b], dim=1)
+                if self.args.use_pose_corr:
+                    input_f = torch.cat([input_f, pose_out_corr_relu_f], dim=1)
+                    input_b = torch.cat([input_b, pose_out_corr_relu_b], dim=1)
+                if not (self.args.use_bottleneck or self.args.use_pose_corr):
+                    input_f = torch.cat([input_f, x2], dim=1)
+                    input_b = torch.cat([input_b, x1], dim=1)
+
+                x1_out, flow_f_res, disp_l1, mask_l1, pose_f_res, pose_f_out = self.flow_estimators[l](input_f)
+                x2_out, flow_b_res, disp_l2, mask_l2,          _, pose_b_out = self.flow_estimators[l](input_b)
 
                 flow_f = flow_f + flow_f_res
                 flow_b = flow_b + flow_b_res
-
-                # disp_l1 = disp_l1 + disp_l1_res
-                # disp_l2 = disp_l2 + disp_l2_res
 
                 pose_mat_f_res = pose_vec2mat(pose_f_res)
                 pose_mat_b_res = invert_pose(pose_mat_f_res)
