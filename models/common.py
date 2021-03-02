@@ -199,7 +199,7 @@ class BottleneckAttentionModule(nn.Module):
             self.module = nn.Sequential(
                 nn.AdaptiveAvgPool3d(1),
                 nn.Conv3d(num_features, num_features // reduction, kernel_size=1),
-                nn.LeakyReLU(inplace=True),
+                nn.LeakyReLU(negative_slope=0.1, inplace=True),
                 nn.Conv3d(num_features // reduction, num_features, kernel_size=1),
                 nn.Sigmoid()
             )
@@ -207,7 +207,7 @@ class BottleneckAttentionModule(nn.Module):
             self.module = nn.Sequential(
                 nn.AdaptiveAvgPool2d(1),
                 nn.Conv2d(num_features, num_features // reduction, kernel_size=1),
-                nn.LeakyReLU(inplace=True),
+                nn.LeakyReLU(negative_slope=0.1, inplace=True),
                 nn.Conv2d(num_features // reduction, num_features, kernel_size=1),
                 nn.Sigmoid()
             )
