@@ -178,11 +178,11 @@ class ChannelPool(nn.Module):
         return torch.cat( (torch.max(x,1)[0].unsqueeze(1), torch.mean(x,1).unsqueeze(1)), dim=1 )
 
 class SpatialGate(nn.Module):
-    def __init__(self):
+    def __init__(self, type='2d'):
         super(SpatialGate, self).__init__()
         kernel_size = 7
         self.compress = ChannelPool()
-        self.spatial = Conv(2, 1, kernel_size, stride=1, nonlin='none', type='3d')
+        self.spatial = Conv(2, 1, kernel_size, stride=1, nonlin='none', type=type)
     def forward(self, x):
         x_compress = self.compress(x)
         x_out = self.spatial(x_compress)
@@ -194,30 +194,40 @@ class Flatten(nn.Module):
         return x.view(x.size(0), -1)
 
 class BottleneckAttentionModule(nn.Module):
-    def __init__(self, num_features, reduction, type='3d', use_spatial=True):
+    def __init__(self, num_features, reduction=4, type='3d', use_spatial=True):
         super(BottleneckAttentionModule, self).__init__()
 
         self.use_spatial = use_spatial
+        self.type = type
 
-        if type =='3d':
+        if type == '3d':
             self.avg = nn.AdaptiveAvgPool3d(1)
             self.max = nn.AdaptiveMaxPool3d(1)
-            self.module = nn.Sequential(
-                Flatten(),
-                nn.Linear(num_features, num_features // reduction),
-                nn.LeakyReLU(negative_slope=0.1, inplace=True),
-                nn.Linear(num_features // reduction, num_features)
-            )
+        elif type == '2d':
+            self.avg = nn.AdaptiveAvgPool2d(1)
+            self.max = nn.AdaptiveMaxPool2d(1)
         else:
             raise NotImplementedError
 
+        self.module = nn.Sequential(
+            Flatten(),
+            nn.Linear(num_features, num_features // reduction),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
+            nn.Linear(num_features // reduction, num_features)
+        )
+
         if self.use_spatial:
-            self.spatial_module = SpatialGate()
+            self.spatial_module = SpatialGate(type=type)
 
     def forward(self, x):
         out_avg = self.module(self.avg(x))
         out_max = self.module(self.max(x))
-        x = x * torch.sigmoid(out_avg+out_max).unsqueeze(2).unsqueeze(3).unsqueeze(4)
+
+        if self.type == '3d':
+            x = x * torch.sigmoid(out_avg+out_max).unsqueeze(2).unsqueeze(3).unsqueeze(4)
+        else:
+            x = x * torch.sigmoid(out_avg+out_max).unsqueeze(2).unsqueeze(3)
+
         if self.use_spatial:
             x = x * self.spatial_module(x)
         return x
