@@ -63,7 +63,7 @@ class Conv(nn.Module):
         if type == '2d':
             layers.append(nn.Conv2d(in_chs, out_chs, kernel_size=kernel_size, stride=stride, dilation=dilation, padding=padding, padding_mode=pad_mode, bias=bias))
         elif type == '3d':
-            layers.append(nn.Conv3d(in_chs, out_chs, kernel_size=kernel_size, stride=stride, dilation=dilation, padding=padding, padding_mode=pad_mode, bias=bias))
+            layers.append(nn.Conv3d(in_chs, out_chs, kernel_size=kernel_size, stride=stride, dilation=dilation, padding=padding, bias=bias))
 
         if use_bn:
             layers.append(nn.BatchNorm2d(out_chs))
@@ -189,6 +189,9 @@ class SpatialGate(nn.Module):
         scale = torch.sigmoid(x_out) # broadcasting
         return x * scale
     
+class Flatten(nn.Module):
+    def forward(self, x):
+        return x.view(x.size(0), -1)
 
 class BottleneckAttentionModule(nn.Module):
     def __init__(self, num_features, reduction, type='3d', use_spatial=False):
@@ -200,9 +203,10 @@ class BottleneckAttentionModule(nn.Module):
             self.avg = nn.AdaptiveAvgPool3d(1)
             self.max = nn.AdaptiveMaxPool3d(1)
             self.module = nn.Sequential(
-                nn.Conv3d(num_features, num_features // reduction, kernel_size=1),
+                Flatten(),
+                nn.Linear(num_features, num_features // reduction),
                 nn.LeakyReLU(negative_slope=0.1, inplace=True),
-                nn.Conv3d(num_features // reduction, num_features, kernel_size=1),
+                nn.Linear(num_features // reduction, num_features)
             )
         else:
             raise NotImplementedError
@@ -213,7 +217,7 @@ class BottleneckAttentionModule(nn.Module):
     def forward(self, x):
         out_avg = self.module(self.avg(x))
         out_max = self.module(self.max(x))
-        x = x * torch.sigmoid(out_avg+out_max)
+        x = x * torch.sigmoid(out_avg+out_max).unsqueeze(2).unsqueeze(3).unsqueeze(4)
         if self.use_spatial:
             x = x * self.spatial_module(x)
         return x
