@@ -194,7 +194,7 @@ class Flatten(nn.Module):
         return x.view(x.size(0), -1)
 
 class BottleneckAttentionModule(nn.Module):
-    def __init__(self, num_features, reduction, type='3d', use_spatial=False):
+    def __init__(self, num_features, reduction, type='3d', use_spatial=True):
         super(BottleneckAttentionModule, self).__init__()
 
         self.use_spatial = use_spatial

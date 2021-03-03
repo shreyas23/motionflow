@@ -58,7 +58,7 @@ def train(args):
 
     loss = Loss(args).cuda()
     test_loss = Eval_SceneFlow_KITTI_Train(args)
-    odom_loss = Eval_Odom_KITTI_Raw(args)
+    # odom_loss = Eval_Odom_KITTI_Raw(args)
 
     if args.model_name == 'joint':
         print("Using joint scene flow model")
@@ -107,10 +107,10 @@ def train(args):
     test_dataset = KITTI_2015_MonoSceneFlow(args, data_root=TEST_DATA_ROOT)
     test_dataloader = DataLoader(test_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True)
 
-    odom_09_dataset = KITTI_Odom_Test(args, root=DATA_ROOT, seq="09")
-    odom_09_dataloader = DataLoader(odom_09_dataset, shuffle=False, batch_size=1, pin_memory=True)
-    odom_10_dataset = KITTI_Odom_Test(args, root=DATA_ROOT, seq="10")
-    odom_10_dataloader = DataLoader(odom_10_dataset, shuffle=False, batch_size=1, pin_memory=True)
+    # odom_09_dataset = KITTI_Odom_Test(args, root=DATA_ROOT, seq="09")
+    # odom_09_dataloader = DataLoader(odom_09_dataset, shuffle=False, batch_size=1, pin_memory=True)
+    # odom_10_dataset = KITTI_Odom_Test(args, root=DATA_ROOT, seq="10")
+    # odom_10_dataloader = DataLoader(odom_10_dataset, shuffle=False, batch_size=1, pin_memory=True)
 
     # define augmentations
     train_augmentations = Augmentation_SceneFlow(args)
@@ -190,10 +190,6 @@ def train(args):
             visualize_output(args, input_dict, output_dict, epoch, writer, prefix='train')
             writer.flush()
 
-        del input_dict
-        del output_dict
-        del train_loss_avg_dict
-
         if args.validate:
             print(f"Validation epoch: {epoch}...\n")
             val_loss_avg_dict, val_output_dict, val_input_dict = evaluate(args, model, loss, val_dataloader, val_augmentations, gpu=0)
@@ -207,30 +203,23 @@ def train(args):
             if epoch % args.log_freq == 0 and not args.no_logging:
                 visualize_output(args, val_input_dict, val_output_dict, epoch, writer, prefix='val')
                 writer.flush()
-            del val_input_dict
-            del val_output_dict
-            del val_loss_avg_dict
             
-            odom_09_loss_avg_dict, odom_09_input_dict, odom_09_output_dict = evaluate(args, model, odom_loss, odom_09_dataloader, val_augmentations, gpu=0)
-            odom_10_loss_avg_dict, odom_10_input_dict, odom_10_output_dict = evaluate(args, model, odom_loss, odom_10_dataloader, val_augmentations, gpu=0)
-            del odom_09_input_dict
-            del odom_09_output_dict
-            del odom_10_input_dict
-            del odom_10_output_dict
+            # odom_09_loss_avg_dict, odom_09_input_dict, odom_09_output_dict = evaluate(args, model, odom_loss, odom_09_dataloader, val_augmentations, gpu=0)
+            # odom_10_loss_avg_dict, odom_10_input_dict, odom_10_output_dict = evaluate(args, model, odom_loss, odom_10_dataloader, val_augmentations, gpu=0)
 
-            for k, v in odom_09_loss_avg_dict.items():
-                odom_09_loss_avg_dict[k] = v / len(odom_09_loss_avg_dict)
+            # for k, v in odom_09_loss_avg_dict.items():
+            #     odom_09_loss_avg_dict[k] = v / len(odom_09_loss_avg_dict)
 
-            for k, v in odom_10_loss_avg_dict.items():
-                odom_10_loss_avg_dict[k] = v / len(odom_10_loss_avg_dict)
+            # for k, v in odom_10_loss_avg_dict.items():
+            #     odom_10_loss_avg_dict[k] = v / len(odom_10_loss_avg_dict)
 
             test_loss_avg_dict, test_output_dict, test_input_dict = evaluate(args, model, test_loss, test_dataloader, val_augmentations, gpu=0)
 
             for k, v in test_loss_avg_dict.items():
                 test_loss_avg_dict[k] = v / len(test_dataset)
 
-            test_loss_avg_dict.update(odom_09_loss_avg_dict)
-            test_loss_avg_dict.update(odom_10_loss_avg_dict)
+            # test_loss_avg_dict.update(odom_09_loss_avg_dict)
+            # test_loss_avg_dict.update(odom_10_loss_avg_dict)
 
             print(f"\t Epoch {epoch} test loss avg:")
             pprint(test_loss_avg_dict)
@@ -238,9 +227,6 @@ def train(args):
             if epoch % args.log_freq == 0 and not args.no_logging:
                 visualize_output(args, test_input_dict, test_output_dict, epoch, writer, prefix='test')
                 writer.flush()
-            del test_input_dict
-            del test_output_dict
-            del test_loss_avg_dict
         else:
             val_output_dict, val_input_dict = None, None
             test_output_dict, test_input_dict = None, None
