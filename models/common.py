@@ -188,6 +188,7 @@ class SpatialGate(nn.Module):
         x_out = self.spatial(x_compress)
         scale = torch.sigmoid(x_out) # broadcasting
         return x * scale
+    
 
 class BottleneckAttentionModule(nn.Module):
     def __init__(self, num_features, reduction, type='3d', use_spatial=False):
@@ -196,20 +197,12 @@ class BottleneckAttentionModule(nn.Module):
         self.use_spatial = use_spatial
 
         if type =='3d':
+            self.avg = nn.AdaptiveAvgPool3d(1)
+            self.max = nn.AdaptiveMaxPool3d(1)
             self.module = nn.Sequential(
-                nn.AdaptiveAvgPool3d(1),
                 nn.Conv3d(num_features, num_features // reduction, kernel_size=1),
                 nn.LeakyReLU(negative_slope=0.1, inplace=True),
                 nn.Conv3d(num_features // reduction, num_features, kernel_size=1),
-                nn.Sigmoid()
-            )
-        elif type =='2d':
-            self.module = nn.Sequential(
-                nn.AdaptiveAvgPool2d(1),
-                nn.Conv2d(num_features, num_features // reduction, kernel_size=1),
-                nn.LeakyReLU(negative_slope=0.1, inplace=True),
-                nn.Conv2d(num_features // reduction, num_features, kernel_size=1),
-                nn.Sigmoid()
             )
         else:
             raise NotImplementedError
@@ -218,7 +211,9 @@ class BottleneckAttentionModule(nn.Module):
             self.spatial_module = SpatialGate()
 
     def forward(self, x):
-        x = x * self.module(x)
+        out_avg = self.module(self.avg(x))
+        out_max = self.module(self.max(x))
+        x = x * torch.sigmoid(out_avg+out_max)
         if self.use_spatial:
             x = x * self.spatial_module(x)
         return x

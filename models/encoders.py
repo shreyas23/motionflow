@@ -199,20 +199,6 @@ class PoseBottleNeck3D(nn.Module):
         self.attention3 = BottleneckAttentionModule(num_features=conv_planes[3], reduction=2, type='3d', use_spatial=True)
 
 
-    def init_weights(self):
-        for layer in self.modules():
-            if isinstance(layer, nn.Conv2d) or isinstance(layer, nn.ConvTranspose2d):
-                nn.init.kaiming_normal_(layer.weight)
-                if layer.bias is not None:
-                    nn.init.constant_(layer.bias, 0)
-
-            elif isinstance(layer, nn.LeakyReLU):
-                pass
-
-            elif isinstance(layer, nn.Sequential):
-                pass
-
-
     def forward(self, x):
         out_conv0 = self.conv0(x)
         out_conv1 = self.conv1(out_conv0)
