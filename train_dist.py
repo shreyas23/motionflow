@@ -355,7 +355,7 @@ def train(gpu, args):
         if args.lr_sched_type == 'plateau':
             lr_scheduler.step(train_loss_avg_dict['total_loss'])
         elif args.lr_sched_type == 'step':
-            lr_scheduler.step(epoch)
+            lr_scheduler.step()
 
         if not args.no_logging:
             fp = os.path.join(args.log_dir, f"{epoch}.ckpt")

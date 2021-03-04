@@ -44,7 +44,8 @@ class PWCEncoder(nn.Module):
             layer = nn.Sequential(
                 Conv(ch_in, ch_out, use_bn=use_bn),
                 Conv(ch_out, ch_out, stride=2, use_bn=use_bn),
-                BottleneckAttentionModule(num_features=ch_out, reduction=4, type='2d', use_spatial=True)
+                Conv(ch_out, ch_out, use_bn=use_bn),
+                # BottleneckAttentionModule(num_features=ch_out, reduction=4, type='2d', use_spatial=True)
             )
             self.convs.append(layer)
 
