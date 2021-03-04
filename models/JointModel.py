@@ -83,18 +83,15 @@ class JointModel(nn.Module):
                 num_ch_in = self.dim_corr + ch + self.out_ch_size + 3 + 1 + 6 + 1
                 if args.use_bottleneck:
                     num_ch_in += bottleneck_out_ch*2
-                    # num_ch_in = self.dim_corr + ch + bottleneck_out_ch*2 + self.out_ch_size + 3 + 1 + 6 + 1
                 if args.use_pose_corr:
                     num_ch_in += self.dim_corr
                 if not (args.use_bottleneck or args.use_pose_corr):
                     num_ch_in += ch
-                    # num_ch_in = 2*self.dim_corr + ch + self.out_ch_size + 3 + 1 + 6 + 1
                 self.upconv_layers.append(UpConv(self.out_ch_size, self.out_ch_size, 3, 2, use_bn=args.use_bn))
 
             layer_sf = JointDecoder(args, num_ch_in, use_bn=args.use_bn)
             self.flow_estimators.append(layer_sf)
             if args.use_bottleneck:
-                # bottleneck = PoseBottleNeck(in_ch=(ch + ch))
                 bottleneck = PoseBottleNeck3D(in_ch=ch)
                 self.bottlenecks.append(bottleneck)
 
@@ -107,7 +104,7 @@ class JointModel(nn.Module):
     def initialize_weights(self):
         for layer in self.modules():
             if isinstance(layer, nn.Conv2d) or isinstance(layer, nn.ConvTranspose2d):
-                nn.init.kaiming_normal_(layer.weight, a=0.1, mode='fan_out')
+                nn.init.kaiming_normal_(layer.weight, a=0.1, mode='fan_in')
                 if layer.bias is not None:
                     nn.init.constant_(layer.bias, 0)
 
