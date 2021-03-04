@@ -57,8 +57,14 @@ class Conv(nn.Module):
             'relu': nn.ReLU(inplace=True)
         }
 
-        padding = ((kernel_size - 1) * dilation) // 2
-
+        if type == '3d' and isinstance(kernel_size, tuple):
+                assert(kernel_size[1] == kernel_size[2])
+                spatial_padding = ((kernel_size[1] - 1) * dilation) // 2
+                depth_padding = ((kernel_size[0] - 1) * dilation) // 2
+                padding = (depth_padding, spatial_padding, spatial_padding)
+        else:
+            padding = ((kernel_size - 1) * dilation) // 2
+            
         layers = []
         if type == '2d':
             layers.append(nn.Conv2d(in_chs, out_chs, kernel_size=kernel_size, stride=stride, dilation=dilation, padding=padding, padding_mode=pad_mode, bias=bias))
@@ -182,7 +188,11 @@ class SpatialGate(nn.Module):
         super(SpatialGate, self).__init__()
         kernel_size = 7
         self.compress = ChannelPool()
-        self.spatial = Conv(2, 1, kernel_size, stride=1, nonlin='none', type=type)
+        if type == '2d':
+            self.spatial = Conv(2, 1, kernel_size, stride=1, nonlin='none', type=type)
+        elif type == '3d':
+            self.spatial = Conv(2, 1, (3, kernel_size, kernel_size), stride=1, nonlin='none', type=type)
+
     def forward(self, x):
         x_compress = self.compress(x)
         x_out = self.spatial(x_compress)
