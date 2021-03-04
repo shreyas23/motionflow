@@ -410,16 +410,13 @@ class Loss_SceneFlow_SelfSup(nn.Module):
 
         loss_dict = {}
         loss_dict["dp"] = loss_dp_sum.detach()
-        # loss_dict['disp_feat'] = loss_disp_feat_sum.detach()
         loss_dict["sf"] = loss_sf_sum.detach()
         loss_dict["s_2"] = loss_sf_2d.detach()
         loss_dict["s_3"] = loss_sf_3d.detach()
         loss_dict["s_3s"] = loss_sf_sm.detach()
-        # loss_dict['sf_feat'] = loss_sf_feat_sum.detach()
         loss_dict["pose"] = loss_pose_sum.detach()
         loss_dict["pose_2"] = loss_pose_2d.detach()
         loss_dict["pose_3"] = loss_pose_3d.detach()
-        # loss_dict['pose_feat'] = loss_pose_feat_sum.detach()
         loss_dict["mask"] = loss_mask_sum.detach()
         loss_dict["mask_sm"] = loss_mask_sm_sum.detach()
         loss_dict["mask_census"] = loss_mask_census_sum.detach()
@@ -428,8 +425,6 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         loss_dict["static_cons"] = loss_cons_sum.detach()
         loss_dict["cycle"] = loss_cycle_sum.detach()
         loss_dict['lr'] = loss_lr_sum.detach()
-        # loss_dict['feat_smooth'] = loss_feat_smooth_sum.detach()
-        # loss_dict['feat_disc'] = loss_feat_disc_sum.detach()
         loss_dict["total_loss"] = total_loss
 
 
