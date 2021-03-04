@@ -35,18 +35,22 @@ class FeatureExtractor(nn.Module):
         return feature_pyramid
 
 class PWCEncoder(nn.Module):
-    def __init__(self, num_chs, use_bn=False):
+    def __init__(self, num_chs, use_bn=False, use_attention=False):
         super(PWCEncoder, self).__init__()
         self.num_chs = num_chs
         self.convs = nn.ModuleList()
 
         for _, (ch_in, ch_out) in enumerate(zip(num_chs[:-1], num_chs[1:])):
-            layer = nn.Sequential(
+            convs = [
                 Conv(ch_in, ch_out, use_bn=use_bn),
                 Conv(ch_out, ch_out, stride=2, use_bn=use_bn),
-                Conv(ch_out, ch_out, use_bn=use_bn),
-                # BottleneckAttentionModule(num_features=ch_out, reduction=4, type='2d', use_spatial=True)
-            )
+                Conv(ch_out, ch_out, use_bn=use_bn)
+            ]
+
+            if use_attention:
+                convs.append(BottleneckAttentionModule(num_features=ch_out, reduction=4, type='2d', use_spatial=True))
+
+            layer = nn.Sequential(*convs)
             self.convs.append(layer)
 
     def forward(self, x):

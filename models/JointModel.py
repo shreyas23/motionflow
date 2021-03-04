@@ -50,7 +50,7 @@ class JointModel(nn.Module):
                     nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='leaky_relu')
         elif self.args.encoder_name == 'pwc':
             self.num_chs = [3, 32, 64, 96, 128, 192, 256]
-            self.feature_pyramid_extractor = PWCEncoder(self.num_chs, use_bn=args.use_bn)
+            self.feature_pyramid_extractor = PWCEncoder(self.num_chs, use_bn=args.use_bn, use_attention=args.use_attention)
         else:
             raise NotImplementedError
 
@@ -92,7 +92,7 @@ class JointModel(nn.Module):
             layer_sf = JointDecoder(args, num_ch_in, use_bn=args.use_bn)
             self.flow_estimators.append(layer_sf)
             if args.use_bottleneck:
-                bottleneck = PoseBottleNeck3D(in_ch=ch)
+                bottleneck = PoseBottleNeck3D(in_ch=ch, use_attention=args.use_attention)
                 self.bottlenecks.append(bottleneck)
 
         self.corr_params = {"pad_size": self.search_range, "kernel_size": 1, "max_disp": self.search_range, "stride1": 1, "stride2": 1, "corr_multiply": 1}        
