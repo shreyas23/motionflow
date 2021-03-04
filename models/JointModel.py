@@ -104,7 +104,7 @@ class JointModel(nn.Module):
     def initialize_weights(self):
         for layer in self.modules():
             if isinstance(layer, nn.Conv2d) or isinstance(layer, nn.ConvTranspose2d):
-                nn.init.kaiming_normal_(layer.weight, a=0.1, nonlinearity='leaky_relu')
+                nn.init.kaiming_normal_(layer.weight, a=0.1, mode='fan_out', nonlinearity='leaky_relu')
                 if layer.bias is not None:
                     nn.init.constant_(layer.bias, 0)
 
