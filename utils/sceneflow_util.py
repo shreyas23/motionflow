@@ -201,7 +201,7 @@ def reconstructImg(coord, img):
     mask = torch.ones_like(img, requires_grad=False)
     mask = tf.grid_sample(mask, grid)
     mask = (mask >= 1.0).float()
-    return img_warp * mask
+    return img_warp# * mask
 
 
 def reconstructPts(coord, pts):
@@ -211,7 +211,7 @@ def reconstructPts(coord, pts):
     mask = torch.ones_like(pts, requires_grad=False)
     mask = tf.grid_sample(mask, grid)
     mask = (mask >= 1.0).float()
-    return pts_warp * mask
+    return pts_warp# * mask
 
 
 def reconstructFlow(coord, flow):
@@ -221,7 +221,7 @@ def reconstructFlow(coord, flow):
     mask = torch.ones_like(flow, requires_grad=False)
     mask = tf.grid_sample(mask, grid)
     mask = (mask >= 1.0).float()
-    return flow_warp * mask
+    return flow_warp# * mask
 
 
 def reconstructMask(coord, seg_mask):
@@ -231,7 +231,7 @@ def reconstructMask(coord, seg_mask):
     mask = torch.ones_like(seg_mask, requires_grad=False)
     mask = tf.grid_sample(mask, grid)
     mask = (mask >= 1.0).float()
-    return seg_mask_warp * mask
+    return seg_mask_warp# * mask
 
 
 def projectSceneFlow2Flow(intrinsic, sceneflow, disp):
