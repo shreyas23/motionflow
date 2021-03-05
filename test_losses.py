@@ -261,7 +261,6 @@ class Loss_SceneFlow_SelfSup(nn.Module):
                                                                                         mask_l1, mask_l2,
                                                                                         k_l1_aug, k_l2_aug,
                                                                                         img_l1_aug, img_l2_aug, 
-                                                                                        # feat_l1, feat_l2,
                                                                                         aug_size, ii)
 
             loss_pose_sum = loss_pose_sum + loss_pose * self.weights[ii]            
