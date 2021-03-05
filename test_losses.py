@@ -317,7 +317,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         total_loss = loss_sf_sum * f_weight + \
                      loss_dp_sum * d_weight + \
                      loss_pose_sum * f_weight + \
-                     loss_mask_sum + \
+                     loss_mask_sum * f_weight + \
                      loss_cons_sum * self.static_cons_w 
 
         loss_dict = {}
