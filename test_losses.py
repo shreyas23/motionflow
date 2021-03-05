@@ -283,7 +283,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             mask_sm_loss = mask_sm_loss_l1 + mask_sm_loss_l2
             mask_census_loss = mask_census_loss_l1 + mask_census_loss_l2
 
-            loss_mask_sum = loss_mask_sum + (mask_reg_loss * self.mask_reg_w * self.weights[ii] + \
+            loss_mask_sum = loss_mask_sum + (mask_reg_loss * self.mask_reg_w + \
                                             mask_sm_loss * self.mask_sm_w + \
                                             mask_census_loss * self.mask_cons_w)
 
@@ -309,7 +309,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             loss_cons_sum = loss_cons_sum + cons_loss
 
         # finding weight
-        f_loss = min(loss_sf_sum.detach(), loss_pose_sum.detach())
+        f_loss = max(loss_sf_sum.detach(), loss_pose_sum.detach())
         d_loss = loss_dp_sum.detach()
         max_val = torch.max(f_loss, d_loss)
         f_weight = max_val / f_loss
@@ -319,7 +319,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
                      loss_dp_sum * d_weight + \
                      loss_pose_sum * f_weight + \
                      loss_mask_sum + \
-                     loss_cons_sum * self.static_cons_w #+ \
+                     loss_cons_sum * self.static_cons_w 
 
         loss_dict = {}
         loss_dict["dp"] = loss_dp_sum.detach()
