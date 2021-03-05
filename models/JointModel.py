@@ -77,16 +77,14 @@ class JointModel(nn.Module):
                     num_ch_in += bottleneck_out_ch*2
                 if args.use_pose_corr:
                     num_ch_in += self.dim_corr
-                if not (args.use_bottleneck or args.use_pose_corr):
-                    num_ch_in += ch
+
             else:
                 num_ch_in = self.dim_corr + ch + self.out_ch_size + 3 + 1 + 6 + 1
                 if args.use_bottleneck:
                     num_ch_in += bottleneck_out_ch*2
                 if args.use_pose_corr:
                     num_ch_in += self.dim_corr
-                if not (args.use_bottleneck or args.use_pose_corr):
-                    num_ch_in += ch
+
                 self.upconv_layers.append(UpConv(self.out_ch_size, self.out_ch_size, 3, 2, use_bn=args.use_bn))
 
             layer_sf = JointDecoder(args, num_ch_in, use_bn=args.use_bn)
@@ -104,7 +102,7 @@ class JointModel(nn.Module):
     def initialize_weights(self):
         for layer in self.modules():
             if isinstance(layer, nn.Conv2d) or isinstance(layer, nn.ConvTranspose2d):
-                nn.init.kaiming_normal_(layer.weight, a=0.1, mode='fan_out', nonlinearity='leaky_relu')
+                nn.init.kaiming_normal_(layer.weight, a=0.1, nonlinearity='leaky_relu')
                 if layer.bias is not None:
                     nn.init.constant_(layer.bias, 0)
 
@@ -194,9 +192,6 @@ class JointModel(nn.Module):
                 if self.args.use_pose_corr:
                     input_f = torch.cat([input_f, pose_out_corr_relu_f], dim=1)
                     input_b = torch.cat([input_b, pose_out_corr_relu_b], dim=1)
-                if not (self.args.use_bottleneck or self.args.use_pose_corr):
-                    input_f = torch.cat([input_f, x2])
-                    input_b = torch.cat([input_b, x1])
 
                 x1_out, flow_f, disp_l1, mask_l1, pose_f, pose_f_out = self.flow_estimators[l](input_f)
                 x2_out, flow_b, disp_l2, mask_l2,      _, pose_b_out = self.flow_estimators[l](input_b)
@@ -212,9 +207,6 @@ class JointModel(nn.Module):
                 if self.args.use_pose_corr:
                     input_f = torch.cat([input_f, pose_out_corr_relu_f], dim=1)
                     input_b = torch.cat([input_b, pose_out_corr_relu_b], dim=1)
-                if not (self.args.use_bottleneck or self.args.use_pose_corr):
-                    input_f = torch.cat([input_f, x2], dim=1)
-                    input_b = torch.cat([input_b, x1], dim=1)
 
                 x1_out, flow_f_res, disp_l1, mask_l1, pose_f_res, pose_f_out = self.flow_estimators[l](input_f)
                 x2_out, flow_b_res, disp_l2, mask_l2,          _, pose_b_out = self.flow_estimators[l](input_b)
