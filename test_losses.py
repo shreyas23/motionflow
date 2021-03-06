@@ -196,8 +196,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
                                                                                                   output_dict['disps_l2'], 
                                                                                                   disp_r1_dict, disp_r2_dict, 
                                                                                                   poses_f, poses_b,
-                                                                                                  masks_l1, masks_l2,
-                                                                                                  )):
+                                                                                                  masks_l1, masks_l2)):
 
             assert(sf_f.size()[2:4] == sf_b.size()[2:4])
             assert(sf_f.size()[2:4] == disp_l1.size()[2:4])
@@ -314,15 +313,10 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         f_weight = max_val / f_loss
         d_weight = max_val / d_loss
 
-        # m_loss = loss_mask_reg_sum.detach()
-        # p_loss = loss_pose_sum.detach()
-        # m_weight = torch.max(m_loss, p_loss) / m_loss
-        m_weight = 1.0
-
         total_loss = loss_sf_sum * f_weight + \
                      loss_dp_sum * d_weight + \
                      loss_pose_sum * f_weight + \
-                     loss_mask_sum * m_weight + \
+                     loss_mask_sum + \
                      loss_cons_sum * self.static_cons_w 
 
         loss_dict = {}
@@ -341,7 +335,6 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         loss_dict["static_cons"] = loss_cons_sum.detach()
         loss_dict["cycle"] = loss_cycle_sum.detach()
         loss_dict["total_loss"] = total_loss
-
 
         self.detaching_grad_of_outputs(output_dict['output_dict_r'])
 
