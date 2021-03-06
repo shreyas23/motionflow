@@ -314,10 +314,15 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         f_weight = max_val / f_loss
         d_weight = max_val / d_loss
 
+        # m_loss = loss_mask_reg_sum.detach()
+        # p_loss = loss_pose_sum.detach()
+        # m_weight = torch.max(m_loss, p_loss) / m_loss
+        m_weight = 1.0
+
         total_loss = loss_sf_sum * f_weight + \
                      loss_dp_sum * d_weight + \
                      loss_pose_sum * f_weight + \
-                     loss_mask_sum * f_weight + \
+                     loss_mask_sum * m_weight + \
                      loss_cons_sum * self.static_cons_w 
 
         loss_dict = {}

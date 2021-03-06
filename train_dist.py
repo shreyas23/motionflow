@@ -242,7 +242,7 @@ def train(gpu, args):
         train_sampler.set_epoch(epoch)
 
         if gpu == 0:
-            print(f"Training epoch: {epoch}...\n")
+            print(f"Training epoch {epoch} with lr: {optimizer.param_groups[0]['lr']} ...\n")
 
         model.train()
         assert (model.training == True)

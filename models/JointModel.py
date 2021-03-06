@@ -47,7 +47,7 @@ class JointModel(nn.Module):
             make_leaky(self.feature_pyramid_extractor)
             for m in self.modules():
                 if isinstance(m, nn.Conv2d):
-                    nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='leaky_relu')
+                    nn.init.kaiming_normal_(m.weight, a=0.1, nonlinearity='leaky_relu')
         elif self.args.encoder_name == 'pwc':
             self.num_chs = [3, 32, 64, 96, 128, 192, 256]
             self.feature_pyramid_extractor = PWCEncoder(self.num_chs, use_bn=args.use_bn, use_attention=args.use_attention)
