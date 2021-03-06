@@ -112,6 +112,9 @@ class JointModel(nn.Module):
             elif isinstance(layer, nn.Sequential):
                 pass
 
+        for decoder in self.flow_estimators:
+            nn.init.xavier_uniform_(decoder.conv_pose.conv[0].weight)
+
     def run_pwc(self, input_dict, x1_raw, x2_raw, k1, k2):
             
         output_dict = {}
