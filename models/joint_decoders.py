@@ -29,10 +29,9 @@ class JointDecoder(nn.Module):
         x_out = self.convs(x)
         sf = self.conv_sf(x_out)
         disp1 = self.conv_d1(x_out)
+        mask = self.conv_mask(x_out)
         pose_out = self.conv_pose(x_out)
         pred_pose = pose_out.mean(3).mean(2) * 0.1
-
-        mask = self.conv_mask(x_out)
 
         return x_out, sf, disp1, mask, pred_pose, pose_out
 

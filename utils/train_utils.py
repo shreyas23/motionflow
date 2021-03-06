@@ -123,6 +123,7 @@ def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip_norm)
         if args.grad_clip_value > 0:
             torch.nn.utils.clip_grad_value_(model.parameters(), args.grad_clip_value)
+
         optimizer.step()
 
         for key in loss_dict.keys():
