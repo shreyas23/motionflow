@@ -131,9 +131,8 @@ def train(args):
             optimizer, factor=args.lr_gamma, verbose=True, mode='min', patience=1)
     elif args.lr_sched_type == 'step':
         print("Using step lr schedule")
-        milestones = []
         lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
-            optimizer, milestones=milestones, gamma=args.lr_gamma)
+            optimizer, milestones=args.milestones, gamma=args.lr_gamma)
     elif args.lr_sched_type == 'cyclic':
         lr_scheduler = torch.optim.lr_scheduler.CyclicLR(
             optimizer, base_lr=5e-5, max_lr=3e-4,step_size_up=5,mode="triangular2", cycle_momentum=False)
@@ -175,7 +174,7 @@ def train(args):
     # run training loop
     for epoch in range(curr_epoch, curr_epoch + args.epochs):
 
-        print(f"Training epoch: {epoch}...\n")
+        print(f"Training epoch {epoch} with lr: {optimizer.param_groups[0]['lr']} ...\n")
 
         train_loss_avg_dict, output_dict, input_dict = train_one_epoch(
             args, model, loss, train_dataloader, optimizer, train_augmentations, lr_scheduler, 0)

@@ -282,7 +282,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             mask_sm_loss = mask_sm_loss_l1 + mask_sm_loss_l2
             mask_census_loss = mask_census_loss_l1 + mask_census_loss_l2
 
-            loss_mask_sum = loss_mask_sum + (mask_reg_loss * self.mask_reg_w * self.weights[ii] + \
+            loss_mask_sum = loss_mask_sum + (mask_reg_loss * self.mask_reg_w + \
                                             mask_sm_loss * self.mask_sm_w + \
                                             mask_census_loss * self.mask_cons_w)
 
