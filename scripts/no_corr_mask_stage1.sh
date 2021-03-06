@@ -16,10 +16,10 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --start_epoch=1 \
                       --epochs=30 \
                       --batch_size=4 \
-                      --lr=2e-4 \
-                      --lr_gamma=0.5 \
+                      --lr=1e-4 \
+                      --lr_gamma=1.5 \
                       --lr_sched_type='none' \
-                      --milestones 30 \
+                      --milestones 1 2 4 \
                       --flow_reduce_mode='sum' \
                       --disp_sm_w=0.05 \
                       --flow_sm_w=200 \
@@ -27,10 +27,11 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --flow_cycle_w=0.0 \
                       --flow_diff_thresh=0.05 \
                       --mask_sm_w=0.1 \
-                      --mask_reg_w=0.2 \
+                      --mask_reg_w=0.4 \
                       --mask_cons_w=0.0 \
                       --mask_thresh=0.5 \
                       --static_cons_w=0.0
+
 # python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
 #                       --test_data_root="/mnt/data/kitti_jpg/kitti2015/" \
 #                       --log_root="/ceph/checkpoints/" \
