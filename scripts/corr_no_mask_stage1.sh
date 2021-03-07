@@ -28,11 +28,12 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --flow_cycle_w=0.0 \
                       --flow_diff_thresh=0.05 \
                       --mask_sm_w=0.1 \
-                      --mask_reg_w=0.2 \
+                      --mask_reg_w=0.25 \
                       --mask_cons_w=0.1 \
                       --mask_cycle_w=0.0 \
                       --mask_thresh=0.5 \
                       --static_cons_w=0.0
+
 # python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
 #                       --test_data_root="/mnt/data/kitti_jpg/kitti2015/" \
 #                       --log_root="/ceph/checkpoints/" \
