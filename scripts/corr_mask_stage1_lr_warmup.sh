@@ -2,7 +2,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --test_data_root="/mnt/data/kitti_jpg/kitti2015/" \
                       --log_root="/ceph/checkpoints/" \
                       --exp_dir="final_exps" \
-                      --exp_name="lr_warmup" \
+                      --exp_name="lr_warmup_v2" \
                       --log_freq=1 \
                       --save_freq=1 \
                       --dataset_name="KITTI_EIGEN" \
@@ -18,7 +18,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --epochs=30 \
                       --batch_size=4 \
                       --lr=1e-4 \
-                      --lr_gamma=1.5 \
+                      --lr_gamma=1.6 \
                       --lr_sched_type='step' \
                       --milestones 1 2 4 \
                       --flow_reduce_mode='sum' \
