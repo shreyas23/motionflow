@@ -50,6 +50,16 @@ def main():
     args.num_gpus = torch.cuda.device_count()
     args.world_size = args.num_gpus * args.num_nodes
 
+    # set some torch params
+    torch.manual_seed(args.torch_seed)
+    torch.cuda.manual_seed(args.torch_seed)
+    torch.cuda.manual_seed_all(args.torch_seed)
+    np.random.seed(args.torch_seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+    print(f"Set the seed for all devices to {args.torch_seed}")
+
     # set up logging
     log_dir = os.path.join(args.log_root, args.exp_dir)
     os.makedirs(log_dir, exist_ok=True)
@@ -65,10 +75,8 @@ def main():
 
     return
 
-
 def cleanup_env():
     dist.destroy_process_group()
-
 
 def train(gpu, args):
 
@@ -80,14 +88,6 @@ def train(gpu, args):
 
     if args.batch_size == 1 and args.use_bn is True:
         raise Exception
-
-    # set some torch params
-    torch.manual_seed(args.torch_seed)
-    np.random.seed(args.torch_seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-
-    print(f"Set the seed for all devices to {args.torch_seed}")
 
     DATASET_NAME = args.dataset_name
     DATA_ROOT = args.data_root
@@ -128,14 +128,18 @@ def train(gpu, args):
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"The model has {num_params} learnable parameters")
 
+
+    def _init_fn(worker_id):
+        np.random.seed(args.torch_seed)
+
     print(f"Loading dataset and dataloaders onto gpu: {gpu}...")
     if DATASET_NAME == 'KITTI':
         train_dataset = KITTI_Raw_KittiSplit_Train(args, DATA_ROOT, num_examples=args.num_examples)
         train_sampler = DistributedSampler(train_dataset, num_replicas=args.world_size, rank=rank, shuffle=True)
-        train_dataloader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True, sampler=train_sampler)
+        train_dataloader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True, sampler=train_sampler, worker_init_fn=_init_fn)
         if args.validate and gpu ==0:
             val_dataset = KITTI_Raw_KittiSplit_Valid(args, DATA_ROOT, num_examples=args.num_examples)
-            val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True)
+            val_dataloader = DataLoader(val_dataset, 1, shuffle=False, num_workers=args.num_workers, pin_memory=True, worker_init_fn=_init_fn)
         else:
             val_dataset = None
             val_dataloader = None
@@ -143,7 +147,7 @@ def train(gpu, args):
     elif DATASET_NAME == 'KITTI_EIGEN':
         train_dataset = KITTI_Raw_EigenSplit_Train(args, DATA_ROOT, num_examples=args.num_examples)
         train_sampler = DistributedSampler(train_dataset, num_replicas=args.world_size, rank=rank, shuffle=True)
-        train_dataloader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True, sampler=train_sampler)
+        train_dataloader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True, sampler=train_sampler, worker_init_fn=_init_fn)
         if args.validate:
             val_dataset = KITTI_Raw_EigenSplit_Valid(args, DATA_ROOT, num_examples=args.num_examples)
             val_sampler = DistributedSampler(val_dataset, num_replicas=args.world_size, rank=rank)
