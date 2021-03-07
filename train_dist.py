@@ -82,10 +82,10 @@ def train(gpu, args):
         raise Exception
 
     # set some torch params
-    # torch.manual_seed(args.torch_seed)
-    # torch.cuda.manual_seed(args.cuda_seed)
-    # torch.backends.cudnn.deterministic = True
-    # torch.backends.cudnn.benchmark = False
+    torch.manual_seed(args.torch_seed)
+    np.random.seed(args.torch_seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
     DATASET_NAME = args.dataset_name
     DATA_ROOT = args.data_root
