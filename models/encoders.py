@@ -200,9 +200,9 @@ class PoseBottleNeck3D(nn.Module):
 
         self.use_attention = use_attention
 
-        self.attention1 = BottleneckAttentionModule(num_features=conv_planes[1], reduction=2, type='3d', use_spatial=False)
-        self.attention3 = BottleneckAttentionModule(num_features=conv_planes[3], reduction=2, type='3d', use_spatial=False)
-
+        if use_attention:
+            self.attention1 = BottleneckAttentionModule(num_features=conv_planes[1], reduction=2, type='3d', use_spatial=False)
+            self.attention3 = BottleneckAttentionModule(num_features=conv_planes[3], reduction=2, type='3d', use_spatial=False)
 
     def forward(self, x):
         out_conv0 = self.conv0(x)

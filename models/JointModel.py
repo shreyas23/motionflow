@@ -115,6 +115,7 @@ class JointModel(nn.Module):
         for decoder in self.flow_estimators:
             nn.init.xavier_uniform_(decoder.conv_pose.conv[0].weight)
             nn.init.xavier_uniform_(decoder.conv_mask.conv[0].weight)
+
         nn.init.xavier_uniform_(self.context_networks.conv_pose.conv[0].weight)
         nn.init.xavier_uniform_(self.context_networks.conv_mask[0].conv[0].weight)
 
