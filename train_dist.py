@@ -128,7 +128,6 @@ def train(gpu, args):
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"The model has {num_params} learnable parameters")
 
-
     def _init_fn(worker_id):
         np.random.seed(args.torch_seed)
 
