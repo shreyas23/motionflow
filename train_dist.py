@@ -87,6 +87,8 @@ def train(gpu, args):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
+    print(f"Set the seed for all devices to {args.torch_seed}")
+
     DATASET_NAME = args.dataset_name
     DATA_ROOT = args.data_root
     TEST_DATA_ROOT = args.test_data_root
