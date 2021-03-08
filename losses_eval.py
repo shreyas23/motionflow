@@ -67,6 +67,15 @@ class Eval_SceneFlow_KITTI_Train(nn.Module):
         gt_depth_l1 = _disp2depth_kitti_K(gt_disp, intrinsics[:, 0, 0])
 
         dict_disp0_occ = eval_module_disp_depth(gt_disp, gt_disp_mask.bool(), out_disp_l1, gt_depth_l1, out_depth_l1)
+
+        import matplotlib.pyplot as plt
+        sq_rel_img = ((gt_depth_l1 - out_depth_l1) ** 2 / gt_depth_l1) * gt_disp_mask.float()
+        plt.figure(figsize=(16, 16))
+        plt.imshow(target_dict['input_l1_aug'].squeeze().cpu().permute(1,2,0))
+        plt.show()
+        plt.figure(figsize=(16, 16))
+        plt.imshow(sq_rel_img.squeeze().cpu(), cmap='magma')
+        plt.show()
         
         output_dict["out_disp_l_pp"] = out_disp_l1
         output_dict["out_depth_l_pp"] = out_depth_l1
