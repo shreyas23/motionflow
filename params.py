@@ -104,8 +104,8 @@ class Params:
         self.parser.add_argument('--debugging', type=bool, default=False, help='are you debugging?')
         self.parser.add_argument('--finetuning', type=bool, default=False, help='finetuning on supervised data')
         self.parser.add_argument('--evaluation', type=bool, default=False, help='evaluating on data')
-        self.parser.add_argument('--torch_seed', default=123768, help='random seed for reproducibility')
-        self.parser.add_argument('--cuda_seed', default=543987, help='random seed for reproducibility')
+        self.parser.add_argument('--torch_seed', default=0, help='random seed for reproducibility')
+        self.parser.add_argument('--cuda_seed', default=0, help='random seed for reproducibility')
 
         self.args = self.parser.parse_args()
 

@@ -50,6 +50,16 @@ def main():
     args.num_gpus = torch.cuda.device_count()
     args.world_size = args.num_gpus * args.num_nodes
 
+    # set some torch params
+    torch.manual_seed(args.torch_seed)
+    torch.cuda.manual_seed(args.torch_seed)
+    torch.cuda.manual_seed_all(args.torch_seed)
+    np.random.seed(args.torch_seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+    print(f"Set the seed for all devices to {args.torch_seed}")
+
     # set up logging
     log_dir = os.path.join(args.log_root, args.exp_dir)
     os.makedirs(log_dir, exist_ok=True)
@@ -80,12 +90,6 @@ def train(gpu, args):
 
     if args.batch_size == 1 and args.use_bn is True:
         raise Exception
-
-    # set some torch params
-    # torch.manual_seed(args.torch_seed)
-    # torch.cuda.manual_seed(args.cuda_seed)
-    # torch.backends.cudnn.deterministic = True
-    # torch.backends.cudnn.benchmark = False
 
     DATASET_NAME = args.dataset_name
     DATA_ROOT = args.data_root

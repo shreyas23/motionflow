@@ -72,7 +72,6 @@ class JointContextNetwork(nn.Module):
         disp1 = self.conv_d1(x_out) * 0.3
         pose_out = self.conv_pose(x_out)
         pred_pose = pose_out.mean(3).mean(2) * 0.1
-
         mask = self.conv_mask(x_out)
 
         return sf, disp1, pred_pose, mask
