@@ -13,13 +13,13 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --validate=True \
                       --num_examples=-1 \
                       --num_workers=16 \
-                      --start_epoch=1 \
-                      --epochs=30 \
+                      --start_epoch=18 \
+                      --epochs=13 \
                       --batch_size=6 \
                       --lr=4e-4 \
                       --lr_gamma=0.5 \
                       --lr_sched_type='step' \
-                      --milestones 30 \
+                      --milestones 20 \
                       --flow_reduce_mode='sum' \
                       --disp_sm_w=0.05 \
                       --flow_sm_w=10 \
