@@ -113,13 +113,9 @@ class JointModel(nn.Module):
                 pass
 
         for decoder in self.flow_estimators:
-            nn.init.xavier_normal_(decoder.conv_sf.conv[0].weight)
-            nn.init.xavier_normal_(decoder.conv_d1.conv[0].weight)
             nn.init.xavier_normal_(decoder.conv_pose.conv[0].weight)
             nn.init.xavier_normal_(decoder.conv_mask.conv[0].weight)
 
-        nn.init.xavier_normal_(self.context_networks.conv_sf.conv[0].weight)
-        nn.init.xavier_normal_(self.context_networks.conv_d1[0].conv[0].weight)
         nn.init.xavier_normal_(self.context_networks.conv_pose.conv[0].weight)
         nn.init.xavier_normal_(self.context_networks.conv_mask[0].conv[0].weight)
 
