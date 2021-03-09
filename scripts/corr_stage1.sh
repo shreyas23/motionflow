@@ -1,8 +1,8 @@
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --test_data_root="/mnt/data/kitti_jpg/kitti2015/" \
                       --log_root="/ceph/checkpoints/" \
-                      --exp_dir="final_exps" \
-                      --exp_name="4e4_large" \
+                      --exp_dir="finale" \
+                      --exp_name="corr_stage1" \
                       --log_freq=1 \
                       --save_freq=1 \
                       --dataset_name="KITTI_EIGEN" \

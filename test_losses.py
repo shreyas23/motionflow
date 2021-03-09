@@ -99,7 +99,6 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         img_l1_warp = reconstructImg(coord2, img_l1_aug)
 
         ## Feature reconstruction loss
-
         img_diff1 = (_elementwise_l1(img_l1_aug, img_l2_warp) * (1.0 - self.ssim_w) + _SSIM(img_l1_aug, img_l2_warp) * self.ssim_w).mean(dim=1, keepdim=True)
         img_diff2 = (_elementwise_l1(img_l2_aug, img_l1_warp) * (1.0 - self.ssim_w) + _SSIM(img_l2_aug, img_l1_warp) * self.ssim_w).mean(dim=1, keepdim=True)
 
