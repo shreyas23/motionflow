@@ -326,10 +326,6 @@ def visualize_output(args, input_dict, output_dict, epoch, writer, prefix):
     writer.add_images(prefix + 'sf_occ_f', sf_occ_f, epoch)
     writer.add_images(prefix + 'sf_occ_b', sf_occ_b, epoch)
 
-    # pts = cam_points.permute(0, 2, 3, 1).reshape(b, h*w, 3)
-    # colors = img_l2.permute(0, 2, 3, 1).reshape(b, h*w, 3)
-    # writer.add_mesh(tag='pc_l2', vertices=pts, colors=colors)
-
     # motion mask
     if use_mask:
         writer.add_images(prefix + 'pre_thresh_mask_l1', mask_l1, epoch)
@@ -340,10 +336,14 @@ def visualize_output(args, input_dict, output_dict, epoch, writer, prefix):
             writer.add_images(prefix + 'thresh_mask_l1', mask_l1_thresh, epoch)
             writer.add_images(prefix + 'thresh_mask_l2', mask_l2_thresh, epoch)
     if 'census_masks_l2' in output_dict:
+        census_mask_l1 = interpolate2d_as(output_dict['census_masks_l1'][0].detach(), img_l1)
         census_mask_l2 = interpolate2d_as(output_dict['census_masks_l2'][0].detach(), img_l1)
-        writer.add_images(prefix + 'target_census_mask', census_mask_l2, epoch)
+        writer.add_images(prefix + 'target_census_mask_l1', census_mask_l1, epoch)
+        writer.add_images(prefix + 'target_census_mask_l2', census_mask_l2, epoch)
     if 'rigidity_masks_l2_pp' in output_dict:
-        rigid_mask = interpolate2d_as(output_dict['rigidity_masks_l2_pp'][0].detach(), img_l1)
-        writer.add_images(prefix + 'rigidity_masks_l2_pp', rigid_mask, epoch)
+        rigid_mask_l1 = interpolate2d_as(output_dict['rigidity_masks_l1_pp'][0].detach(), img_l1)
+        rigid_mask_l2 = interpolate2d_as(output_dict['rigidity_masks_l2_pp'][0].detach(), img_l1)
+        writer.add_images(prefix + 'rigidity_masks_l1_pp', rigid_mask_l1, epoch)
+        writer.add_images(prefix + 'rigidity_masks_l2_pp', rigid_mask_l2, epoch)
 
     return
