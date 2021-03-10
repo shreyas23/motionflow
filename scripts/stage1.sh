@@ -3,6 +3,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --log_root="/ceph/checkpoints/" \
                       --exp_dir="finale" \
                       --exp_name="stage1/v2" \
+                      --ckpt="/ceph/checkpoints/finale/stage1/20.ckpt" \
                       --log_freq=1 \
                       --save_freq=1 \
                       --dataset_name="KITTI_EIGEN" \
