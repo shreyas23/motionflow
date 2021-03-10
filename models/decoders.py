@@ -8,7 +8,8 @@ class MonoSceneFlowDecoder(nn.Module):
         super(MonoSceneFlowDecoder, self).__init__()
 
         self.convs = nn.Sequential(
-            conv(ch_in, 128),
+            conv(ch_in, 192),
+            conv(192, 128),
             conv(128, 128),
             conv(128, 96),
             conv(96, 64),
