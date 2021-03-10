@@ -290,16 +290,16 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             if self.args.apply_mask:
                 rigidity_mask_l1 = (mask_l1 >= self.args.mask_thresh).float()
                 rigidity_mask_l2 = (mask_l2 >= self.args.mask_thresh).float()
-                rigidity_mask_comb_l1 = (logical_or(rigidity_mask_l1, mask_flow_diff_f).float() > 0.5).float()
-                rigidity_mask_comb_l2 = (logical_or(rigidity_mask_l2, mask_flow_diff_b).float() > 0.5).float()
+                rigidity_mask_comb_l1 = (logical_or(rigidity_mask_l1, mask_flow_diff_f).float() > 0.5)
+                rigidity_mask_comb_l2 = (logical_or(rigidity_mask_l2, mask_flow_diff_b).float() > 0.5)
             else:
                 rigidity_mask_comb_l1 = torch.ones_like(mask_l1, requires_grad=False)
                 rigidity_mask_comb_l2 = torch.ones_like(mask_l2, requires_grad=False)
 
             flow_diff_f = _elementwise_epe(sf_f, pose_sf_f)
             flow_diff_b = _elementwise_epe(sf_b, pose_sf_b)
-            cons_loss_f = (flow_diff_f * rigidity_mask_comb_l1).mean(dim=1, keepdim=True).mean()
-            cons_loss_b = (flow_diff_b * rigidity_mask_comb_l2).mean(dim=1, keepdim=True).mean()
+            cons_loss_f = (flow_diff_f).mean(dim=1, keepdim=True)[rigidity_mask_comb_l1].mean()
+            cons_loss_b = (flow_diff_b).mean(dim=1, keepdim=True)[rigidity_mask_comb_l2].mean()
             cons_loss = (cons_loss_f + cons_loss_b)
 
             loss_cons_sum = loss_cons_sum + cons_loss
