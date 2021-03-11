@@ -128,9 +128,6 @@ def train_one_epoch(args, model, loss, dataloader, optimizer, augmentations, lr_
         for key in loss_dict.keys():
             loss_dict_avg[key] += loss_dict[key].detach()
 
-        if i%100 == 0:
-            print(loss_dict_avg['dp'] / (i+1))
-
     return loss_dict_avg, output_dict, data
 
 
