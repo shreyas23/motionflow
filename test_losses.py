@@ -296,8 +296,8 @@ class Loss_SceneFlow_SelfSup(nn.Module):
                 rigidity_mask_comb_l1 = torch.ones_like(mask_l1, requires_grad=False)
                 rigidity_mask_comb_l2 = torch.ones_like(mask_l2, requires_grad=False)
 
-            flow_diff_f = _elementwise_epe(sf_f, pose_sf_f)
-            flow_diff_b = _elementwise_epe(sf_b, pose_sf_b)
+            flow_diff_f = _elementwise_epe(sf_f, pose_sf_f.detach())
+            flow_diff_b = _elementwise_epe(sf_b, pose_sf_b.detach())
             cons_loss_f = (flow_diff_f.mean(dim=1, keepdim=True) * rigidity_mask_comb_l1).mean()
             cons_loss_b = (flow_diff_b.mean(dim=1, keepdim=True) * rigidity_mask_comb_l2).mean()
             cons_loss = (cons_loss_f + cons_loss_b)
