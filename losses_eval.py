@@ -36,6 +36,7 @@ def eval_module_disp_depth(gt_disp, gt_disp_mask, output_disp, gt_depth, output_
 class Eval_SceneFlow_KITTI_Train(nn.Module):
     def __init__(self, args):
         super(Eval_SceneFlow_KITTI_Train, self).__init__()
+        self.args = args
 
 
     def forward(self, output_dict, target_dict):
@@ -84,8 +85,11 @@ class Eval_SceneFlow_KITTI_Train(nn.Module):
         ##################################################
         ## Optical Flow Eval
         ##################################################
-        
-        out_sceneflow = interpolate2d_as(output_dict['pose_flows_f_pp'][0], gt_flow, mode="bilinear")
+        if self.args.model_name == 'monosf':
+            flow_key = 'flows_f_pp'
+        else:
+            flow_key = 'pose_flows_f_pp'
+        out_sceneflow = interpolate2d_as(output_dict[flow_key][0], gt_flow, mode="bilinear")
         out_flow = projectSceneFlow2Flow(target_dict['input_k_l1'], out_sceneflow, output_dict["out_disp_l_pp"])
 
         ## Flow Eval
