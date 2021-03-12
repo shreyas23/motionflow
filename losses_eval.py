@@ -89,6 +89,7 @@ class Eval_SceneFlow_KITTI_Train(nn.Module):
             flow_key = 'flows_f_pp'
         else:
             flow_key = 'pose_flows_f_pp'
+
         out_sceneflow = interpolate2d_as(output_dict[flow_key][0], gt_flow, mode="bilinear")
         out_flow = projectSceneFlow2Flow(target_dict['input_k_l1'], out_sceneflow, output_dict["out_disp_l_pp"])
 
