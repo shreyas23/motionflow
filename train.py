@@ -16,7 +16,7 @@ from torch.utils.tensorboard import SummaryWriter
 from augmentations import Augmentation_SceneFlow, Augmentation_Resize_Only
 from datasets.kitti_raw_monosf import KITTI_Raw_KittiSplit_Train, KITTI_Raw_KittiSplit_Valid
 from datasets.kitti_raw_monosf import KITTI_Raw_EigenSplit_Train, KITTI_Raw_EigenSplit_Valid
-from datasets.kitti_raw_monosf import KITTI_Odom_Test
+from datasets.kitti_raw_monosf import KITTI_Odom_Train, KITTI_Odom_Test
 from datasets.kitti_2015_train import KITTI_2015_MonoSceneFlow
 from losses_eval import Eval_SceneFlow_KITTI_Train, Eval_Odom_KITTI_Raw
 from models.JointModel import JointModel
@@ -94,7 +94,6 @@ def train(args):
             val_dataloader = None
 
     elif DATASET_NAME == 'KITTI_EIGEN':
-        print(DATA_ROOT)
         train_dataset = KITTI_Raw_EigenSplit_Train(args, DATA_ROOT, num_examples=args.num_examples)
         train_dataloader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True)
         if args.validate:
@@ -103,6 +102,12 @@ def train(args):
         else:
             val_dataset = None
             val_dataloader = None
+    elif DATASET_NAME == 'ODOM':
+        train_dataset = KITTI_Odom_Train(args, DATA_ROOT, num_examples=args.num_examples)
+        train_dataloader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True)
+        assert (not args.validate), "There is no validation data for Odometry data. Please set validate to False."
+        val_dataset = None
+        val_dataloader = None
     else:
         raise NotImplementedError
 

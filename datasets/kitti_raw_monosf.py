@@ -78,7 +78,6 @@ class KITTI_Raw(data.Dataset):
         self.gt_pose_list = []
 
         if self.seq is not None:
-            assert (seq in ["09", "10"])
             pose_file_list = os.path.join(images_root, 'poses', f"{seq}.txt")
             gt_global_poses = np.loadtxt(pose_file_list).reshape(-1, 3, 4)
             gt_global_poses = np.concatenate(
@@ -302,6 +301,24 @@ class KITTI_Raw_EigenSplit_Full(KITTI_Raw):
             num_examples=num_examples,
             index_file="index_txt/eigen_full.txt")
 
+class KITTI_Odom_Train(KITTI_Raw):
+    def __init__(self,
+                 args,
+                 root,
+                 flip_augmentations=False,
+                 preprocessing_crop=False,
+                 crop_size=False,
+                 num_examples=-1):
+        
+        super(KITTI_Odom_Train, self).__init__(
+            args,
+            images_root=root,
+            flip_augmentations=flip_augmentations,
+            preprocessing_crop=preprocessing_crop,
+            crop_size=crop_size,
+            num_examples=num_examples,
+            index_file="index_txt/kitti_odom_0008.txt",
+        )
 
 class KITTI_Odom_Test(KITTI_Raw):
     def __init__(self,
