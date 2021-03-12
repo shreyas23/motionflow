@@ -1,3 +1,204 @@
+from __future__ import absolute_import, division, print_function
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as tf
+import logging
+
+from .correlation_package.correlation import Correlation
+
+from .modules_sceneflow import get_grid, WarpingLayer_SF
+from .modules_sceneflow import initialize_msra, upsample_outputs_as
+from .common import upconv
+from .encoders import FeatureExtractor
+from .decoders import MonoSceneFlowDecoder, ContextNetwork
+from .pose_decoders import PoseNet
+
+from utils.interpolation import interpolate2d_as
+from utils.sceneflow_util import flow_horizontal_flip, intrinsic_scale, get_pixelgrid, post_processing
+from utils.inverse_warp import pose_vec2mat
+from utils.helpers import invert_pose
+
+
+class SplitModel(nn.Module):
+    def __init__(self, args):
+        super(SplitModel, self).__init__()
+
+        self._args = args
+        self.num_chs = [3, 32, 64, 96, 128, 192, 256]
+        self.search_range = 4
+        self.output_level = 4
+        self.num_levels = 7
+        
+        self.leakyRELU = nn.LeakyReLU(0.1, inplace=True)
+
+        self.feature_pyramid_extractor = FeatureExtractor(self.num_chs)
+        self.warping_layer_sf = WarpingLayer_SF()
+
+        self.pose_decoder = PoseNet()
+        
+        self.flow_estimators = nn.ModuleList()
+        self.upconv_layers = nn.ModuleList()
+
+        self.dim_corr = (self.search_range * 2 + 1) ** 2
+
+        for l, ch in enumerate(self.num_chs[::-1]):
+            if l > self.output_level:
+                break
+
+            if l == 0:
+                num_ch_in = self.dim_corr + ch 
+            else:
+                num_ch_in = self.dim_corr + ch + 32 + 3 + 1
+                self.upconv_layers.append(upconv(32, 32, 3, 2))
+
+            layer_sf = MonoSceneFlowDecoder(num_ch_in)
+            self.flow_estimators.append(layer_sf)            
+
+        self.corr_params = {"pad_size": self.search_range, "kernel_size": 1, "max_disp": self.search_range, "stride1": 1, "stride2": 1, "corr_multiply": 1}        
+        self.context_networks = ContextNetwork(32 + 3 + 1)
+        self.sigmoid = torch.nn.Sigmoid()
+
+        initialize_msra(self.modules())
+
+    def run_pwc(self, input_dict, x1_raw, x2_raw, k1, k2):
+            
+        output_dict = {}
+
+        # on the bottom level are original images
+        x1_pyramid = self.feature_pyramid_extractor(x1_raw)[::-1] + [x1_raw]
+        x2_pyramid = self.feature_pyramid_extractor(x2_raw)[::-1] + [x2_raw]
+
+        # outputs
+        sceneflows_f = []
+        sceneflows_b = []
+        disps_1 = []
+        disps_2 = []
+
+        for l, (x1, x2) in enumerate(zip(x1_pyramid, x2_pyramid)):
+
+            # warping
+            if l == 0:
+                x2_warp = x2
+                x1_warp = x1
+            else:
+                flow_f = interpolate2d_as(flow_f, x1, mode="bilinear")
+                flow_b = interpolate2d_as(flow_b, x1, mode="bilinear")
+                disp_l1 = interpolate2d_as(disp_l1, x1, mode="bilinear")
+                disp_l2 = interpolate2d_as(disp_l2, x1, mode="bilinear")
+                x1_out = self.upconv_layers[l-1](x1_out)
+                x2_out = self.upconv_layers[l-1](x2_out)
+                x2_warp = self.warping_layer_sf(x2, flow_f, disp_l1, k1, input_dict['aug_size'])  # becuase K can be changing when doing augmentation
+                x1_warp = self.warping_layer_sf(x1, flow_b, disp_l2, k2, input_dict['aug_size'])
+
+            # correlation
+            out_corr_f = Correlation.apply(x1, x2_warp, self.corr_params)
+            out_corr_b = Correlation.apply(x2, x1_warp, self.corr_params)
+            out_corr_relu_f = self.leakyRELU(out_corr_f)
+            out_corr_relu_b = self.leakyRELU(out_corr_b)
+
+            # monosf estimator
+            if l == 0:
+                x1_out, flow_f, disp_l1 = self.flow_estimators[l](torch.cat([out_corr_relu_f, x1], dim=1))
+                x2_out, flow_b, disp_l2 = self.flow_estimators[l](torch.cat([out_corr_relu_b, x2], dim=1))
+            else:
+                x1_out, flow_f_res, disp_l1 = self.flow_estimators[l](torch.cat([out_corr_relu_f, x1, x1_out, flow_f, disp_l1], dim=1))
+                x2_out, flow_b_res, disp_l2 = self.flow_estimators[l](torch.cat([out_corr_relu_b, x2, x2_out, flow_b, disp_l2], dim=1))
+                flow_f = flow_f + flow_f_res
+                flow_b = flow_b + flow_b_res
+
+            # upsampling or post-processing
+            if l != self.output_level:
+                disp_l1 = self.sigmoid(disp_l1) * 0.3
+                disp_l2 = self.sigmoid(disp_l2) * 0.3
+                sceneflows_f.append(flow_f)
+                sceneflows_b.append(flow_b)                
+                disps_1.append(disp_l1)
+                disps_2.append(disp_l2)
+            else:
+                flow_res_f, disp_l1 = self.context_networks(torch.cat([x1_out, flow_f, disp_l1], dim=1))
+                flow_res_b, disp_l2 = self.context_networks(torch.cat([x2_out, flow_b, disp_l2], dim=1))
+                flow_f = flow_f + flow_res_f
+                flow_b = flow_b + flow_res_b
+                sceneflows_f.append(flow_f)
+                sceneflows_b.append(flow_b)
+                disps_1.append(disp_l1)
+                disps_2.append(disp_l2)                
+                break
+
+        x1_rev = x1_pyramid[::-1]
+
+        output_dict['flows_f'] = upsample_outputs_as(sceneflows_f[::-1], x1_rev)
+        output_dict['flows_b'] = upsample_outputs_as(sceneflows_b[::-1], x1_rev)
+        output_dict['disps_l1'] = upsample_outputs_as(disps_1[::-1], x1_rev)
+        output_dict['disps_l2'] = upsample_outputs_as(disps_2[::-1], x1_rev)
+        
+        return output_dict
+
+
+    def forward(self, input_dict):
+
+        output_dict = {}
+
+        ## Left
+        output_dict = self.run_pwc(input_dict, input_dict['input_l1_aug'], input_dict['input_l2_aug'], input_dict['input_k_l1_aug'], input_dict['input_k_l2_aug'])
+
+        pose_f = self.pose_decoder(torch.cat([input_dict['input_l1_aug'], input_dict['input_l2_aug']], dim=1))
+        pose_mat_f = pose_vec2mat(pose_f)
+        pose_mat_b = invert_pose(pose_mat_f)
+        output_dict['pose_f'] = pose_mat_f
+        output_dict['pose_b'] = pose_mat_b
+        
+        ## Right
+        ## ss: train val 
+        ## ft: train 
+        if self.training or (not self._args.evaluation):
+            input_r1_flip = torch.flip(input_dict['input_r1_aug'], [3])
+            input_r2_flip = torch.flip(input_dict['input_r2_aug'], [3])
+            k_r1_flip = input_dict["input_k_r1_flip_aug"]
+            k_r2_flip = input_dict["input_k_r2_flip_aug"]
+
+            output_dict_r = self.run_pwc(input_dict, input_r1_flip, input_r2_flip, k_r1_flip, k_r2_flip)
+
+            for ii in range(0, len(output_dict_r['flows_f'])):
+                output_dict_r['flows_f'][ii] = flow_horizontal_flip(output_dict_r['flows_f'][ii])
+                output_dict_r['flows_b'][ii] = flow_horizontal_flip(output_dict_r['flows_b'][ii])
+                output_dict_r['disps_l1'][ii] = torch.flip(output_dict_r['disps_l1'][ii], [3])
+                output_dict_r['disps_l2'][ii] = torch.flip(output_dict_r['disps_l2'][ii], [3])
+
+            output_dict['output_dict_r'] = output_dict_r
+
+        ## Post Processing 
+        ## ss:           eval
+        ## ft: train val eval
+        if self._args.evaluation or (not self.training):
+
+            input_l1_flip = torch.flip(input_dict['input_l1_aug'], [3])
+            input_l2_flip = torch.flip(input_dict['input_l2_aug'], [3])
+            k_l1_flip = input_dict["input_k_l1_flip_aug"]
+            k_l2_flip = input_dict["input_k_l2_flip_aug"]
+
+            output_dict_flip = self.run_pwc(input_dict, input_l1_flip, input_l2_flip, k_l1_flip, k_l2_flip)
+
+            flows_f_pp = []
+            flows_b_pp = []
+            disps_l1_pp = []
+            disps_l2_pp = []
+
+            for ii in range(0, len(output_dict_flip['flows_f'])):
+
+                flows_f_pp.append(post_processing(output_dict['flows_f'][ii], flow_horizontal_flip(output_dict_flip['flows_f'][ii])))
+                flows_b_pp.append(post_processing(output_dict['flows_b'][ii], flow_horizontal_flip(output_dict_flip['flows_b'][ii])))
+                disps_l1_pp.append(post_processing(output_dict['disps_l1'][ii], torch.flip(output_dict_flip['disps_l1'][ii], [3])))
+                disps_l2_pp.append(post_processing(output_dict['disps_l2'][ii], torch.flip(output_dict_flip['disps_l2'][ii], [3])))
+
+            output_dict['flows_f_pp'] = flows_f_pp
+            output_dict['flows_b_pp'] = flows_b_pp
+            output_dict['disps_l1_pp'] = disps_l1_pp
+            output_dict['disps_l2_pp'] = disps_l2_pp
+
+        return output_dict
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as tf
@@ -20,9 +221,9 @@ eps = 1e-7
 ## Loss function
 ###############################################
 
-class Loss_SceneFlow_SelfSup(nn.Module):
+class SplitLoss(nn.Module):
     def __init__(self, args):
-        super(Loss_SceneFlow_SelfSup, self).__init__()
+        super(SplitLoss, self).__init__()
 
         self.args = args
         self.weights = [4.0, 2.0, 1.0, 1.0, 1.0]
@@ -30,11 +231,6 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         self.disp_smooth_w = args.disp_sm_w
         self.sf_3d_pts = args.flow_pts_w
         self.sf_3d_sm = args.flow_sm_w
-        self.apply_mask = args.apply_mask
-        self.apply_flow_mask = args.apply_flow_mask
-        self.mask_cons_w = args.mask_cons_w
-        self.mask_reg_w = args.mask_reg_w
-        self.mask_sm_w = args.mask_sm_w
         self.static_cons_w = args.static_cons_w
         self.flow_diff_thresh = args.flow_diff_thresh
         self.flow_cycle_w = args.flow_cycle_w
@@ -55,21 +251,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         return loss_img + self.disp_smooth_w * loss_smooth, left_occ
 
 
-    def mask_loss(self, image, mask, census_target, scale):
-        reg_loss = tf.binary_cross_entropy(mask, torch.ones_like(mask.clamp(min=1e-3, max=1)))
-        sm_loss = _smoothness_motion_2nd(mask, image, beta=10.0).mean() / (2**scale)
-        census_loss = tf.binary_cross_entropy(mask, census_target)
-
-        return reg_loss, sm_loss, census_loss
-    
-
-    def create_census_mask(self, mask_flow_diff, pose_err, sf_err, smooth=False):
-        target_mask = (pose_err <= sf_err).float().detach()
-        census_target_mask = logical_or(target_mask, mask_flow_diff).detach()
-        return census_target_mask
-
-
-    def sceneflow_loss(self, sf_f, sf_b, disp_l1, disp_l2, disp_occ_l1, disp_occ_l2, mask_l1, mask_l2, k_l1_aug, k_l2_aug, img_l1_aug, img_l2_aug, aug_size, ii):
+    def sceneflow_loss(self, sf_f, sf_b, disp_l1, disp_l2, disp_occ_l1, disp_occ_l2, k_l1_aug, k_l2_aug, img_l1_aug, img_l2_aug, aug_size, ii):
 
         _, _, h_dp, w_dp = sf_f.size()
         disp_l1 = disp_l1 * w_dp
@@ -103,8 +285,8 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         img_diff1 = (_elementwise_l1(img_l1_aug, img_l2_warp) * (1.0 - self.ssim_w) + _SSIM(img_l1_aug, img_l2_warp) * self.ssim_w).mean(dim=1, keepdim=True)
         img_diff2 = (_elementwise_l1(img_l2_aug, img_l1_warp) * (1.0 - self.ssim_w) + _SSIM(img_l2_aug, img_l1_warp) * self.ssim_w).mean(dim=1, keepdim=True)
 
-        loss_im1 = (img_diff1 * mask_l1)[occ_map_f].mean()
-        loss_im2 = (img_diff2 * mask_l2)[occ_map_b].mean()
+        loss_im1 = (img_diff1)[occ_map_f].mean()
+        loss_im2 = (img_diff2)[occ_map_b].mean()
 
         img_diff1[~occ_map_f].detach_()
         img_diff2[~occ_map_b].detach_()
@@ -115,8 +297,8 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         pts_norm2 = torch.norm(pts2, p=2, dim=1, keepdim=True)
         pts_diff1 = _elementwise_epe(pts1_tf, pts2_warp).mean(dim=1, keepdim=True) / (pts_norm1 + 1e-8)
         pts_diff2 = _elementwise_epe(pts2_tf, pts1_warp).mean(dim=1, keepdim=True) / (pts_norm2 + 1e-8)
-        loss_pts1 = (pts_diff1 * mask_l1)[occ_map_f].mean()
-        loss_pts2 = (pts_diff2 * mask_l2)[occ_map_b].mean()
+        loss_pts1 = (pts_diff1)[occ_map_f].mean()
+        loss_pts2 = (pts_diff2)[occ_map_b].mean()
         pts_diff1[~occ_map_f].detach_()
         pts_diff2[~occ_map_b].detach_()
         loss_pts = loss_pts1 + loss_pts2
@@ -145,10 +327,6 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             output_dict['flows_b'][ii].detach_()
             output_dict['disps_l1'][ii].detach_()
             output_dict['disps_l2'][ii].detach_()
-            output_dict['masks_l1'][ii].detach_()
-            output_dict['masks_l2'][ii].detach_()
-            output_dict['pose_f'][ii].detach_()
-            output_dict['pose_b'][ii].detach_()
 
         return None
 
@@ -158,18 +336,12 @@ class Loss_SceneFlow_SelfSup(nn.Module):
 
         loss_sf_sum = 0
         loss_pose_sum = 0
-        loss_mask_sum = 0
-        loss_mask_reg_sum = 0
-        loss_mask_sm_sum = 0
-        loss_mask_census_sum = 0
-        loss_cons_sum = 0
         loss_dp_sum = 0
         loss_sf_2d = 0
         loss_sf_3d = 0
         loss_pose_2d = 0
         loss_pose_3d = 0
         loss_sf_sm = 0
-        loss_cycle_sum = 0
 
         k_l1_aug = target_dict['input_k_l1_aug']
         k_l2_aug = target_dict['input_k_l2_aug']
@@ -178,22 +350,14 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         disp_r1_dict = output_dict['output_dict_r']['disps_l1']
         disp_r2_dict = output_dict['output_dict_r']['disps_l2']
 
-        poses_f = output_dict['pose_f']
-        poses_b = output_dict['pose_b']
-        masks_l1 = output_dict['masks_l1']
-        masks_l2 = output_dict['masks_l2']
+        pose_f = output_dict['pose_f']
+        pose_b = output_dict['pose_b']
 
-        census_masks_l1 = []
-        census_masks_l2 = []
-
-        for ii, (sf_f, sf_b, disp_l1, disp_l2, disp_r1, disp_r2, pose_f, pose_b, mask_l1, mask_l2) in enumerate(zip(output_dict['flows_f'], 
+        for ii, (sf_f, sf_b, disp_l1, disp_l2, disp_r1, disp_r2) in enumerate(zip(output_dict['flows_f'], 
                                                                                                   output_dict['flows_b'], 
                                                                                                   output_dict['disps_l1'], 
                                                                                                   output_dict['disps_l2'], 
-                                                                                                  disp_r1_dict, disp_r2_dict, 
-                                                                                                  poses_f, poses_b,
-                                                                                                  masks_l1, masks_l2,
-                                                                                                  )):
+                                                                                                  disp_r1_dict, disp_r2_dict)):
 
             assert(sf_f.size()[2:4] == sf_b.size()[2:4])
             assert(sf_f.size()[2:4] == disp_l1.size()[2:4])
@@ -212,17 +376,9 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             loss_dp_sum = loss_dp_sum + (loss_disp_l1 + loss_disp_l2) * self.weights[ii]
 
             ## Sceneflow Loss           
-            if self.apply_flow_mask:
-                flow_mask_l1 = (1.0 - mask_l1)
-                flow_mask_l2 = (1.0 - mask_l2)
-            else:
-                flow_mask_l1 = torch.ones_like(mask_l1, requires_grad=False)
-                flow_mask_l2 = torch.ones_like(mask_l2, requires_grad=False)
-
-            loss_sceneflow, loss_im, loss_pts, loss_3d_s, sf_cycle, (sf_diff_f, sf_diff_b) = self.sceneflow_loss(sf_f, sf_b, 
+            loss_sceneflow, loss_im, loss_pts, loss_3d_s, sf_cycle, _ = self.sceneflow_loss(sf_f, sf_b, 
                                                                                                 disp_l1, disp_l2,
                                                                                                 disp_occ_l1, disp_occ_l2,
-                                                                                                flow_mask_l1, flow_mask_l2,
                                                                                                 k_l1_aug, k_l2_aug,
                                                                                                 img_l1_aug, img_l2_aug, 
                                                                                                 aug_size, ii)
@@ -231,7 +387,6 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             loss_sf_2d = loss_sf_2d + loss_im            
             loss_sf_3d = loss_sf_3d + loss_pts
             loss_sf_sm = loss_sf_sm + loss_3d_s
-            loss_cycle_sum = loss_cycle_sum + sf_cycle
 
             _, _, h, w = disp_l1.shape
             disp_l1_s = disp_l1 * w
@@ -252,10 +407,9 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             pose_sf_f = pose2sceneflow(depth_l1, None, K_l1_s, pose_mat=pose_f)
             pose_sf_b = pose2sceneflow(depth_l2, None, K_l2_s, pose_mat=pose_b)
 
-            loss_pose, loss_pose_im, loss_pose_pts, _, _, (pose_diff_f, pose_diff_b) = self.sceneflow_loss(pose_sf_f, pose_sf_b, 
+            loss_pose, loss_pose_im, loss_pose_pts, _, _, _ = self.sceneflow_loss(pose_sf_f, pose_sf_b, 
                                                                                         disp_l1, disp_l2,
                                                                                         disp_occ_l1, disp_occ_l2,
-                                                                                        mask_l1, mask_l2,
                                                                                         k_l1_aug, k_l2_aug,
                                                                                         img_l1_aug, img_l2_aug, 
                                                                                         aug_size, ii)
@@ -263,42 +417,6 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             loss_pose_sum = loss_pose_sum + loss_pose * self.weights[ii]            
             loss_pose_2d = loss_pose_2d + loss_pose_im
             loss_pose_3d = loss_pose_3d + loss_pose_pts
-
-            mask_flow_diff_f = (_elementwise_epe(pose_sf_f, sf_f) <= self.flow_diff_thresh).float()
-            mask_flow_diff_b = (_elementwise_epe(pose_sf_b, sf_b) <= self.flow_diff_thresh).float()
-            census_tgt_l1 = self.create_census_mask(mask_flow_diff_f, pose_diff_f, sf_diff_f)
-            census_tgt_l2 = self.create_census_mask(mask_flow_diff_b, pose_diff_b, sf_diff_b)
-            mask_reg_loss_l1, mask_sm_loss_l1, mask_census_loss_l1 = self.mask_loss(img_l1_aug, mask_l1, census_tgt_l1, ii)
-            mask_reg_loss_l2, mask_sm_loss_l2, mask_census_loss_l2 = self.mask_loss(img_l2_aug, mask_l2, census_tgt_l2, ii)
-
-            # store census masks
-            census_masks_l1.append(census_tgt_l1)
-            census_masks_l2.append(census_tgt_l2)
-
-            mask_reg_loss = mask_reg_loss_l1 + mask_reg_loss_l2
-            mask_sm_loss = mask_sm_loss_l1 + mask_sm_loss_l2
-            mask_census_loss = mask_census_loss_l1 + mask_census_loss_l2
-
-            loss_mask_sum = loss_mask_sum + (mask_reg_loss * self.mask_reg_w + \
-                                            mask_sm_loss * self.mask_sm_w + \
-                                            mask_census_loss * self.mask_cons_w)
-
-            loss_mask_reg_sum = loss_mask_reg_sum + mask_reg_loss
-            loss_mask_sm_sum = loss_mask_sm_sum + mask_sm_loss
-            loss_mask_census_sum = loss_mask_census_sum + mask_census_loss
-
-            rigidity_mask_l1 = (mask_l1 >= self.args.mask_thresh).float()
-            rigidity_mask_l2 = (mask_l2 >= self.args.mask_thresh).float()
-            rigidity_mask_comb_l1 = logical_or(rigidity_mask_l1, mask_flow_diff_f)
-            rigidity_mask_comb_l2 = logical_or(rigidity_mask_l2, mask_flow_diff_b)
-
-            flow_diff_f = _elementwise_epe(sf_f, pose_sf_f.detach())
-            flow_diff_b = _elementwise_epe(sf_b, pose_sf_b.detach())
-            cons_loss_f = (flow_diff_f.mean(dim=1, keepdim=True) * rigidity_mask_comb_l1).mean()
-            cons_loss_b = (flow_diff_b.mean(dim=1, keepdim=True) * rigidity_mask_comb_l2).mean()
-            cons_loss = (cons_loss_f + cons_loss_b)
-
-            loss_cons_sum = loss_cons_sum + cons_loss
 
         # finding weight
         f_loss = max(loss_sf_sum.detach(), loss_pose_sum.detach())
@@ -309,9 +427,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
 
         total_loss = loss_sf_sum * f_weight + \
                      loss_dp_sum * d_weight + \
-                     loss_pose_sum * f_weight + \
-                     loss_mask_sum * f_weight + \
-                     loss_cons_sum * self.static_cons_w
+                     loss_pose_sum * f_weight
 
         loss_dict = {}
         loss_dict["dp"] = loss_dp_sum.detach()
@@ -322,18 +438,9 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         loss_dict["pose"] = loss_pose_sum.detach()
         loss_dict["pose_2"] = loss_pose_2d.detach()
         loss_dict["pose_3"] = loss_pose_3d.detach()
-        loss_dict["mask"] = loss_mask_sum.detach()
-        loss_dict["mask_sm"] = loss_mask_sm_sum.detach()
-        loss_dict["mask_census"] = loss_mask_census_sum.detach()
-        loss_dict["mask_reg"] = loss_mask_reg_sum.detach()
-        loss_dict["static_cons"] = loss_cons_sum.detach()
-        loss_dict["cycle"] = loss_cycle_sum.detach()
         loss_dict["total_loss"] = total_loss
 
 
         self.detaching_grad_of_outputs(output_dict['output_dict_r'])
-
-        output_dict['census_masks_l1'] = census_masks_l1
-        output_dict['census_masks_l2'] = census_masks_l2
 
         return loss_dict

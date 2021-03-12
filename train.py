@@ -27,6 +27,7 @@ from models.MonoSF import MonoSceneFlow, MonoSFLoss
 from losses import Loss
 from monodepth_losses import MonoDepthSFLoss
 from test_losses import Loss_SceneFlow_SelfSup
+from models.SplitModel import SplitModel, SplitLoss
 
 from params import Params
 from utils.train_utils import step, evaluate, train_one_epoch, visualize_output
@@ -64,9 +65,10 @@ def train(args):
         print("Using joint scene flow model")
         model = JointModel(args).cuda()
         loss = Loss_SceneFlow_SelfSup(args).cuda()
-    elif args.model_name == 'residual':
-        print("Using joint residual scene flow model")
-        model = ResModel(args).cuda()
+    elif args.model_name == 'split':
+        print("Using split scene flow model")
+        model = SplitModel(args).cuda()
+        loss = SplitLoss(args).cuda()
     elif args.model_name == 'monodepth':
         print("Using monodepth scene flow model")
         model = MonoDepthSFModel(args).cuda()

@@ -10,8 +10,8 @@ from .correlation_package.correlation import Correlation
 from .modules_sceneflow import get_grid, WarpingLayer_SF
 from .modules_sceneflow import initialize_msra, upsample_outputs_as
 from .common import upconv
-from .encoders import FeatureExtractor
-from .decoders import MonoSceneFlowDecoder, ContextNetwork
+from .encoders import FeatureExtractorLarge
+from .decoders import MonoSceneFlowDecoderLarge, ContextNetwork
 
 from utils.interpolation import interpolate2d_as
 from utils.sceneflow_util import flow_horizontal_flip, intrinsic_scale, get_pixelgrid, post_processing
@@ -29,7 +29,7 @@ class MonoSceneFlow(nn.Module):
         
         self.leakyRELU = nn.LeakyReLU(0.1, inplace=True)
 
-        self.feature_pyramid_extractor = FeatureExtractor(self.num_chs)
+        self.feature_pyramid_extractor = FeatureExtractorLarge(self.num_chs)
         self.warping_layer_sf = WarpingLayer_SF()
         
         self.flow_estimators = nn.ModuleList()
@@ -47,7 +47,7 @@ class MonoSceneFlow(nn.Module):
                 num_ch_in = self.dim_corr + ch + 32 + 3 + 1
                 self.upconv_layers.append(upconv(32, 32, 3, 2))
 
-            layer_sf = MonoSceneFlowDecoder(num_ch_in)
+            layer_sf = MonoSceneFlowDecoderLarge(num_ch_in)
             self.flow_estimators.append(layer_sf)            
 
         self.corr_params = {"pad_size": self.search_range, "kernel_size": 1, "max_disp": self.search_range, "stride1": 1, "stride2": 1, "corr_multiply": 1}        

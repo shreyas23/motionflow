@@ -85,7 +85,7 @@ class Eval_SceneFlow_KITTI_Train(nn.Module):
         ##################################################
         ## Optical Flow Eval
         ##################################################
-        if self.args.model_name == 'monosf':
+        if self.args.model_name in {'monosf', 'split'}:
             flow_key = 'flows_f_pp'
         else:
             flow_key = 'pose_flows_f_pp'

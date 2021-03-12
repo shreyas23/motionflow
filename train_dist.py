@@ -28,6 +28,7 @@ from models.Model import Model
 from models.ResModel import ResModel
 from models.MonoDepthSFModel import MonoDepthSFModel
 from models.MonoSF import MonoSceneFlow as MonoSF, MonoSFLoss
+from models.SplitModel import SplitModel, SplitLoss
 from losses import Loss
 from losses_eval import Eval_SceneFlow_KITTI_Train, Eval_Odom_KITTI_Raw
 from test_losses import Loss_SceneFlow_SelfSup
@@ -103,7 +104,9 @@ def train(gpu, args):
         model = JointModel(args).cuda(device=gpu)
         loss = Loss_SceneFlow_SelfSup(args).cuda(device=gpu)
     elif args.model_name == 'split':
-        model = Model(args).cuda(device=gpu)
+        print("Using split scene flow model")
+        model = SplitModel(args).cuda()
+        loss = SplitLoss(args).cuda()
     elif args.model_name == 'residual':
         model = ResModel(args).cuda(device=gpu)
     elif args.model_name == 'monodepth':

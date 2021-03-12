@@ -8,6 +8,28 @@ class MonoSceneFlowDecoder(nn.Module):
         super(MonoSceneFlowDecoder, self).__init__()
 
         self.convs = nn.Sequential(
+            conv(ch_in, 128),
+            conv(128, 128),
+            conv(128, 96),
+            conv(96, 64),
+            conv(64, 32)
+        )
+        self.conv_sf = conv(32, 3, isReLU=False)
+        self.conv_d1 = conv(32, 1, isReLU=False)
+
+    def forward(self, x):
+        x_out = self.convs(x)
+        sf = self.conv_sf(x_out)
+        disp1 = self.conv_d1(x_out)
+
+        return x_out, sf, disp1
+
+
+class MonoSceneFlowDecoderLarge(nn.Module):
+    def __init__(self, ch_in):
+        super(MonoSceneFlowDecoder, self).__init__()
+
+        self.convs = nn.Sequential(
             conv(ch_in, 192),
             conv(192, 128),
             conv(128, 128),

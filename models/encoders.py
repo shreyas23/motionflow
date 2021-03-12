@@ -21,6 +21,27 @@ class FeatureExtractor(nn.Module):
         for l, (ch_in, ch_out) in enumerate(zip(num_chs[:-1], num_chs[1:])):
             layer = nn.Sequential(
                 conv(ch_in, ch_out),
+                conv(ch_out, ch_out, stride=2)
+            )
+            self.convs.append(layer)
+
+    def forward(self, x):
+        feature_pyramid = []
+        for conv in self.convs:
+            x = conv(x)
+            feature_pyramid.append(x)
+
+        return feature_pyramid
+
+class FeatureExtractorLarge(nn.Module):
+    def __init__(self, num_chs):
+        super(FeatureExtractorLarge, self).__init__()
+        self.num_chs = num_chs
+        self.convs = nn.ModuleList()
+
+        for l, (ch_in, ch_out) in enumerate(zip(num_chs[:-1], num_chs[1:])):
+            layer = nn.Sequential(
+                conv(ch_in, ch_out),
                 conv(ch_out, ch_out, stride=2),
                 conv(ch_out, ch_out),
             )
