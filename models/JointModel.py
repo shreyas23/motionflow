@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from models.decoders import ContextNetwork
 
 import torch
 import torch.nn as nn
@@ -95,7 +96,12 @@ class JointModel(nn.Module):
                 bottleneck = PoseBottleNeck3D(in_ch=ch)
                 self.bottlenecks.append(bottleneck)
         self.corr_params = {"pad_size": self.search_range, "kernel_size": 1, "max_disp": self.search_range, "stride1": 1, "stride2": 1, "corr_multiply": 1}        
-        self.context_networks = JointContextNetwork(args, self.out_ch_size + 3 + 1 + 6 + 1, use_bn=args.use_bn)
+
+        if not self.args.no_pose_context:
+            self.context_networks = JointContextNetwork(args, self.out_ch_size + 3 + 1 + 6 + 1, use_bn=args.use_bn)
+        else:
+            self.context_networks = ContextNetwork(self.out_ch_size + 3 + 1)
+
         self.sigmoid = torch.nn.Sigmoid()
 
         self.initialize_weights()
@@ -116,8 +122,9 @@ class JointModel(nn.Module):
         for decoder in self.flow_estimators:
             nn.init.xavier_uniform_(decoder.conv_pose.conv[0].weight)
             nn.init.xavier_uniform_(decoder.conv_mask.conv[0].weight)
-        nn.init.xavier_uniform_(self.context_networks.conv_pose.conv[0].weight)
-        nn.init.xavier_uniform_(self.context_networks.conv_mask[0].conv[0].weight)
+        if not self.args.no_pose_context:
+            nn.init.xavier_uniform_(self.context_networks.conv_pose.conv[0].weight)
+            nn.init.xavier_uniform_(self.context_networks.conv_mask[0].conv[0].weight)
 
     def run_pwc(self, input_dict, x1_raw, x2_raw, k1, k2):
             
@@ -249,26 +256,45 @@ class JointModel(nn.Module):
                 poses_f.append(pose_mat_f)
                 poses_b.append(pose_mat_b)
             else:
-                flow_res_f, disp_l1, pose_f_res, mask_l1 = self.context_networks(torch.cat([x1_out, flow_f, disp_l1, pose_f_out, mask_l1], dim=1))
-                flow_res_b, disp_l2,          _, mask_l2 = self.context_networks(torch.cat([x2_out, flow_b, disp_l2, pose_b_out, mask_l2], dim=1))
+                if not self.args.no_pose_context:
+                    flow_res_f, disp_l1, pose_f_res, mask_l1 = self.context_networks(torch.cat([x1_out, flow_f, disp_l1, pose_f_out, mask_l1], dim=1))
+                    flow_res_b, disp_l2,          _, mask_l2 = self.context_networks(torch.cat([x2_out, flow_b, disp_l2, pose_b_out, mask_l2], dim=1))
 
-                flow_f = flow_f + flow_res_f
-                flow_b = flow_b + flow_res_b
+                    flow_f = flow_f + flow_res_f
+                    flow_b = flow_b + flow_res_b
 
-                pose_mat_f_res = pose_vec2mat(pose_f_res)
-                pose_mat_b_res = invert_pose(pose_mat_f_res)
+                    pose_mat_f_res = pose_vec2mat(pose_f_res)
+                    pose_mat_b_res = invert_pose(pose_mat_f_res)
 
-                pose_mat_f = add_pose(pose_mat_f, pose_mat_f_res)
-                pose_mat_b = add_pose(pose_mat_b, pose_mat_b_res)
+                    pose_mat_f = add_pose(pose_mat_f, pose_mat_f_res)
+                    pose_mat_b = add_pose(pose_mat_b, pose_mat_b_res)
 
-                sceneflows_f.append(flow_f)
-                sceneflows_b.append(flow_b)
-                disps_1.append(disp_l1)
-                disps_2.append(disp_l2)
-                masks_1.append(mask_l1)
-                masks_2.append(mask_l2)
-                poses_f.append(pose_mat_f)
-                poses_b.append(pose_mat_b)
+                    sceneflows_f.append(flow_f)
+                    sceneflows_b.append(flow_b)
+                    disps_1.append(disp_l1)
+                    disps_2.append(disp_l2)
+                    masks_1.append(mask_l1)
+                    masks_2.append(mask_l2)
+                    poses_f.append(pose_mat_f)
+                    poses_b.append(pose_mat_b)
+                else:
+                    flow_res_f, disp_l1 = self.context_networks(torch.cat([x1_out, flow_f, disp_l1], dim=1))
+                    flow_res_b, disp_l2 = self.context_networks(torch.cat([x2_out, flow_b, disp_l2], dim=1))
+
+                    flow_f = flow_f + flow_res_f
+                    flow_b = flow_b + flow_res_b
+
+                    mask_l1 = self.sigmoid(mask_l1)
+                    mask_l2 = self.sigmoid(mask_l2)
+
+                    sceneflows_f.append(flow_f)
+                    sceneflows_b.append(flow_b)
+                    disps_1.append(disp_l1)
+                    disps_2.append(disp_l2)
+                    masks_1.append(mask_l1)
+                    masks_2.append(mask_l2)
+                    poses_f.append(pose_mat_f)
+                    poses_b.append(pose_mat_b)
 
                 break
         
