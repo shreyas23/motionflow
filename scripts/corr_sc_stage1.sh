@@ -31,7 +31,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --mask_reg_w=0.15 \
                       --mask_cons_w=0.3 \
                       --mask_thresh=0.5 \
-                      --static_cons_w=0.1
+                      --static_cons_w=0.05
 
 # python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
 #                       --test_data_root="/mnt/data/kitti_jpg/kitti2015/" \
