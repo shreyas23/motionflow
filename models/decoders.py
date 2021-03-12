@@ -27,7 +27,7 @@ class MonoSceneFlowDecoder(nn.Module):
 
 class MonoSceneFlowDecoderLarge(nn.Module):
     def __init__(self, ch_in):
-        super(MonoSceneFlowDecoder, self).__init__()
+        super(MonoSceneFlowDecoderLarge, self).__init__()
 
         self.convs = nn.Sequential(
             conv(ch_in, 192),
