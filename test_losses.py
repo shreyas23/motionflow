@@ -213,8 +213,8 @@ class Loss_SceneFlow_SelfSup(nn.Module):
 
             ## Sceneflow Loss           
             if self.apply_flow_mask:
-                flow_mask_l1 = (1.0 - mask_l1)
-                flow_mask_l2 = (1.0 - mask_l2)
+                flow_mask_l1 = (1.0 - mask_l1).detach()
+                flow_mask_l2 = (1.0 - mask_l2).detach()
             else:
                 flow_mask_l1 = torch.ones_like(mask_l1, requires_grad=False)
                 flow_mask_l2 = torch.ones_like(mask_l2, requires_grad=False)
