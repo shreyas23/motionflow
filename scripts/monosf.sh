@@ -10,14 +10,15 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --encoder_name='pwc' \
                       --num_examples=-1 \
                       --num_workers=16 \
-                      --start_epoch=1 \
-                      --epochs=60 \
+                      --start_epoch=27 \
+                      --epochs=36 \
                       --batch_size=4 \
-                      --lr=2e-4 \
+                      --lr=1e-4 \
                       --lr_gamma=0.5 \
                       --lr_sched_type='step' \
-                      --milestones 23 39 47 54 \
+                      --milestones 39 47 54 \
                       --disp_sm_w=0.1 \
                       --flow_sm_w=200 \
                       --flow_pts_w=0.2 \
                       --validate=True
+                    #   --milestones 23 39 47 54 \
