@@ -301,15 +301,15 @@ class KITTI_Raw_EigenSplit_Full(KITTI_Raw):
             num_examples=num_examples,
             index_file="index_txt/eigen_full.txt")
 
+
 class KITTI_Odom_Train(KITTI_Raw):
     def __init__(self,
                  args,
                  root,
-                 flip_augmentations=False,
-                 preprocessing_crop=False,
-                 crop_size=False,
+                 flip_augmentations=True,
+                 preprocessing_crop=True,
+                 crop_size=[370, 1224],
                  num_examples=-1):
-        
         super(KITTI_Odom_Train, self).__init__(
             args,
             images_root=root,
@@ -317,8 +317,8 @@ class KITTI_Odom_Train(KITTI_Raw):
             preprocessing_crop=preprocessing_crop,
             crop_size=crop_size,
             num_examples=num_examples,
-            index_file="index_txt/kitti_odom_0008.txt",
-        )
+            index_file="index_txt/kitti_odom_0008.txt")
+
 
 class KITTI_Odom_Test(KITTI_Raw):
     def __init__(self,
