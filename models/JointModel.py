@@ -12,7 +12,7 @@ from .correlation_package.correlation import Correlation
 from .encoders import PoseBottleNeck, PoseBottleNeck3D
 from .modules_sceneflow import get_grid, WarpingLayer_SF, WarpingLayer_Pose
 from .modules_sceneflow import initialize_msra, upsample_outputs_as
-from .joint_decoders import JointDecoder, JointContextNetwork
+from .joint_decoders import JointDecoder, JointContextNetwork, JointDecoderLarge
 from .encoders import PWCEncoder, ResnetEncoder
 
 from utils.inverse_warp import pose_vec2mat
@@ -89,7 +89,10 @@ class JointModel(nn.Module):
                     num_ch_in = self.dim_corr + ch + self.out_ch_size + 3 + 1 + 6 + 1
                 self.upconv_layers.append(UpConv(self.out_ch_size, self.out_ch_size, 3, 2, use_bn=args.use_bn))
 
-            layer_sf = JointDecoder(args, num_ch_in, use_bn=args.use_bn)
+            if self.args.decoder_type == 'large':
+                layer_sf = JointDecoderLarge(args, num_ch_in, use_bn=args.use_bn)
+            else:
+                layer_sf = JointDecoder(args, num_ch_in, use_bn=args.use_bn)
             self.flow_estimators.append(layer_sf)
             if args.use_bottleneck:
                 # bottleneck = PoseBottleNeck(in_ch=(ch + ch))

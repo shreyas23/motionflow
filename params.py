@@ -37,7 +37,7 @@ class Params:
                             default="split", help="name of model")
         self.parser.add_argument('--encoder_name', type=str, default="pwc",
                             help="which encoder to use for Scene Net")
-        self.parser.add_argument('--decoder_type', type=str, default="full",
+        self.parser.add_argument('--decoder_type', type=str, default="small",
                             help="which decoder to use for Scene Net")
         self.parser.add_argument('--pt_encoder', type=bool, default=False, help='only do resize augmentation on input data')
         self.parser.add_argument('--use_bn', type=bool, default=False, help="whether to use batch-norm in training procedure")
