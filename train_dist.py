@@ -244,7 +244,8 @@ def train(gpu, args):
             torch.load(ckpt_fp, map_location=map_location)['optimizer'])
         
         best_fp = os.path.join(args.log_dir, f"best_sf.ckpt")
-        best_test_sf_otl = torch.load(best_fp, map_location=map_location)['loss']['sf']
+        if os.path.exists(best_fp):
+            best_test_sf_otl = torch.load(best_fp, map_location=map_location)['loss']['sf']
     
     if gpu == 0:
         save_new_best = False
