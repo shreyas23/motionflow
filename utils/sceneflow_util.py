@@ -63,7 +63,6 @@ def pose_process_flow(args, pose, sf, disp, mask, K, aug_size, mask_thresh=0.5, 
     
     rigidity_mask = (mask >= mask_thresh).float()
     mask_flow_diff = (_elementwise_epe(pose_sf, sf) <= flow_diff_thresh).float()
-    # mask_flow_diff = ((pose_sf - sf).abs() <= flow_diff_thresh).prod(dim=1, keepdim=True).float()
     rigidity_mask_comb = logical_or(rigidity_mask, mask_flow_diff)
     rigid_mask = (rigidity_mask_comb > 0.5).float()
     non_rigid_mask = (rigidity_mask_comb < 0.5).float()
