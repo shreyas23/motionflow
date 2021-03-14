@@ -255,7 +255,7 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             loss_pose, loss_pose_im, loss_pose_pts, _, _, (pose_diff_f, pose_diff_b) = self.sceneflow_loss(pose_sf_f, pose_sf_b, 
                                                                                         disp_l1, disp_l2,
                                                                                         disp_occ_l1, disp_occ_l2,
-                                                                                        mask_l1, mask_l2,
+                                                                                        mask_l1.detach(), mask_l2.detach(),
                                                                                         k_l1_aug, k_l2_aug,
                                                                                         img_l1_aug, img_l2_aug, 
                                                                                         aug_size, ii)
