@@ -10,7 +10,6 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --encoder_name='pwc' \
                       --use_pose_corr=True \
                       --train_census_mask=True \
-                      --apply_mask=True \
                       --num_examples=-1 \
                       --num_workers=16 \
                       --start_epoch=1 \
@@ -28,7 +27,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --flow_diff_thresh=0.1 \
                       --mask_sm_w=0.1 \
                       --mask_reg_w=0.3 \
-                      --mask_cons_w=0.15 \
+                      --mask_cons_w=0.1 \
                       --mask_thresh=0.5 \
                       --static_cons_w=0.0
 
