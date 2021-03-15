@@ -2,7 +2,7 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --test_data_root="/mnt/data/kitti_jpg/kitti2015/" \
                       --log_root="/ceph/checkpoints/" \
                       --exp_dir="finale" \
-                      --exp_name="odom_v4" \
+                      --exp_name="odom_v5" \
                       --log_freq=1 \
                       --save_freq=1 \
                       --dataset_name="ODOM" \
@@ -15,10 +15,10 @@ python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --start_epoch=1 \
                       --epochs=50 \
                       --batch_size=4 \
-                      --lr=2e-4 \
+                      --lr=4e-4 \
                       --lr_gamma=0.5 \
                       --lr_sched_type='step' \
-                      --milestones 25 30 40 \
+                      --milestones 20 30 40 \
                       --flow_reduce_mode='sum' \
                       --disp_sm_w=0.05 \
                       --flow_sm_w=10 \
