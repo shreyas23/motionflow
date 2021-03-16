@@ -100,6 +100,7 @@ class Eval_SceneFlow_KITTI_Train(nn.Module):
 
         flow_gt_mag = torch.norm(target_dict["target_flow"], p=2, dim=1, keepdim=True) + 1e-8
         flow_outlier_epe = (valid_epe > 3).float() * ((valid_epe / flow_gt_mag) > 0.05).float() * gt_flow_mask
+        # loss_dict['flow_img'] = flow_outlier_epe.cpu().squeeze()
         loss_dict["f1"] = (flow_outlier_epe.view(batch_size, -1).sum(1)).mean() / 91875.68
 
 
@@ -117,6 +118,7 @@ class Eval_SceneFlow_KITTI_Train(nn.Module):
         output_dict["out_depth_l_pp_next"] = out_depth_l1_next
 
         d1_outlier_image = dict_disp1_occ['otl_img']
+        # loss_dict['disp_img'] = d1_outlier_image.cpu().squeeze()
         loss_dict["d2"] = dict_disp1_occ['otl']
 
 
