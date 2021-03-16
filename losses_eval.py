@@ -29,6 +29,7 @@ def eval_module_disp_depth(gt_disp, gt_disp_mask, output_disp, gt_depth, output_
     loss_dict["a1"] = a1
     loss_dict["a2"] = a2
     loss_dict["a3"] = a3
+    loss_dict['d0_otl_img'] = d_outlier_epe
 
     return loss_dict
 
@@ -68,6 +69,7 @@ class Eval_SceneFlow_KITTI_Train(nn.Module):
         gt_depth_l1 = _disp2depth_kitti_K(gt_disp, intrinsics[:, 0, 0])
 
         dict_disp0_occ = eval_module_disp_depth(gt_disp, gt_disp_mask.bool(), out_disp_l1, gt_depth_l1, out_depth_l1)
+        loss_dict['disp_img'] = dict_disp0_occ['d0_otl_img'].cpu().squeeze()
 
         output_dict["out_disp_l_pp"] = out_disp_l1
         output_dict["out_depth_l_pp"] = out_depth_l1
@@ -100,7 +102,7 @@ class Eval_SceneFlow_KITTI_Train(nn.Module):
 
         flow_gt_mag = torch.norm(target_dict["target_flow"], p=2, dim=1, keepdim=True) + 1e-8
         flow_outlier_epe = (valid_epe > 3).float() * ((valid_epe / flow_gt_mag) > 0.05).float() * gt_flow_mask
-        # loss_dict['flow_img'] = flow_outlier_epe.cpu().squeeze()
+        loss_dict['flow_img'] = flow_outlier_epe.cpu().squeeze()
         loss_dict["f1"] = (flow_outlier_epe.view(batch_size, -1).sum(1)).mean() / 91875.68
 
 
@@ -118,7 +120,6 @@ class Eval_SceneFlow_KITTI_Train(nn.Module):
         output_dict["out_depth_l_pp_next"] = out_depth_l1_next
 
         d1_outlier_image = dict_disp1_occ['otl_img']
-        # loss_dict['disp_img'] = d1_outlier_image.cpu().squeeze()
         loss_dict["d2"] = dict_disp1_occ['otl']
 
 
