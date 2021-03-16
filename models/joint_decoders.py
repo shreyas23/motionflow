@@ -21,7 +21,7 @@ class JointDecoder(nn.Module):
         
         self.conv_sf = Conv(32, 3, nonlin='none')
         self.conv_d1 = Conv(32, 1, nonlin='none')
-        self.conv_pose = Conv(32, num_refs * 6, kernel_size=5, nonlin='none')
+        self.conv_pose = Conv(32, num_refs * 6, kernel_size=7, nonlin='none')
 
         self.conv_mask = Conv(32, 1, nonlin='none')
 
