@@ -1,11 +1,11 @@
 python3 train_dist.py --data_root="/mnt/data/kitti_jpg/" \
                       --test_data_root="/mnt/data/kitti_jpg/kitti2015/" \
                       --log_root="/ceph/checkpoints/" \
-                      --exp_dir="finale" \
-                      --exp_name="corr_stage1_small" \
+                      --exp_dir="ablation" \
+                      --exp_name="large_decoder" \
                       --log_freq=1 \
                       --save_freq=1 \
-                      --dataset_name="KITTI_EIGEN" \
+                      --dataset_name="KITTI" \
                       --model_name='joint' \
                       --encoder_name='pwc' \
                       --decoder_type='large' \
